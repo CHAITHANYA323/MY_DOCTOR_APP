@@ -1,0 +1,78 @@
+# ==========================================
+# MediConnect - Root Git Ignore Configuration
+# ==========================================
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+package-lock.json.bak
+
+# Production Build Output
+dist/
+dist-ssr/
+frontend/dist/
+frontend/dist-ssr/
+build/
+
+# Environment Variables & Secrets (NEVER COMMIT)
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+backend/.env
+backend/.env.local
+*.env
+!.env.example
+!frontend/.env.example
+!backend/.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Python & Backend
+__pycache__/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+backend/.venv/
+
+# SQLite Database (allow seed script to create fresh db in deployment)
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+doctor_hospital.db
+backend/doctor_hospital.db
+
+# IDEs & System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
