@@ -25,8 +25,15 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Enable CORS for Vite frontend
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+    # Enable CORS for all frontend clients
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+    @app.after_request
+    def add_cors_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        return response
 
     db.init_app(app)
 
@@ -61,12 +68,12 @@ def create_app():
 
     @app.errorhandler(500)
     def handle_internal_error(e):
-        return jsonify({'success': False, 'message': 'An internal server error occurred. Please try again later.'}), 500
+        return jsonify({'success': False, 'message': 'An unexpected server error occurred. Please try again later.'}), 500
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(e):
         app.logger.error(f"Unhandled Exception: {str(e)}")
-        return jsonify({'success': False, 'message': f'Server Error: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': 'An unexpected server error occurred. Please try again later.'}), 500
 
     return app
 
@@ -79,7 +86,10 @@ def initialize_database(app):
             print(f"[DB] Successfully connected using {app.config['SQLALCHEMY_DATABASE_URI'].split('://')[0].upper()}")
         except Exception as conn_err:
             print(f"[DB Notice] Could not connect to primary database ({conn_err}).")
-            sqlite_path = (BASE_DIR / "doctor_hospital.db").as_posix()
+            if os.getenv("VERCEL"):
+                sqlite_path = "/tmp/doctor_hospital.db"
+            else:
+                sqlite_path = (BASE_DIR / "doctor_hospital.db").as_posix()
             fallback_uri = f"sqlite:///{sqlite_path}"
             print(f"[DB] Switching to SQLite fallback: {fallback_uri}")
             app.config['SQLALCHEMY_DATABASE_URI'] = fallback_uri
@@ -102,9 +112,10 @@ def initialize_database(app):
                 print(f"[DB Warning] Could not run automatic seed: {seed_err}")
 
 
+app = create_app()
+initialize_database(app)
+
 if __name__ == '__main__':
-    app = create_app()
-    initialize_database(app)
     port = int(os.getenv('FLASK_PORT', 5000))
     print(f"[START] Doctor & Hospital Management API is running on http://127.0.0.1:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)

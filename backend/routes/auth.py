@@ -1,11 +1,18 @@
+import re
 from flask import Blueprint, request, jsonify, g
+from sqlalchemy.exc import IntegrityError
 from models import db, User
 from utils.auth_middleware import generate_token, jwt_required, admin_required
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
-@auth_bp.route('/register', methods=['POST'])
+EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+
+@auth_bp.route('/register', methods=['POST', 'OPTIONS'])
 def register():
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+
     data = request.get_json() or {}
     name = (data.get('name') or '').strip()
     email = (data.get('email') or '').strip().lower()
@@ -13,21 +20,32 @@ def register():
     password = data.get('password') or ''
     confirm_password = data.get('confirm_password') or ''
 
-    # Validations
-    if not name or not email or not password:
-        return jsonify({'success': False, 'message': 'Full name, email and password are required.'}), 400
-    
-    if len(password) < 6:
-        return jsonify({'success': False, 'message': 'Password must be at least 6 characters long.'}), 400
+    # 1. Missing required fields
+    if not name or not email or not password or not confirm_password:
+        return jsonify({'success': False, 'message': 'Please fill in all required fields.'}), 400
 
-    if confirm_password and password != confirm_password:
-        return jsonify({'success': False, 'message': 'Passwords do not match.'}), 400
-
-    if '@' not in email or '.' not in email:
+    # 2. Invalid email
+    if not re.match(EMAIL_REGEX, email):
         return jsonify({'success': False, 'message': 'Please enter a valid email address.'}), 400
 
-    if User.query.filter_by(email=email).first():
-        return jsonify({'success': False, 'message': 'An account with this email already exists.'}), 409
+    # 3. Invalid phone number (if provided)
+    if phone:
+        phone_digits = re.sub(r'\D', '', phone)
+        if len(phone_digits) < 7 or len(phone_digits) > 15 or not re.match(r'^\+?[0-9\s\-()]+$', phone):
+            return jsonify({'success': False, 'message': 'Please enter a valid phone number.'}), 400
+
+    # 4. Password minimum length
+    if len(password) < 6:
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters.'}), 400
+
+    # 5. Password and Confirm Password mismatch
+    if password != confirm_password:
+        return jsonify({'success': False, 'message': 'Passwords do not match.'}), 400
+
+    # 6. Duplicate email check
+    existing_user = User.query.filter(User.email.ilike(email)).first()
+    if existing_user:
+        return jsonify({'success': False, 'message': 'Email already registered.'}), 409
 
     role = data.get('role', 'USER').upper()
     if role not in ['USER', 'ADMIN']:
@@ -42,13 +60,20 @@ def register():
     )
     user.set_password(password)
 
-    db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.add(user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Email already registered.'}), 409
+    except Exception as err:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'An unexpected server error occurred. Please try again later.'}), 500
 
     token = generate_token(user)
     return jsonify({
         'success': True,
-        'message': 'Account registered successfully!',
+        'message': 'Account created successfully!',
         'token': token,
         'user': user.to_dict()
     }), 201

@@ -32,7 +32,10 @@ class Config:
             )
             
         # Fallback to local SQLite for instant out-of-the-box readiness
-        db_file = BASE_DIR / "doctor_hospital.db"
+        if os.getenv("VERCEL"):
+            db_file = Path("/tmp") / "doctor_hospital.db"
+        else:
+            db_file = BASE_DIR / "doctor_hospital.db"
         return f"sqlite:///{db_file.as_posix()}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
