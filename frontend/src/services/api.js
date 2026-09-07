@@ -1,17 +1,40 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Automatically normalize the backend API Base URL:
+// Ensures clean handling of trailing slashes, missing /api, or accidental /api/auth in VITE_API_URL
+const getNormalizedApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl || !envUrl.trim()) {
+    return 'http://localhost:5000/api';
+  }
+
+  let cleaned = envUrl.trim().replace(/\/+$/, '');
+
+  // If the user specified an endpoint ending in /auth, strip /auth because services append /auth/...
+  if (cleaned.endsWith('/auth')) {
+    cleaned = cleaned.slice(0, -5);
+  }
+
+  // If the URL does not end with /api, append /api
+  if (!cleaned.endsWith('/api')) {
+    cleaned = `${cleaned}/api`;
+  }
+
+  return cleaned;
+};
+
+const API_BASE_URL = getNormalizedApiUrl();
 
 if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
   if (!import.meta.env.VITE_API_URL || API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1')) {
-    console.error(
+    console.warn(
       '[DoctorApp Deployment Notice] Frontend is running on a deployed domain (' +
         window.location.origin +
         '), but API_BASE_URL is pointing to localhost (' +
         API_BASE_URL +
         '). ' +
         'Browsers will block requests to local addresses. ' +
-        'Please set the VITE_API_URL environment variable in your Vercel Project Settings to your deployed Flask backend URL.'
+        'Please set the VITE_API_URL environment variable in your Vercel Project Settings to your deployed Flask backend URL (e.g. https://your-backend.onrender.com/api).'
     );
   }
 }

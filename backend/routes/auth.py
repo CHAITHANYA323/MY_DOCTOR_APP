@@ -8,7 +8,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
 
-@auth_bp.route('/register', methods=['POST', 'OPTIONS'])
+@auth_bp.route('/register', methods=['POST', 'OPTIONS'], strict_slashes=False)
 def register():
     if request.method == 'OPTIONS':
         return jsonify({'success': True}), 200
@@ -81,8 +81,11 @@ def register():
     }), 201
 
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route('/login', methods=['POST', 'OPTIONS'], strict_slashes=False)
 def login():
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+
     data = request.get_json() or {}
     email = (data.get('email') or '').strip().lower()
     password = data.get('password') or ''
@@ -103,18 +106,22 @@ def login():
     }), 200
 
 
-@auth_bp.route('/me', methods=['GET'])
+@auth_bp.route('/me', methods=['GET', 'OPTIONS'], strict_slashes=False)
 @jwt_required
 def get_current_user():
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
     return jsonify({
         'success': True,
         'user': g.current_user.to_dict()
     }), 200
 
 
-@auth_bp.route('/profile', methods=['PUT'])
+@auth_bp.route('/profile', methods=['PUT', 'OPTIONS'], strict_slashes=False)
 @jwt_required
 def update_profile():
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
     data = request.get_json() or {}
     user = g.current_user
 
@@ -137,9 +144,11 @@ def update_profile():
     }), 200
 
 
-@auth_bp.route('/users', methods=['GET'])
+@auth_bp.route('/users', methods=['GET', 'OPTIONS'], strict_slashes=False)
 @admin_required
 def list_users():
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
     users = User.query.order_by(User.created_at.desc()).all()
     return jsonify({
         'success': True,

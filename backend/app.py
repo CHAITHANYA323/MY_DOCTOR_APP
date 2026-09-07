@@ -19,14 +19,17 @@ from routes.reviews import reviews_bp
 def create_app():
     app = Flask(__name__)
 
+    # Match routes with or without trailing slash
+    app.url_map.strict_slashes = False
+
     # Choose DB URI
     db_uri = Config.get_database_uri()
     app.config['SECRET_KEY'] = Config.SECRET_KEY
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Enable CORS for all frontend clients
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # Enable CORS for all frontend clients across all routes
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
     @app.after_request
     def add_cors_headers(response):
@@ -46,6 +49,19 @@ def create_app():
     app.register_blueprint(ambulances_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(reviews_bp)
+
+    # Register route aliases so that any endpoint variation (/api/register, /auth/register, /register) maps to the registration handler
+    from routes.auth import register as auth_register_view
+    from routes.auth import login as auth_login_view
+
+    app.add_url_rule('/api/register', endpoint='alias_api_register', view_func=auth_register_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/auth/register', endpoint='alias_auth_register', view_func=auth_register_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/register', endpoint='alias_root_register', view_func=auth_register_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+
+    app.add_url_rule('/api/login', endpoint='alias_api_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/auth/login', endpoint='alias_auth_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/login', endpoint='alias_root_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/health', endpoint='alias_root_health', view_func=lambda: jsonify({'status': 'healthy'}), methods=['GET', 'OPTIONS'], strict_slashes=False)
 
     @app.route('/api/health', methods=['GET'])
     def health_check():
