@@ -43,7 +43,9 @@ def register():
         return jsonify({'success': False, 'message': 'Passwords do not match.'}), 400
 
     # 6. Duplicate email check
-    existing_user = User.query.filter(User.email.ilike(email)).first()
+    existing_user = User.query.filter_by(email=email).first()
+    if not existing_user:
+        existing_user = User.query.filter(User.email.ilike(email)).first()
     if existing_user:
         return jsonify({'success': False, 'message': 'Email already registered.'}), 409
 
@@ -68,7 +70,7 @@ def register():
         return jsonify({'success': False, 'message': 'Email already registered.'}), 409
     except Exception as err:
         db.session.rollback()
-        return jsonify({'success': False, 'message': 'An unexpected server error occurred. Please try again later.'}), 500
+        return jsonify({'success': False, 'message': 'Unable to create account. Please try again later.'}), 500
 
     token = generate_token(user)
     return jsonify({

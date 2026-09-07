@@ -71,31 +71,37 @@ export const Register = () => {
         role: 'USER'
       });
 
-      if (res && res.success) {
+      if (res && (res.status === 201 || res.success)) {
         setError('');
         const successMessage = res.message || 'Account created successfully!';
         setSuccess(successMessage);
+        // Clear the form fields upon successful registration
+        setName('');
+        setEmail('');
+        setPhone('');
+        setPassword('');
+        setConfirmPassword('');
         setTimeout(() => {
           navigate('/login', { state: { message: successMessage } });
         }, 1500);
       } else {
         setSuccess('');
-        setError(res?.message || 'Registration failed. Please try again.');
+        setError(res?.message || 'Unable to create account. Please try again later.');
       }
     } catch (err) {
       setSuccess('');
-      // Extract backend error message accurately from response
-      const backendMessage =
+      // Extract actual Flask backend response message
+      const message =
         err.response?.data?.message ||
-        err.response?.data?.error ||
         (err.response?.status === 409 ? 'Email already registered.' : null) ||
-        (err.response?.status === 400 ? 'Please fill in all required fields.' : null) ||
-        (err.response?.status === 500 ? 'An unexpected server error occurred. Please try again later.' : null) ||
-        (err.message === 'Network Error' ? 'Unable to connect to the backend server. Please verify the server is running.' : null) ||
-        err.message ||
-        'Registration failed. Please try again.';
+        (err.response?.status === 400 ? 'Please check the entered details.' : null) ||
+        (err.response?.status === 500 ? 'Unable to create account. Please try again later.' : null) ||
+        (err.code === 'ERR_NETWORK' || err.message === 'Network Error'
+          ? 'Unable to reach backend server. In production (Vercel), please configure VITE_API_URL with your deployed Flask backend URL.'
+          : null) ||
+        'Unable to create account. Please try again later.';
 
-      setError(backendMessage);
+      setError(message);
     } finally {
       setLoading(false);
     }

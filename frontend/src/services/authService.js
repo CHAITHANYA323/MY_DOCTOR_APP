@@ -14,7 +14,10 @@ export const authService = {
     const response = await api.post('/auth/register', userData);
     // Do NOT automatically store token or user on register
     // The user must explicitly log in after registering
-    return response.data;
+    return {
+      status: response.status,
+      ...response.data
+    };
   },
 
   getCurrentUser: async () => {
