@@ -75,7 +75,7 @@ def create_app():
 
     db.init_app(app)
 
-    # Register blueprints
+    # Register blueprints (with /api prefix by default)
     app.register_blueprint(auth_bp)
     app.register_blueprint(doctors_bp)
     app.register_blueprint(hospitals_bp)
@@ -85,13 +85,36 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(reviews_bp)
 
+    # Register root aliases for blueprints so requests without /api prefix also resolve cleanly
+    app.register_blueprint(auth_bp, name='auth_alt', url_prefix='/auth')
+    app.register_blueprint(doctors_bp, name='doctors_alt', url_prefix='/doctors')
+    app.register_blueprint(hospitals_bp, name='hospitals_alt', url_prefix='/hospitals')
+    app.register_blueprint(specializations_bp, name='specializations_alt', url_prefix='/specializations')
+    app.register_blueprint(appointments_bp, name='appointments_alt', url_prefix='/appointments')
+    app.register_blueprint(ambulances_bp, name='ambulances_alt', url_prefix='')
+    app.register_blueprint(dashboard_bp, name='dashboard_alt', url_prefix='')
+    app.register_blueprint(reviews_bp, name='reviews_alt', url_prefix='')
+
+    # Root and API status endpoints
+    @app.route('/', methods=['GET', 'OPTIONS'])
+    @app.route('/api', methods=['GET', 'OPTIONS'])
+    def root_endpoint():
+        if request.method == 'OPTIONS':
+            return jsonify({'success': True, 'status': 'ok'}), 200
+        return jsonify({
+            'success': True,
+            'status': 'ok',
+            'message': 'Healthcare Management API is running'
+        }), 200
+
     # Canonical health endpoints
     @app.route('/api/health', methods=['GET', 'OPTIONS'])
     @app.route('/health', methods=['GET', 'OPTIONS'])
     def health_check():
         if request.method == 'OPTIONS':
-            return jsonify({'status': 'ok'}), 200
+            return jsonify({'success': True, 'status': 'ok'}), 200
         return jsonify({
+            'success': True,
             'status': 'ok',
             'message': 'Backend is running'
         }), 200
