@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaHospitalSymbol, FaUser, FaEnvelope, FaPhoneAlt, FaLock } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { getApiErrorMessage } from '../services/api';
 
 export const Register = () => {
   const { register } = useAuth();
@@ -90,18 +91,7 @@ export const Register = () => {
       }
     } catch (err) {
       setSuccess('');
-      // Extract actual Flask backend response message
-      const message =
-        err.response?.data?.message ||
-        (err.response?.status === 409 ? 'Email already registered.' : null) ||
-        (err.response?.status === 400 ? 'Please check the entered details.' : null) ||
-        (err.response?.status === 500 ? 'Unable to create account. Please try again later.' : null) ||
-        (err.code === 'ERR_NETWORK' || err.message === 'Network Error'
-          ? 'Unable to reach backend server. In production (Vercel), please configure VITE_API_URL with your deployed Flask backend URL.'
-          : null) ||
-        'Unable to create account. Please try again later.';
-
-      setError(message);
+      setError(getApiErrorMessage(err, 'Unable to create account. Please try again later.'));
     } finally {
       setLoading(false);
     }

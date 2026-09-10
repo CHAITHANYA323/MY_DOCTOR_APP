@@ -2,7 +2,7 @@ import api from './api';
 
 export const authService = {
   login: async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
+    const response = await api.post('/api/auth/login', credentials);
     if (response.data.token) {
       localStorage.setItem('medicare_token', response.data.token);
       localStorage.setItem('medicare_user', JSON.stringify(response.data.user));
@@ -11,7 +11,7 @@ export const authService = {
   },
 
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/api/auth/register', userData);
     // Do NOT automatically store token or user on register
     // The user must explicitly log in after registering
     return {
@@ -21,12 +21,12 @@ export const authService = {
   },
 
   getCurrentUser: async () => {
-    const response = await api.get('/auth/me');
+    const response = await api.get('/api/auth/me');
     return response.data;
   },
 
   updateProfile: async (data) => {
-    const response = await api.put('/auth/profile', data);
+    const response = await api.put('/api/auth/profile', data);
     if (response.data.user) {
       localStorage.setItem('medicare_user', JSON.stringify(response.data.user));
     }
@@ -34,7 +34,7 @@ export const authService = {
   },
 
   getUsers: async () => {
-    const response = await api.get('/auth/users');
+    const response = await api.get('/api/auth/users');
     return response.data;
   },
 

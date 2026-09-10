@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaHospitalSymbol, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaUser } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { getApiErrorMessage } from '../services/api';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -40,7 +41,7 @@ export const Login = () => {
         setError(res.message || 'Login failed.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+      setError(getApiErrorMessage(err, 'Invalid email or password. Please try again.'));
     } finally {
       setLoading(false);
     }

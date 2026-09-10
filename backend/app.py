@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import text
 from config import Config, BASE_DIR
@@ -28,14 +28,49 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Enable CORS for all frontend clients across all routes
-    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+    # Configure CORS: local development, Vercel preview/production domains, and custom env origins
+    allowed_origin_patterns = [
+        r"^https?://localhost(:\d+)?$",
+        r"^https?://127\.0\.0\.1(:\d+)?$",
+        r"^https://.*\.vercel\.app$",
+    ]
+
+    custom_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("FRONTEND_URL")
+    if custom_origins:
+        for orig in custom_origins.split(","):
+            cleaned = orig.strip()
+            if cleaned and cleaned not in allowed_origin_patterns:
+                allowed_origin_patterns.append(cleaned)
+
+    CORS(
+        app,
+        resources={r"/*": {"origins": allowed_origin_patterns}},
+        allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With", "Origin"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        supports_credentials=False,
+        max_age=86400
+    )
+
+    # Seamless preflight OPTIONS handler
+    @app.before_request
+    def handle_preflight():
+        if request.method == 'OPTIONS':
+            response = app.make_default_options_response()
+            origin = request.headers.get('Origin')
+            if origin:
+                response.headers['Access-Control-Allow-Origin'] = origin
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin'
+                response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+                response.headers['Access-Control-Max-Age'] = '86400'
+            return response
 
     @app.after_request
     def add_cors_headers(response):
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
         return response
 
     db.init_app(app)
@@ -50,7 +85,18 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(reviews_bp)
 
-    # Register route aliases so that any endpoint variation (/api/register, /auth/register, /register) maps to the registration handler
+    # Canonical health endpoints
+    @app.route('/api/health', methods=['GET', 'OPTIONS'])
+    @app.route('/health', methods=['GET', 'OPTIONS'])
+    def health_check():
+        if request.method == 'OPTIONS':
+            return jsonify({'status': 'ok'}), 200
+        return jsonify({
+            'status': 'ok',
+            'message': 'Backend is running'
+        }), 200
+
+    # Route aliases for backward compatibility
     from routes.auth import register as auth_register_view
     from routes.auth import login as auth_login_view
 
@@ -61,19 +107,8 @@ def create_app():
     app.add_url_rule('/api/login', endpoint='alias_api_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
     app.add_url_rule('/auth/login', endpoint='alias_auth_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
     app.add_url_rule('/login', endpoint='alias_root_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
-    app.add_url_rule('/health', endpoint='alias_root_health', view_func=lambda: jsonify({'status': 'healthy'}), methods=['GET', 'OPTIONS'], strict_slashes=False)
 
-    @app.route('/api/health', methods=['GET'])
-    def health_check():
-        db_type = 'MySQL' if 'mysql' in app.config['SQLALCHEMY_DATABASE_URI'].lower() else 'SQLite'
-        return jsonify({
-            'status': 'healthy',
-            'service': 'Doctor & Hospital Management API',
-            'version': '1.0.0',
-            'database': db_type
-        }), 200
-
-    # Professional Global Error Handlers
+    # Global Error Handlers
     @app.errorhandler(404)
     def handle_not_found(e):
         return jsonify({'success': False, 'message': 'Requested resource was not found.'}), 404
@@ -101,35 +136,42 @@ def initialize_database(app):
             db.session.execute(text("SELECT 1"))
             print(f"[DB] Successfully connected using {app.config['SQLALCHEMY_DATABASE_URI'].split('://')[0].upper()}")
         except Exception as conn_err:
-            print(f"[DB Notice] Could not connect to primary database ({conn_err}).")
+            print(f"[DB Notice] Could not connect to configured database: {conn_err}")
+            # Fallback to local / tmp SQLite if primary failed
             if os.getenv("VERCEL"):
-                sqlite_path = "/tmp/doctor_hospital.db"
+                import tempfile
+                tmp_dir = Path("/tmp") if os.name != "nt" else Path(tempfile.gettempdir())
+                tmp_dir.mkdir(parents=True, exist_ok=True)
+                sqlite_path = (tmp_dir / "doctor_hospital.db").as_posix()
             else:
                 sqlite_path = (BASE_DIR / "doctor_hospital.db").as_posix()
             fallback_uri = f"sqlite:///{sqlite_path}"
             print(f"[DB] Switching to SQLite fallback: {fallback_uri}")
             app.config['SQLALCHEMY_DATABASE_URI'] = fallback_uri
-            # Rebind engine
-            db.engine.dispose()
-            db.init_app(app)
-
-        # Create all tables if they do not exist
-        db.create_all()
-
-        # Check if seeder needs to run
-        from models import User
-        if User.query.count() == 0:
-            print("[DB] Database is empty. Running initial seeder...")
             try:
+                db.engine.dispose()
+            except Exception:
+                pass
+
+        try:
+            # Create all tables if they do not exist
+            db.create_all()
+
+            # Check if seeder needs to run
+            from models import User
+            if User.query.count() == 0:
+                print("[DB] Database is empty. Running initial seeder...")
                 from seed import run_seed
                 run_seed()
                 print("[DB] Seeding completed successfully!")
-            except Exception as seed_err:
-                print(f"[DB Warning] Could not run automatic seed: {seed_err}")
+        except Exception as db_init_err:
+            print(f"[DB Warning] Database init/migration notice: {db_init_err}")
 
 
+# Expose WSGI app and handler for local server & Vercel serverless functions
 app = create_app()
 initialize_database(app)
+handler = app
 
 if __name__ == '__main__':
     port = int(os.getenv('FLASK_PORT', 5000))
