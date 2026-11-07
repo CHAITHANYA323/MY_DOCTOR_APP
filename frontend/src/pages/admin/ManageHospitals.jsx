@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FaHospital, FaPlus, FaEdit, FaTrash, FaPhoneAlt, FaMapMarkerAlt, FaStar } from 'react-icons/fa';
+import { FaHospital, FaPlus, FaEdit, FaTrash, FaMapMarkerAlt, FaStar } from 'react-icons/fa';
 import { hospitalService } from '../../services/hospitalService';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { Modal } from '../../components/common/Modal';
+import { Button } from '../../components/common/Button';
+import { Badge } from '../../components/common/Badge';
+import { notify } from '../../utils/toast';
 
 export const ManageHospitals = () => {
   const [hospitals, setHospitals] = useState([]);
@@ -85,7 +89,7 @@ export const ManageHospitals = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!modalForm.name || !modalForm.address || !modalForm.city || !modalForm.emergency_number) {
-      alert('Hospital name, address, city, and emergency number are required.');
+      notify.warning('Hospital name, address, city, and emergency number are required.');
       return;
     }
 
@@ -93,15 +97,17 @@ export const ManageHospitals = () => {
     try {
       if (editingId) {
         await hospitalService.updateHospital(editingId, modalForm);
+        notify.success('Hospital details updated successfully!');
         setNotification('Hospital details updated successfully!');
       } else {
         await hospitalService.createHospital(modalForm);
-        setNotification('New hospital registered in MediCare network!');
+        notify.success('New hospital registered in MediConnect network!');
+        setNotification('New hospital registered in MediConnect network!');
       }
       setIsModalOpen(false);
       fetchHospitals();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving hospital.');
+      notify.error(err.response?.data?.message || 'Error saving hospital.');
     } finally {
       setFormLoading(false);
     }
@@ -113,12 +119,13 @@ export const ManageHospitals = () => {
     try {
       const res = await hospitalService.deleteHospital(deleteTarget.id);
       if (res.success) {
+        notify.success(res.message || 'Hospital deleted successfully.');
         setNotification(res.message);
         setDeleteTarget(null);
         fetchHospitals();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete hospital.');
+      notify.error(err.response?.data?.message || 'Failed to delete hospital.');
     } finally {
       setDeleteLoading(false);
     }
@@ -137,9 +144,9 @@ export const ManageHospitals = () => {
           </p>
         </div>
 
-        <button onClick={handleOpenAdd} className="btn btn-primary">
+        <Button onClick={handleOpenAdd} variant="primary">
           <FaPlus /> Register New Hospital
-        </button>
+        </Button>
       </div>
 
       {notification && (
@@ -207,9 +214,9 @@ export const ManageHospitals = () => {
                     </span>
                   </td>
                   <td>
-                    <span className="badge badge-confirmed">
+                    <Badge variant="info">
                       {hosp.doctor_count || 0} Doctors
-                    </span>
+                    </Badge>
                   </td>
                   <td>
                     <div className="flex items-center gap-1" style={{ color: '#f59e0b', fontWeight: 700 }}>
@@ -219,19 +226,20 @@ export const ManageHospitals = () => {
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                      <Button 
+                        size="sm"
+                        variant="secondary"
                         onClick={() => handleOpenEdit(hosp)}
-                        className="btn btn-secondary btn-sm"
                       >
                         <FaEdit /> Edit
-                      </button>
-                      <button 
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="danger"
                         onClick={() => setDeleteTarget(hosp)}
-                        className="btn btn-sm"
-                        style={{ backgroundColor: 'var(--emergency-light)', color: 'var(--emergency)', border: '1px solid var(--emergency-border)' }}
                       >
                         <FaTrash />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -242,112 +250,109 @@ export const ManageHospitals = () => {
       </div>
 
       {/* Hospital Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem', color: 'var(--slate-900)' }}>
-              {editingId ? 'Edit Hospital Details' : 'Register New Hospital'}
-            </h3>
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? 'Edit Hospital Details' : 'Register New Hospital'}
+        size="md"
+      >
+        <form onSubmit={handleFormSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Hospital Name *</label>
+              <input 
+                type="text" 
+                value={modalForm.name}
+                onChange={(e) => setModalForm({ ...modalForm, name: e.target.value })}
+                required
+                className="form-input"
+              />
+            </div>
 
-            <form onSubmit={handleFormSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Hospital Name *</label>
-                  <input 
-                    type="text" 
-                    value={modalForm.name}
-                    onChange={(e) => setModalForm({ ...modalForm, name: e.target.value })}
-                    required
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">City *</label>
-                  <input 
-                    type="text" 
-                    value={modalForm.city}
-                    onChange={(e) => setModalForm({ ...modalForm, city: e.target.value })}
-                    required
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Complete Street Address *</label>
-                <input 
-                  type="text" 
-                  value={modalForm.address}
-                  onChange={(e) => setModalForm({ ...modalForm, address: e.target.value })}
-                  required
-                  className="form-input"
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Emergency Number *</label>
-                  <input 
-                    type="text" 
-                    value={modalForm.emergency_number}
-                    onChange={(e) => setModalForm({ ...modalForm, emergency_number: e.target.value })}
-                    required
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">General Reception Phone</label>
-                  <input 
-                    type="text" 
-                    value={modalForm.phone}
-                    onChange={(e) => setModalForm({ ...modalForm, phone: e.target.value })}
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Image URL</label>
-                <input 
-                  type="url" 
-                  value={modalForm.image}
-                  onChange={(e) => setModalForm({ ...modalForm, image: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Facilities (Comma Separated)</label>
-                <textarea 
-                  rows="2"
-                  value={modalForm.facilities}
-                  onChange={(e) => setModalForm({ ...modalForm, facilities: e.target.value })}
-                  className="form-textarea"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3" style={{ marginTop: '1.5rem' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="btn btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={formLoading}
-                  className="btn btn-primary"
-                >
-                  {formLoading ? 'Saving...' : 'Save Hospital'}
-                </button>
-              </div>
-            </form>
+            <div className="form-group">
+              <label className="form-label">City *</label>
+              <input 
+                type="text" 
+                value={modalForm.city}
+                onChange={(e) => setModalForm({ ...modalForm, city: e.target.value })}
+                required
+                className="form-input"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="form-group">
+            <label className="form-label">Complete Street Address *</label>
+            <input 
+              type="text" 
+              value={modalForm.address}
+              onChange={(e) => setModalForm({ ...modalForm, address: e.target.value })}
+              required
+              className="form-input"
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Emergency Number *</label>
+              <input 
+                type="text" 
+                value={modalForm.emergency_number}
+                onChange={(e) => setModalForm({ ...modalForm, emergency_number: e.target.value })}
+                required
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">General Reception Phone</label>
+              <input 
+                type="text" 
+                value={modalForm.phone}
+                onChange={(e) => setModalForm({ ...modalForm, phone: e.target.value })}
+                className="form-input"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Image URL</label>
+            <input 
+              type="url" 
+              value={modalForm.image}
+              onChange={(e) => setModalForm({ ...modalForm, image: e.target.value })}
+              className="form-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Facilities (Comma Separated)</label>
+            <textarea 
+              rows="2"
+              value={modalForm.facilities}
+              onChange={(e) => setModalForm({ ...modalForm, facilities: e.target.value })}
+              className="form-textarea"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3" style={{ marginTop: '1.5rem' }}>
+            <Button 
+              type="button" 
+              variant="secondary"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              variant="primary"
+              loading={formLoading}
+            >
+              Save Hospital
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation */}
       <ConfirmationModal 

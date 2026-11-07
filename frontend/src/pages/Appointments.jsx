@@ -3,16 +3,14 @@ import { Link } from 'react-router-dom';
 import { 
   FaCalendarCheck, 
   FaPlus, 
-  FaCalendarAlt, 
-  FaClock, 
   FaCheckCircle, 
-  FaExclamationCircle,
   FaUserMd,
   FaArrowRight
 } from 'react-icons/fa';
 import { appointmentService } from '../services/appointmentService';
 import { AppointmentCard } from '../components/AppointmentCard';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { notify } from '../utils/toast';
 
 export const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -47,12 +45,12 @@ export const Appointments = () => {
     try {
       const res = await appointmentService.cancelAppointment(cancelTarget.id);
       if (res.success) {
-        setNotification(`Appointment #${cancelTarget.id} has been cancelled successfully.`);
+        notify.success(`Appointment #${cancelTarget.id} has been cancelled successfully.`);
         setCancelTarget(null);
         fetchAppointments();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel appointment.');
+      notify.error(err.response?.data?.message || 'Failed to cancel appointment.');
     } finally {
       setActionLoading(false);
     }

@@ -15,17 +15,24 @@ import {
   FaArrowRight,
   FaShieldAlt,
   FaNotesMedical,
-  FaAmbulance
+  FaAmbulance,
+  FaEdit,
+  FaTrash,
+  FaExclamationCircle,
+  FaSpinner,
+  FaTimes
 } from 'react-icons/fa';
 import { doctorService } from '../services/doctorService';
 import { appointmentService } from '../services/appointmentService';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
+import { notify } from '../utils/toast';
 
 export const DoctorDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin } = useAuth();
 
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +41,8 @@ export const DoctorDetails = () => {
   // Quick Inline Booking Form State
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('10:00 AM');
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingReason, setBookingReason] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -43,6 +52,26 @@ export const DoctorDetails = () => {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState('');
+  const [reviewError, setReviewError] = useState('');
+
+  // Verified Consultations State (for gated reviews)
+  const [userCompletedAppointments, setUserCompletedAppointments] = useState([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState('');
+
+  // Inline Review Edit State
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editRatingInput, setEditRatingInput] = useState(5);
+  const [editComment, setEditComment] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // Review Delete Modal State
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Top-level action notification
+  const [actionNotification, setActionNotification] = useState(null);
 
   const timeSlots = [
     "09:30 AM", "10:30 AM", "11:30 AM", 
@@ -80,6 +109,31 @@ export const DoctorDetails = () => {
     fetchDoctor();
   }, [id]);
 
+  // Fetch booked slots for the selected date
+  const fetchBookedSlots = async (docId, dateStr) => {
+    if (!docId || !dateStr) return;
+    try {
+      setLoadingSlots(true);
+      const res = await appointmentService.getBookedSlots(docId, dateStr);
+      if (res.success && Array.isArray(res.booked_slots)) {
+        setBookedSlots(res.booked_slots);
+        if (res.booked_slots.includes(bookingTime)) {
+          setBookingTime('');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch booked slots:', err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id && bookingDate) {
+      fetchBookedSlots(id, bookingDate);
+    }
+  }, [id, bookingDate]);
+
   const handleQuickBookAppointment = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
@@ -88,7 +142,7 @@ export const DoctorDetails = () => {
     }
 
     if (!bookingDate || !bookingTime || !bookingReason.trim()) {
-      alert('Please select appointment date, time slot, and brief symptom reason.');
+      notify.warning('Please select appointment date, time slot, and brief symptom reason.');
       return;
     }
 
@@ -104,6 +158,7 @@ export const DoctorDetails = () => {
       });
 
       if (res.success) {
+        notify.success(res.message || 'Appointment confirmed successfully!');
         setBookingSuccess(res.message || 'Appointment confirmed successfully!');
         setBookingReason('');
         setTimeout(() => {
@@ -111,11 +166,66 @@ export const DoctorDetails = () => {
         }, 1500);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to book appointment. Please try again.');
+      if (err.response?.status === 409) {
+        notify.error(err.response?.data?.message || 'This appointment slot was just reserved by another patient. Please choose another time.');
+        if (id && bookingDate) {
+          fetchBookedSlots(id, bookingDate);
+        }
+        setBookingTime('');
+      } else {
+        notify.error(err.response?.data?.message || 'Failed to book appointment. Please try again.');
+      }
     } finally {
       setBookingLoading(false);
     }
   };
+
+  // Fetch user's completed consultations for this doctor to enable verified reviews
+  const fetchUserAppointments = async () => {
+    if (!isAuthenticated) {
+      setUserCompletedAppointments([]);
+      return;
+    }
+    try {
+      setLoadingAppointments(true);
+      const res = await appointmentService.getAppointments({ doctor_id: id, status: 'Completed' });
+      if (res.success && Array.isArray(res.appointments)) {
+        setUserCompletedAppointments(res.appointments);
+      }
+    } catch (err) {
+      console.error('Failed to load completed consultations:', err);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserAppointments();
+  }, [id, isAuthenticated]);
+
+  // Set of appointment IDs already reviewed for this doctor
+  const reviewedAppointmentIds = new Set(
+    (doctor?.reviews || []).map((r) => r.appointment_id).filter(Boolean)
+  );
+
+  // Completed appointments that are eligible for a new review
+  const eligibleAppointments = userCompletedAppointments.filter(
+    (appt) => !reviewedAppointmentIds.has(appt.id)
+  );
+
+  // Auto-select first eligible appointment when available
+  useEffect(() => {
+    if (eligibleAppointments.length > 0) {
+      const currentExists = eligibleAppointments.some(
+        (a) => String(a.id) === String(selectedAppointmentId)
+      );
+      if (!selectedAppointmentId || !currentExists) {
+        setSelectedAppointmentId(eligibleAppointments[0].id);
+      }
+    } else {
+      setSelectedAppointmentId('');
+    }
+  }, [eligibleAppointments.length, selectedAppointmentId]);
 
   const handleAddReview = async (e) => {
     e.preventDefault();
@@ -124,29 +234,113 @@ export const DoctorDetails = () => {
       return;
     }
 
-    if (!reviewComment.trim()) {
-      alert('Please write a brief comment sharing your experience.');
+    if (!selectedAppointmentId) {
+      setReviewError('Please select a completed consultation to review.');
+      return;
+    }
+
+    const trimmed = reviewComment.trim();
+    if (trimmed.length < 10) {
+      setReviewError('Review comment must be at least 10 characters.');
+      return;
+    }
+    if (trimmed.length > 1000) {
+      setReviewError('Review comment cannot exceed 1000 characters.');
       return;
     }
 
     setReviewLoading(true);
     setReviewSuccess('');
+    setReviewError('');
     try {
       const res = await doctorService.addReview({
         doctor_id: doctor.id,
+        appointment_id: Number(selectedAppointmentId),
         rating: ratingInput,
-        comment: reviewComment
+        comment: trimmed
       });
 
       if (res.success) {
-        setReviewSuccess('Review submitted successfully!');
+        setReviewSuccess('Review submitted successfully! Thank you for sharing your feedback.');
         setReviewComment('');
+        setRatingInput(5);
+        fetchDoctor();
+        fetchUserAppointments();
+      }
+    } catch (err) {
+      setReviewError(err.response?.data?.message || 'Error submitting review.');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleStartEdit = (rev) => {
+    setEditingReviewId(rev.id);
+    setEditRatingInput(rev.rating);
+    setEditComment(rev.comment || '');
+    setEditError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReviewId(null);
+    setEditComment('');
+    setEditError('');
+  };
+
+  const handleSaveEditReview = async (e) => {
+    e.preventDefault();
+    const trimmed = editComment.trim();
+    if (trimmed.length < 10) {
+      setEditError('Comment must be at least 10 characters.');
+      return;
+    }
+    if (trimmed.length > 1000) {
+      setEditError('Comment cannot exceed 1000 characters.');
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError('');
+    try {
+      const res = await doctorService.updateReview(editingReviewId, {
+        rating: editRatingInput,
+        comment: trimmed
+      });
+      if (res.success) {
+        setEditingReviewId(null);
+        setActionNotification({ type: 'success', message: 'Review updated successfully!' });
         fetchDoctor();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error submitting review.');
+      setEditError(err.response?.data?.message || 'Failed to update review.');
     } finally {
-      setReviewLoading(false);
+      setEditLoading(false);
+    }
+  };
+
+  const handlePromptDelete = (rev) => {
+    setDeleteTarget(rev);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const res = await doctorService.deleteReview(deleteTarget.id);
+      if (res.success) {
+        setActionNotification({ type: 'success', message: 'Review deleted successfully.' });
+        setDeleteTarget(null);
+        fetchDoctor();
+        fetchUserAppointments();
+      }
+    } catch (err) {
+      setActionNotification({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to delete review.'
+      });
+      setDeleteTarget(null);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -272,11 +466,19 @@ export const DoctorDetails = () => {
                 </span>
 
                 <div className="flex items-center gap-1" style={{ fontSize: '0.92rem', fontWeight: 700 }}>
-                  <FaStar color="#f59e0b" size={15} />
-                  <span>{doctor.rating}</span>
-                  <span style={{ color: 'var(--slate-500)', fontSize: '0.82rem', fontWeight: 500 }}>
-                    ({doctor.total_reviews} reviews)
-                  </span>
+                  {doctor.total_reviews > 0 ? (
+                    <>
+                      <FaStar color="#f59e0b" size={15} />
+                      <span>{doctor.rating}</span>
+                      <span style={{ color: 'var(--slate-500)', fontSize: '0.82rem', fontWeight: 500 }}>
+                        ({doctor.total_reviews} {doctor.total_reviews === 1 ? 'review' : 'reviews'})
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--slate-500)', fontSize: '0.82rem', fontWeight: 600 }}>
+                      No reviews yet
+                    </span>
+                  )}
                 </div>
 
                 <span style={{
@@ -496,26 +698,61 @@ export const DoctorDetails = () => {
                   </h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)' }}>Real feedback from verified consultations</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--slate-900)' }}>{doctor.rating}</span>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div className="flex items-center gap-1" style={{ color: '#f59e0b' }}>
-                      <FaStar size={14} />
-                      <FaStar size={14} />
-                      <FaStar size={14} />
-                      <FaStar size={14} />
-                      <FaStar size={14} />
+                {doctor.total_reviews > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--slate-900)' }}>{doctor.rating}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div className="flex items-center gap-1" style={{ color: '#f59e0b' }}>
+                        {Array.from({ length: Math.round(doctor.rating || 5) }).map((_, i) => (
+                          <FaStar key={i} size={14} />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--slate-400)' }}>
+                        Overall Rating ({doctor.total_reviews})
+                      </span>
                     </div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--slate-400)' }}>Overall Rating</span>
                   </div>
-                </div>
+                ) : (
+                  <span style={{ fontSize: '0.88rem', color: 'var(--slate-500)', fontWeight: 600 }}>
+                    No reviews yet
+                  </span>
+                )}
               </div>
+
+              {/* Action Notification Banner */}
+              {actionNotification && (
+                <div style={{
+                  padding: '0.85rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: actionNotification.type === 'success' ? 'var(--success-light)' : '#fef2f2',
+                  color: actionNotification.type === 'success' ? '#065f46' : '#991b1b',
+                  border: `1px solid ${actionNotification.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
+                  fontWeight: 600,
+                  fontSize: '0.9rem'
+                }}>
+                  <div className="flex items-center gap-2">
+                    {actionNotification.type === 'success' ? <FaCheckCircle /> : <FaExclamationCircle />}
+                    <span>{actionNotification.message}</span>
+                  </div>
+                  <button 
+                    onClick={() => setActionNotification(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '0.2rem' }}
+                    title="Dismiss"
+                  >
+                    <FaTimes size={14} />
+                  </button>
+                </div>
+              )}
 
               {/* Review List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
                 {(!doctor.reviews || doctor.reviews.length === 0) ? (
                   <p style={{ color: 'var(--slate-500)', fontSize: '0.92rem', fontStyle: 'italic', padding: '1rem 0' }}>
-                    No reviews yet for Dr. {doctor.name}. Be the first patient to share your feedback!
+                    No reviews yet for Dr. {doctor.name}. Be the first verified patient to share your feedback!
                   </p>
                 ) : (
                   doctor.reviews.map((rev) => (
@@ -525,33 +762,172 @@ export const DoctorDetails = () => {
                       borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--slate-100)'
                     }}>
-                      <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem' }}>
-                        <div className="flex items-center gap-2">
-                          <span style={{ fontWeight: 700, color: 'var(--slate-800)', fontSize: '0.92rem' }}>
-                            {rev.user_name}
+                      {editingReviewId === rev.id ? (
+                        /* Inline Edit Review Mode */
+                        <form onSubmit={handleSaveEditReview}>
+                          <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--slate-800)' }}>
+                              Edit Your Review
+                            </strong>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+
+                          {editError && (
+                            <div style={{
+                              padding: '0.5rem 0.75rem',
+                              backgroundColor: '#fef2f2',
+                              color: '#991b1b',
+                              border: '1px solid #fecaca',
+                              borderRadius: 'var(--radius-sm)',
+                              marginBottom: '0.75rem',
+                              fontSize: '0.82rem',
+                              fontWeight: 600
+                            }}>
+                              <FaExclamationCircle style={{ marginRight: '0.35rem' }} />
+                              {editError}
+                            </div>
+                          )}
+
+                          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.82rem' }}>Rating</label>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => setEditRatingInput(star)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: star <= editRatingInput ? '#f59e0b' : 'var(--slate-300)',
+                                    fontSize: '1.4rem',
+                                    padding: '0 0.15rem'
+                                  }}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                              <span style={{ fontSize: '0.82rem', fontWeight: 700, marginLeft: '0.4rem', color: 'var(--slate-700)' }}>
+                                {editRatingInput} Stars
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                            <div className="flex items-center justify-between" style={{ marginBottom: '0.25rem' }}>
+                              <label className="form-label" style={{ fontSize: '0.82rem', margin: 0 }}>Comment</label>
+                              <span style={{ fontSize: '0.72rem', color: editComment.trim().length >= 10 ? 'var(--slate-500)' : 'var(--danger)' }}>
+                                {editComment.trim().length} / 1000 (min 10)
+                              </span>
+                            </div>
+                            <textarea
+                              rows="3"
+                              value={editComment}
+                              onChange={(e) => setEditComment(e.target.value)}
+                              className="form-textarea"
+                              required
+                              minLength={10}
+                              maxLength={1000}
+                              style={{ backgroundColor: 'white', fontSize: '0.88rem' }}
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="submit"
+                              disabled={editLoading || editComment.trim().length < 10 || editComment.trim().length > 1000}
+                              className="btn btn-primary btn-sm"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            >
+                              {editLoading ? <><FaSpinner className="spin" size={12} /> Saving...</> : 'Save Changes'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              disabled={editLoading}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        /* Standard Review Display Mode */
+                        <>
+                          <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div className="flex items-center gap-2">
+                              <span style={{ fontWeight: 700, color: 'var(--slate-800)', fontSize: '0.92rem' }}>
+                                {rev.user_name}
+                              </span>
+                              {rev.is_verified || rev.appointment_id ? (
+                                <span className="badge badge-completed" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <FaCheckCircle size={10} /> Verified Patient
+                                </span>
+                              ) : (
+                                <span className="badge badge-pending" style={{ fontSize: '0.7rem' }}>
+                                  Patient Review
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1" style={{ color: '#f59e0b' }}>
+                                {Array.from({ length: rev.rating }).map((_, i) => (
+                                  <FaStar key={i} size={12} />
+                                ))}
+                              </div>
+
+                              {/* Review Action Controls */}
+                              <div className="flex items-center gap-1">
+                                {rev.is_owner && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(rev)}
+                                    className="btn btn-outline btn-sm"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                    title="Edit your review"
+                                  >
+                                    <FaEdit size={11} /> Edit
+                                  </button>
+                                )}
+                                {(rev.is_owner || isAdmin) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePromptDelete(rev)}
+                                    className="btn btn-danger btn-sm"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                    title={rev.is_owner ? "Delete your review" : "Moderate review as Administrator"}
+                                  >
+                                    <FaTrash size={11} /> {isAdmin && !rev.is_owner ? 'Moderate' : 'Delete'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <p style={{ fontSize: '0.92rem', color: 'var(--slate-700)', lineHeight: 1.5 }}>
+                            "{rev.comment}"
+                          </p>
+
+                          <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)', display: 'block', marginTop: '0.4rem' }}>
+                            Reviewed on {rev.created_at ? new Date(rev.created_at).toLocaleDateString() : 'Recent'}
                           </span>
-                          <span className="badge badge-completed" style={{ fontSize: '0.7rem' }}>
-                            Verified Patient
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1" style={{ color: '#f59e0b' }}>
-                          {Array.from({ length: rev.rating }).map((_, i) => (
-                            <FaStar key={i} size={12} />
-                          ))}
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '0.92rem', color: 'var(--slate-700)', lineHeight: 1.5 }}>
-                        "{rev.comment}"
-                      </p>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)', display: 'block', marginTop: '0.4rem' }}>
-                        Reviewed on {rev.created_at ? new Date(rev.created_at).toLocaleDateString() : 'Recent'}
-                      </span>
+                        </>
+                      )}
                     </div>
                   ))
                 )}
               </div>
 
-              {/* Add Review Form */}
+              {/* Add Review Form / Gated Access */}
               <div style={{
                 backgroundColor: 'var(--primary-ultralight)',
                 padding: '1.5rem',
@@ -566,58 +942,141 @@ export const DoctorDetails = () => {
                 </p>
 
                 {reviewSuccess && (
-                  <div style={{ padding: '0.75rem', backgroundColor: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontWeight: 600 }}>
-                    {reviewSuccess}
+                  <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--success-light)', color: '#065f46', border: '1px solid #a7f3d0', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.88rem' }}>
+                    <FaCheckCircle /> {reviewSuccess}
                   </div>
                 )}
 
-                <form onSubmit={handleAddReview}>
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label className="form-label">Your Rating</label>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setRatingInput(star)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: star <= ratingInput ? '#f59e0b' : 'var(--slate-300)',
-                            fontSize: '1.6rem',
-                            padding: '0 0.15rem'
-                          }}
-                        >
-                          ★
-                        </button>
-                      ))}
-                      <span style={{ fontSize: '0.88rem', fontWeight: 700, marginLeft: '0.5rem', color: 'var(--slate-700)' }}>
-                        {ratingInput} Stars
+                {reviewError && (
+                  <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.88rem' }}>
+                    <FaExclamationCircle /> {reviewError}
+                  </div>
+                )}
+
+                {!isAuthenticated ? (
+                  <div style={{ padding: '1.25rem', backgroundColor: 'white', borderRadius: 'var(--radius-md)', border: '1px dashed var(--slate-300)', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--slate-600)', marginBottom: '0.75rem' }}>
+                      Only verified patients with a completed consultation can review Dr. {doctor.name}.
+                    </p>
+                    <Link 
+                      to="/login" 
+                      state={{ from: `/doctors/${id}` }} 
+                      className="btn btn-primary btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                      Log In to Review
+                    </Link>
+                  </div>
+                ) : loadingAppointments ? (
+                  <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--slate-500)', fontSize: '0.88rem' }}>
+                    <FaSpinner className="spin" style={{ marginRight: '0.5rem' }} /> Checking consultation history...
+                  </div>
+                ) : userCompletedAppointments.length === 0 ? (
+                  <div style={{ padding: '1.25rem', backgroundColor: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.92rem', color: 'var(--slate-800)', fontWeight: 700, marginBottom: '0.35rem' }}>
+                      Verified Consultation Required
+                    </p>
+                    <p style={{ fontSize: '0.84rem', color: 'var(--slate-500)', marginBottom: '1rem', maxWidth: '420px', margin: '0 auto 1rem' }}>
+                      Reviews are exclusively available to patients who have completed a consultation with Dr. {doctor.name}.
+                    </p>
+                    <Link
+                      to={`/appointments/book/${doctor.id}`}
+                      className="btn btn-primary btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                      <FaCalendarAlt /> Book an Appointment
+                    </Link>
+                  </div>
+                ) : eligibleAppointments.length === 0 ? (
+                  <div style={{ padding: '1.25rem', backgroundColor: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.92rem', color: 'var(--slate-800)', fontWeight: 700, marginBottom: '0.35rem' }}>
+                      All Completed Visits Reviewed
+                    </p>
+                    <p style={{ fontSize: '0.84rem', color: 'var(--slate-500)' }}>
+                      You have already submitted a review for each of your completed consultations with Dr. {doctor.name}. You can edit or manage your existing review above.
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleAddReview}>
+                    {/* Consultation Selection Dropdown */}
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem' }}>
+                        Select Completed Consultation
+                      </label>
+                      <select 
+                        value={selectedAppointmentId} 
+                        onChange={(e) => setSelectedAppointmentId(e.target.value)}
+                        className="form-input"
+                        required
+                        style={{ backgroundColor: 'white' }}
+                      >
+                        {eligibleAppointments.map((appt) => (
+                          <option key={appt.id} value={appt.id}>
+                            Visit on {appt.appointment_date} at {appt.appointment_time} ({appt.reason || 'General Consultation'})
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)', marginTop: '0.25rem', display: 'block' }}>
+                        Each verified consultation can be reviewed once.
                       </span>
                     </div>
-                  </div>
 
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label className="form-label">Review Comment</label>
-                    <textarea 
-                      rows="3"
-                      placeholder="Describe the doctor's explanation, bedside manner, clinic hygiene, and staff behavior..."
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      className="form-textarea"
-                    />
-                  </div>
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label className="form-label">Your Rating</label>
+                      <div className="flex items-center gap-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRatingInput(star)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: star <= ratingInput ? '#f59e0b' : 'var(--slate-300)',
+                              fontSize: '1.6rem',
+                              padding: '0 0.15rem'
+                            }}
+                          >
+                            ★
+                          </button>
+                        ))}
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, marginLeft: '0.5rem', color: 'var(--slate-700)' }}>
+                          {ratingInput} Stars
+                        </span>
+                      </div>
+                    </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={reviewLoading}
-                    className="btn btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-                  >
-                    <FaPaperPlane /> {reviewLoading ? 'Submitting...' : 'Post Review'}
-                  </button>
-                </form>
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <div className="flex items-center justify-between" style={{ marginBottom: '0.25rem' }}>
+                        <label className="form-label" style={{ margin: 0 }}>Review Comment</label>
+                        <span style={{ fontSize: '0.75rem', color: reviewComment.trim().length >= 10 ? 'var(--slate-500)' : 'var(--danger)' }}>
+                          {reviewComment.trim().length} / 1000 (min 10)
+                        </span>
+                      </div>
+                      <textarea 
+                        rows="3"
+                        placeholder="Describe the doctor's explanation, bedside manner, clinic hygiene, and staff behavior (min 10 characters)..."
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        className="form-textarea"
+                        required
+                        minLength={10}
+                        maxLength={1000}
+                        style={{ backgroundColor: 'white' }}
+                      />
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={reviewLoading || reviewComment.trim().length < 10 || reviewComment.trim().length > 1000 || !selectedAppointmentId}
+                      className="btn btn-primary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                      <FaPaperPlane /> {reviewLoading ? 'Submitting...' : 'Post Verified Review'}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
@@ -739,31 +1198,41 @@ export const DoctorDetails = () => {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                    <FaClock color="var(--primary)" /> Time Slot
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.88rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <FaClock color="var(--primary)" /> Time Slot
+                    </span>
+                    {loadingSlots && <span style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>Checking...</span>}
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
-                    {timeSlots.map((slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setBookingTime(slot)}
-                        style={{
-                          padding: '0.45rem 0.2rem',
-                          fontSize: '0.78rem',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid',
-                          borderColor: bookingTime === slot ? 'var(--primary)' : 'var(--slate-200)',
-                          backgroundColor: bookingTime === slot ? 'var(--primary)' : 'var(--white)',
-                          color: bookingTime === slot ? 'white' : 'var(--slate-700)',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'var(--transition)'
-                        }}
-                      >
-                        {slot}
-                      </button>
-                    ))}
+                    {timeSlots.map((slot) => {
+                      const isBooked = bookedSlots.includes(slot);
+                      const isSelected = bookingTime === slot;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          disabled={isBooked}
+                          onClick={() => !isBooked && setBookingTime(slot)}
+                          style={{
+                            padding: '0.45rem 0.2rem',
+                            fontSize: '0.78rem',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid',
+                            borderColor: isSelected ? 'var(--primary)' : isBooked ? '#e2e8f0' : 'var(--slate-200)',
+                            backgroundColor: isSelected ? 'var(--primary)' : isBooked ? '#f1f5f9' : 'var(--white)',
+                            color: isSelected ? 'white' : isBooked ? '#94a3b8' : 'var(--slate-700)',
+                            fontWeight: 700,
+                            cursor: isBooked ? 'not-allowed' : 'pointer',
+                            textDecoration: isBooked ? 'line-through' : 'none',
+                            transition: 'var(--transition)'
+                          }}
+                          title={isBooked ? 'This slot has already been reserved' : `Select ${slot}`}
+                        >
+                          {slot}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -799,7 +1268,7 @@ export const DoctorDetails = () => {
 
                 <button 
                   type="submit" 
-                  disabled={bookingLoading}
+                  disabled={bookingLoading || !bookingTime || bookedSlots.includes(bookingTime)}
                   className="btn btn-outline" 
                   style={{ width: '100%', justifyContent: 'center' }}
                 >
@@ -851,6 +1320,23 @@ export const DoctorDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Review Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        title={isAdmin && !deleteTarget?.is_owner ? "Moderate Review" : "Delete Review"}
+        message={
+          isAdmin && !deleteTarget?.is_owner
+            ? `As an administrator, are you sure you want to remove the review by "${deleteTarget?.user_name}"? This action cannot be undone.`
+            : "Are you sure you want to delete your review? The doctor's rating will be automatically recalculated."
+        }
+        confirmText={isAdmin && !deleteTarget?.is_owner ? "Remove Review" : "Delete Review"}
+        cancelText="Cancel"
+        isDanger={true}
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => !deleteLoading && setDeleteTarget(null)}
+      />
 
       <style>{`
         @media (max-width: 900px) {

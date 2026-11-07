@@ -46,6 +46,16 @@ export const doctorService = {
     return response.data;
   },
 
+  updateReview: async (reviewId, reviewData) => {
+    const response = await api.put(`/api/reviews/${reviewId}`, reviewData);
+    return response.data;
+  },
+
+  deleteReview: async (reviewId) => {
+    const response = await api.delete(`/api/reviews/${reviewId}`);
+    return response.data;
+  },
+
   getDoctorReviews: async (doctorId) => {
     const response = await api.get('/api/reviews', { params: { doctor_id: doctorId } });
     return response.data;

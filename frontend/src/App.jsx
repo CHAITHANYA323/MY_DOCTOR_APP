@@ -119,11 +119,11 @@ export const App = () => {
             } 
           />
 
-          {/* Standalone Add/Edit Doctor (Protected) */}
+          {/* Standalone Add/Edit Doctor (Admin Only) */}
           <Route 
             path="/doctors/add" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly={true}>
                 <DoctorForm isEdit={false} />
               </ProtectedRoute>
             } 
@@ -131,7 +131,7 @@ export const App = () => {
           <Route 
             path="/doctors/edit/:id" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly={true}>
                 <DoctorForm isEdit={true} />
               </ProtectedRoute>
             } 

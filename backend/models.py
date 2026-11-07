@@ -1,8 +1,21 @@
+import sqlite3
 from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event, text, CheckConstraint, UniqueConstraint, Index
+from sqlalchemy.engine import Engine
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
+
+@event.listens_for(Engine, "connect")
+def configure_sqlite_engine(dbapi_connection, connection_record):
+    """Configure connection-local settings for SQLite: busy timeout and foreign key enforcement."""
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -189,9 +202,16 @@ class Appointment(db.Model):
     appointment_date = db.Column(db.String(20), nullable=False) # Format: YYYY-MM-DD
     appointment_time = db.Column(db.String(30), nullable=False) # e.g. "10:30 AM"
     reason = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(30), default='Pending', index=True) # 'Pending', 'Confirmed', 'Completed', 'Cancelled'
+    status = db.Column(db.String(30), default='Pending', nullable=False, index=True) # 'Pending', 'Confirmed', 'Completed', 'Cancelled'
     notes = db.Column(db.Text, default='')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('Pending', 'Confirmed', 'Cancelled', 'Completed')",
+            name="chk_appointment_status"
+        ),
+    )
 
     user = db.relationship('User', back_populates='appointments')
     doctor = db.relationship('Doctor', back_populates='appointments')
@@ -230,8 +250,15 @@ class Ambulance(db.Model):
     driver_phone = db.Column(db.String(30), nullable=False)
     ambulance_type = db.Column(db.String(60), default='Basic Life Support') # 'Basic Life Support', 'Advanced Life Support', 'ICU Ambulance', 'Patient Transport'
     current_location = db.Column(db.String(150), nullable=False)
-    status = db.Column(db.String(30), default='Available', index=True) # 'Available', 'On Duty', 'Maintenance'
+    status = db.Column(db.String(30), default='Available', nullable=False, index=True) # 'Available', 'On Duty', 'Maintenance'
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('Available', 'On Duty', 'Maintenance')",
+            name="chk_ambulance_status"
+        ),
+    )
 
     requests = db.relationship('AmbulanceRequest', back_populates='assigned_ambulance')
 
@@ -252,6 +279,7 @@ class AmbulanceRequest(db.Model):
     __tablename__ = 'ambulance_requests'
 
     id = db.Column(db.Integer, primary_key=True)
+    idempotency_key = db.Column(db.String(64), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     patient_name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(30), nullable=False)
@@ -260,9 +288,17 @@ class AmbulanceRequest(db.Model):
     destination_hospital = db.Column(db.String(150), nullable=False)
     patients_count = db.Column(db.Integer, default=1)
     additional_info = db.Column(db.Text, default='')
-    status = db.Column(db.String(30), default='Pending', index=True) # 'Pending', 'Dispatched', 'Arrived', 'Completed', 'Cancelled'
+    status = db.Column(db.String(30), default='Pending', nullable=False, index=True) # 'Pending', 'Dispatched', 'Arrived', 'Completed', 'Cancelled'
     assigned_ambulance_id = db.Column(db.Integer, db.ForeignKey('ambulances.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('Pending', 'Dispatched', 'Arrived', 'Completed', 'Cancelled')",
+            name="chk_ambulance_request_status"
+        ),
+        Index('uq_ambulance_requests_idempotency_key', 'idempotency_key', unique=True),
+    )
 
     user = db.relationship('User', back_populates='ambulance_requests')
     assigned_ambulance = db.relationship('Ambulance', back_populates='requests')
@@ -291,20 +327,30 @@ class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False, index=True)
+    appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id'), nullable=True, index=True)
     rating = db.Column(db.Integer, nullable=False) # 1 to 5
     comment = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    __table_args__ = (
+        CheckConstraint('rating >= 1 AND rating <= 5', name='chk_review_rating'),
+        UniqueConstraint('appointment_id', name='uq_review_appointment'),
+    )
+
     user = db.relationship('User', back_populates='reviews')
     doctor = db.relationship('Doctor', back_populates='reviews')
+    appointment = db.relationship('Appointment', backref=db.backref('review', uselist=False))
 
-    def to_dict(self):
+    def to_dict(self, current_user_id=None):
+        is_owner = bool(current_user_id is not None and self.user_id == current_user_id)
         return {
             'id': self.id,
-            'user_id': self.user_id,
             'user_name': self.user.name if self.user else 'Anonymous Patient',
             'user_avatar': self.user.avatar if self.user else '',
             'doctor_id': self.doctor_id,
+            'appointment_id': self.appointment_id if is_owner else None,
+            'is_verified': bool(self.appointment_id),
+            'is_owner': is_owner,
             'rating': self.rating,
             'comment': self.comment,
             'created_at': self.created_at.isoformat() if self.created_at else None

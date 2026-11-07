@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaHospitalSymbol, FaUser, FaEnvelope, FaPhoneAlt, FaLock } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { getApiErrorMessage } from '../services/api';
+import { Button } from '../components/common/Button';
 
 export const Register = () => {
   const { register } = useAuth();
@@ -250,14 +251,16 @@ export const Register = () => {
             </div>
           </div>
 
-          <button 
+          <Button 
             type="submit" 
-            disabled={loading}
-            className="btn btn-primary btn-lg" 
-            style={{ width: '100%', marginTop: '0.5rem' }}
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            style={{ marginTop: '0.5rem' }}
           >
-            {loading ? 'Creating Account...' : 'Register Account'}
-          </button>
+            Register Account
+          </Button>
         </form>
 
         <p style={{ textAlign: 'center', fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '1.75rem' }}>

@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaHospitalSymbol, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaUser } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { getApiErrorMessage } from '../services/api';
+import { Button } from '../components/common/Button';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -108,22 +109,26 @@ export const Login = () => {
             ⚡ 1-Click Quick Demo Sign-In:
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleDemoLogin('admin')}
-              className="btn btn-sm"
-              style={{ backgroundColor: 'white', border: '1px solid var(--primary-light)', color: 'var(--primary-dark)', fontSize: '0.78rem', fontWeight: 700 }}
+              icon={<FaShieldAlt aria-hidden="true" />}
+              style={{ backgroundColor: 'white', borderColor: 'var(--primary-light)', color: 'var(--primary-dark)', fontSize: '0.78rem' }}
             >
-              <FaShieldAlt /> Demo Admin
-            </button>
-            <button
+              Demo Admin
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleDemoLogin('patient')}
-              className="btn btn-sm"
-              style={{ backgroundColor: 'white', border: '1px solid var(--primary-light)', color: 'var(--primary-dark)', fontSize: '0.78rem', fontWeight: 700 }}
+              icon={<FaUser aria-hidden="true" />}
+              style={{ backgroundColor: 'white', borderColor: 'var(--primary-light)', color: 'var(--primary-dark)', fontSize: '0.78rem' }}
             >
-              <FaUser /> Demo Patient
-            </button>
+              Demo Patient
+            </Button>
           </div>
         </div>
 
@@ -211,14 +216,16 @@ export const Login = () => {
             </div>
           </div>
 
-          <button 
+          <Button 
             type="submit" 
-            disabled={loading}
-            className="btn btn-primary btn-lg" 
-            style={{ width: '100%', marginTop: '0.5rem' }}
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            style={{ marginTop: '0.5rem' }}
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
+            Sign In
+          </Button>
         </form>
 
         <p style={{ textAlign: 'center', fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '1.75rem' }}>

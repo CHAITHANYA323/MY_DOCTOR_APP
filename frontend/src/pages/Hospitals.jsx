@@ -4,6 +4,8 @@ import { FaHospital, FaSearch, FaMapMarkerAlt, FaFilter, FaRedo } from 'react-ic
 import { hospitalService } from '../services/hospitalService';
 import { HospitalCard } from '../components/HospitalCard';
 import { SkeletonGrid } from '../components/SkeletonLoader';
+import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
 
 export const Hospitals = () => {
   const [search, setSearch] = useState('');
@@ -48,8 +50,10 @@ export const Hospitals = () => {
       <div className="container">
         {/* Page Header */}
         <div style={{ marginBottom: '2rem' }}>
-          <div className="section-tag">
-            <FaHospital /> Multi-Speciality Network
+          <div style={{ marginBottom: '0.75rem' }}>
+            <Badge variant="primary" size="md">
+              <FaHospital style={{ marginRight: '0.35rem' }} aria-hidden="true" /> Multi-Speciality Network
+            </Badge>
           </div>
           <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
             Top Multi-Speciality & Super-Speciality Hospitals
@@ -108,13 +112,14 @@ export const Hospitals = () => {
             </select>
           </div>
 
-          <button 
+          <Button 
             type="button" 
+            variant="secondary"
             onClick={handleReset}
-            className="btn btn-secondary"
+            icon={<FaRedo aria-hidden="true" />}
           >
-            <FaRedo /> Reset
-          </button>
+            Reset
+          </Button>
         </div>
 
         {/* Results Grid */}
@@ -125,7 +130,7 @@ export const Hospitals = () => {
             <FaHospital className="empty-state-icon" />
             <h3 className="empty-state-title">No hospitals found</h3>
             <p className="empty-state-desc">Try resetting your filters or searching for a different city.</p>
-            <button onClick={handleReset} className="btn btn-primary">Reset Filters</button>
+            <Button variant="primary" onClick={handleReset}>Reset Filters</Button>
           </div>
         ) : (
           <div style={{

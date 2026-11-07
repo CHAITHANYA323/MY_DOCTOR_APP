@@ -1,11 +1,29 @@
 from flask import Blueprint, request, jsonify
+from sqlalchemy.orm import joinedload
 from models import db, Doctor, Specialization, Hospital, Review
-from utils.auth_middleware import admin_required
+from utils.auth_middleware import admin_required, decode_token
 
 doctors_bp = Blueprint('doctors', __name__, url_prefix='/api/doctors')
 
 @doctors_bp.route('', methods=['GET'])
 def get_doctors():
+    # Safe Pagination Parsing (never throw uncaught ValueError; clamp limit between 1 and 100)
+    try:
+        page = int(request.args.get('page', 1))
+    except (ValueError, TypeError):
+        page = 1
+    if page < 1:
+        page = 1
+
+    try:
+        limit = int(request.args.get('limit', 12))
+    except (ValueError, TypeError):
+        limit = 12
+    if limit < 1:
+        limit = 12
+    elif limit > 100:
+        limit = 100
+
     # Query parameters
     search = request.args.get('search', '').strip()
     specialization_id = request.args.get('specialization_id')
@@ -14,14 +32,57 @@ def get_doctors():
     hospital_name = request.args.get('hospital', '').strip()
     location = request.args.get('location', '').strip()
     gender = request.args.get('gender', '').strip()
-    min_experience = request.args.get('min_experience')
-    max_fee = request.args.get('max_fee')
-    min_rating = request.args.get('min_rating')
     availability = request.args.get('availability', '').strip()
     status = request.args.get('status', 'Active') # default Active for public
     sort_by = request.args.get('sort_by', 'rating_desc')
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 12))
+
+    # Safe Numeric & Range Parameter Validation
+    parsed_min_fee = None
+    min_fee_str = request.args.get('min_fee')
+    if min_fee_str is not None and min_fee_str.strip() != '':
+        try:
+            parsed_min_fee = float(min_fee_str.strip())
+            if parsed_min_fee < 0:
+                return jsonify({'success': False, 'message': 'Consultation fee cannot be negative.'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid numeric value for min_fee.'}), 400
+
+    parsed_max_fee = None
+    max_fee_str = request.args.get('max_fee')
+    if max_fee_str is not None and max_fee_str.strip() != '':
+        try:
+            parsed_max_fee = float(max_fee_str.strip())
+            if parsed_max_fee < 0:
+                return jsonify({'success': False, 'message': 'Consultation fee cannot be negative.'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid numeric value for max_fee.'}), 400
+
+    if parsed_min_fee is not None and parsed_max_fee is not None:
+        if parsed_min_fee > parsed_max_fee:
+            return jsonify({
+                'success': False,
+                'message': 'Minimum consultation fee cannot be greater than maximum consultation fee.'
+            }), 400
+
+    parsed_min_exp = None
+    min_exp_str = request.args.get('min_experience')
+    if min_exp_str is not None and min_exp_str.strip() != '':
+        try:
+            parsed_min_exp = int(min_exp_str.strip())
+            if parsed_min_exp < 0:
+                return jsonify({'success': False, 'message': 'Experience cannot be negative.'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid numeric value for min_experience.'}), 400
+
+    parsed_min_rating = None
+    min_rating_str = request.args.get('min_rating')
+    if min_rating_str is not None and min_rating_str.strip() != '':
+        try:
+            parsed_min_rating = float(min_rating_str.strip())
+            if parsed_min_rating < 0 or parsed_min_rating > 5:
+                return jsonify({'success': False, 'message': 'Rating must be between 0 and 5.'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid numeric value for min_rating.'}), 400
 
     query = Doctor.query
 
@@ -29,29 +90,39 @@ def get_doctors():
     if status != 'all':
         query = query.filter(Doctor.status == status)
 
-    # Search filter (name, location, specialization name, hospital name)
+    # Clean Join Management: Join tables once without duplication
+    needs_spec_join = bool(search or specialization_name)
+    needs_hosp_join = bool(search or hospital_name)
+
+    if needs_spec_join:
+        query = query.join(Doctor.specialization)
+
+    if needs_hosp_join:
+        query = query.join(Doctor.hospital)
+
+    # Global text search filter (OR logic across doctor name, location, specialization, hospital, qualification)
     if search:
         search_pattern = f"%{search}%"
-        query = query.join(Doctor.specialization).join(Doctor.hospital).filter(
+        query = query.filter(
             (Doctor.name.ilike(search_pattern)) |
             (Doctor.location.ilike(search_pattern)) |
             (Specialization.name.ilike(search_pattern)) |
             (Hospital.name.ilike(search_pattern)) |
             (Doctor.qualification.ilike(search_pattern))
         )
-    else:
-        # If no global search, still allow joined filters
-        if specialization_name or hospital_name:
-            if specialization_name:
-                query = query.join(Doctor.specialization).filter(Specialization.name.ilike(f"%{specialization_name}%"))
-            if hospital_name:
-                query = query.join(Doctor.hospital).filter(Hospital.name.ilike(f"%{hospital_name}%"))
 
-    if specialization_id and specialization_id.isdigit():
-        query = query.filter(Doctor.specialization_id == int(specialization_id))
+    # Independent Relational & Attribute Filters (Conjunctive AND logic)
+    if specialization_name:
+        query = query.filter(Specialization.name.ilike(f"%{specialization_name}%"))
 
-    if hospital_id and hospital_id.isdigit():
-        query = query.filter(Doctor.hospital_id == int(hospital_id))
+    if hospital_name:
+        query = query.filter(Hospital.name.ilike(f"%{hospital_name}%"))
+
+    if specialization_id and str(specialization_id).strip().isdigit():
+        query = query.filter(Doctor.specialization_id == int(str(specialization_id).strip()))
+
+    if hospital_id and str(hospital_id).strip().isdigit():
+        query = query.filter(Doctor.hospital_id == int(str(hospital_id).strip()))
 
     if location:
         query = query.filter(Doctor.location.ilike(f"%{location}%"))
@@ -59,37 +130,53 @@ def get_doctors():
     if gender and gender.lower() != 'all':
         query = query.filter(Doctor.gender.ilike(gender))
 
-    if min_experience and min_experience.isdigit():
-        query = query.filter(Doctor.experience >= int(min_experience))
+    if parsed_min_exp is not None:
+        query = query.filter(Doctor.experience >= parsed_min_exp)
 
-    if max_fee and max_fee.replace('.', '', 1).isdigit():
-        query = query.filter(Doctor.consultation_fee <= float(max_fee))
+    if parsed_min_fee is not None:
+        query = query.filter(Doctor.consultation_fee >= parsed_min_fee)
 
-    if min_rating and min_rating.replace('.', '', 1).isdigit():
-        query = query.filter(Doctor.rating >= float(min_rating))
+    if parsed_max_fee is not None:
+        query = query.filter(Doctor.consultation_fee <= parsed_max_fee)
+
+    if parsed_min_rating is not None:
+        query = query.filter(Doctor.rating >= parsed_min_rating)
 
     if availability:
         query = query.filter(Doctor.available_days.ilike(f"%{availability}%"))
 
-    # Sorting
+    # Sorting with secondary deterministic tiebreaker (Doctor.id.asc()) to guarantee stable pagination
     if sort_by == 'experience_desc':
-        query = query.order_by(Doctor.experience.desc())
+        query = query.order_by(Doctor.experience.desc(), Doctor.id.asc())
     elif sort_by == 'fee_asc':
-        query = query.order_by(Doctor.consultation_fee.asc())
+        query = query.order_by(Doctor.consultation_fee.asc(), Doctor.id.asc())
     elif sort_by == 'fee_desc':
-        query = query.order_by(Doctor.consultation_fee.desc())
+        query = query.order_by(Doctor.consultation_fee.desc(), Doctor.id.asc())
     elif sort_by == 'name_asc':
-        query = query.order_by(Doctor.name.asc())
+        query = query.order_by(Doctor.name.asc(), Doctor.id.asc())
     elif sort_by == 'rating_asc':
-        query = query.order_by(Doctor.rating.asc())
+        query = query.order_by(Doctor.rating.asc(), Doctor.id.asc())
     else: # rating_desc default
-        query = query.order_by(Doctor.rating.desc(), Doctor.experience.desc())
+        query = query.order_by(Doctor.rating.desc(), Doctor.experience.desc(), Doctor.id.asc())
 
     total = query.count()
-    doctors = query.offset((page - 1) * limit).limit(limit).all()
 
-    # Get distinct locations/cities for filter sidebar
-    locations = [l[0] for l in db.session.query(Doctor.location).distinct().all() if l[0]]
+    # Eager load specialization and hospital relationships to eliminate N+1 queries during to_dict() serialization
+    doctors = (
+        query.options(joinedload(Doctor.specialization), joinedload(Doctor.hospital))
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+
+    # Get distinct locations/cities for filter sidebar (Active doctors only)
+    locations = [
+        l[0] for l in db.session.query(Doctor.location)
+        .filter(Doctor.status == 'Active')
+        .distinct()
+        .all()
+        if l[0]
+    ]
 
     return jsonify({
         'success': True,
@@ -116,11 +203,20 @@ def get_doctor(doctor_id):
     if not doctor:
         return jsonify({'success': False, 'message': 'Doctor not found.'}), 404
 
+    # Extract optional caller identity from Authorization header
+    auth_header = request.headers.get('Authorization')
+    current_user_id = None
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        payload = decode_token(token)
+        if payload:
+            current_user_id = payload.get('user_id')
+
     # Fetch reviews
     reviews = Review.query.filter_by(doctor_id=doctor.id).order_by(Review.created_at.desc()).all()
 
     data = doctor.to_dict(brief=False)
-    data['reviews'] = [r.to_dict() for r in reviews]
+    data['reviews'] = [r.to_dict(current_user_id=current_user_id) for r in reviews]
     return jsonify({
         'success': True,
         'doctor': data

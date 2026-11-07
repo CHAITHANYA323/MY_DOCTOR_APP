@@ -14,6 +14,9 @@ import {
 } from 'react-icons/fa';
 import { dashboardService } from '../../services/dashboardService';
 import { appointmentService } from '../../services/appointmentService';
+import { notify } from '../../utils/toast';
+import { Badge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
 
 export const AdminDashboard = () => {
   const [data, setData] = useState(null);
@@ -40,9 +43,10 @@ export const AdminDashboard = () => {
   const handleStatusChange = async (appointmentId, newStatus) => {
     try {
       await appointmentService.updateAppointmentStatus(appointmentId, newStatus);
+      notify.success(`Appointment #${appointmentId} updated to ${newStatus}`);
       fetchStats();
     } catch (err) {
-      alert('Error updating status');
+      notify.error(err.response?.data?.message || 'Error updating status');
     }
   };
 
@@ -66,12 +70,12 @@ export const AdminDashboard = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link to="/admin/doctors/add" className="btn btn-primary btn-sm">
+          <Button as={Link} to="/admin/doctors/add" size="sm" variant="primary">
             <FaPlus /> Add Doctor
-          </Link>
-          <Link to="/admin/hospitals" className="btn btn-secondary btn-sm">
+          </Button>
+          <Button as={Link} to="/admin/hospitals" size="sm" variant="secondary">
             <FaHospital /> Manage Hospitals
-          </Link>
+          </Button>
         </div>
       </div>
 
@@ -226,9 +230,9 @@ export const AdminDashboard = () => {
                   <FaStethoscope color="var(--primary)" size={13} />
                   <span style={{ fontWeight: 600, color: 'var(--slate-800)' }}>{spec.name}</span>
                 </div>
-                <span className="badge badge-confirmed">
+                <Badge variant="info">
                   {spec.count} Doctors
-                </span>
+                </Badge>
               </div>
             ))}
           </div>
@@ -244,9 +248,9 @@ export const AdminDashboard = () => {
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)' }}>Live booking triage and status updates</p>
           </div>
-          <Link to="/admin/appointments" className="btn btn-outline btn-sm">
+          <Button as={Link} to="/admin/appointments" size="sm" variant="outline">
             View All <FaArrowRight size={10} />
-          </Link>
+          </Button>
         </div>
 
         <div className="table-responsive">
@@ -271,13 +275,7 @@ export const AdminDashboard = () => {
                   <td>{appt.hospital_name}</td>
                   <td>{appt.appointment_date} at {appt.appointment_time}</td>
                   <td>
-                    <span className={`badge ${
-                      appt.status === 'Confirmed' ? 'badge-confirmed' :
-                      appt.status === 'Completed' ? 'badge-completed' :
-                      appt.status === 'Cancelled' ? 'badge-cancelled' : 'badge-pending'
-                    }`}>
-                      {appt.status}
-                    </span>
+                    <Badge status={appt.status} />
                   </td>
                   <td>
                     <select
@@ -308,9 +306,9 @@ export const AdminDashboard = () => {
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)' }}>Incoming SOS triage requests</p>
           </div>
-          <Link to="/admin/ambulances" className="btn btn-outline btn-sm">
+          <Button as={Link} to="/admin/ambulances" size="sm" variant="outline">
             Manage Fleet & Requests
-          </Link>
+          </Button>
         </div>
 
         <div className="table-responsive">
@@ -342,12 +340,7 @@ export const AdminDashboard = () => {
                   </td>
                   <td>{req.destination_hospital}</td>
                   <td>
-                    <span className={`badge ${
-                      req.status === 'Dispatched' ? 'badge-on-duty' :
-                      req.status === 'Completed' ? 'badge-completed' : 'badge-pending'
-                    }`}>
-                      {req.status}
-                    </span>
+                    <Badge status={req.status} />
                   </td>
                 </tr>
               ))}

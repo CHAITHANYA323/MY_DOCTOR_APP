@@ -17,6 +17,7 @@ import { doctorService } from '../services/doctorService';
 import { appointmentService } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
+import { notify } from '../utils/toast';
 
 export const BookAppointment = () => {
   const { doctorId } = useParams();
@@ -33,6 +34,8 @@ export const BookAppointment = () => {
   // Booking Data
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [patientName, setPatientName] = useState(user?.name || '');
   const [patientPhone, setPatientPhone] = useState(user?.phone || '');
   const [patientAge, setPatientAge] = useState('');
@@ -86,6 +89,30 @@ export const BookAppointment = () => {
     }
   }, [doctorId]);
 
+  // Fetch Occupied/Booked Slots whenever doctor or date changes
+  const fetchBookedSlots = async (docId, dateStr) => {
+    if (!docId || !dateStr) return;
+    try {
+      setLoadingSlots(true);
+      const res = await appointmentService.getBookedSlots(docId, dateStr);
+      if (res.success && Array.isArray(res.booked_slots)) {
+        setBookedSlots(res.booked_slots);
+        // If current selection is occupied, clear it
+        setSelectedTime((prev) => (res.booked_slots.includes(prev) ? '' : prev));
+      }
+    } catch (err) {
+      console.error('Failed to load booked slots:', err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  useEffect(() => {
+    if (doctor?.id && selectedDate) {
+      fetchBookedSlots(doctor.id, selectedDate);
+    }
+  }, [doctor?.id, selectedDate]);
+
   // Available Time Slots
   const morningSlots = ["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"];
   const eveningSlots = ["04:00 PM", "04:30 PM", "05:00 PM", "05:30 PM", "06:00 PM", "06:30 PM"];
@@ -97,13 +124,13 @@ export const BookAppointment = () => {
     }
 
     if (!patientName.trim()) {
-      alert('Please enter the patient’s full name.');
+      notify.warning('Please enter the patient’s full name.');
       setStep(4);
       return;
     }
 
     if (!patientPhone.trim()) {
-      alert('Please enter a contact phone number.');
+      notify.warning('Please enter a contact phone number.');
       setStep(4);
       return;
     }
@@ -120,8 +147,9 @@ export const BookAppointment = () => {
 
       const res = await appointmentService.bookAppointment(payload);
       if (res.success) {
+        notify.success(res.message || 'Appointment confirmed successfully!');
         setBookingResult({
-          bookingId: res.appointment?.id || Math.floor(100000 + Math.random() * 900000),
+          bookingId: res.appointment?.id || res.id,
           doctor: doctor,
           date: selectedDate,
           time: selectedTime,
@@ -130,7 +158,16 @@ export const BookAppointment = () => {
         setStep(6); // Success Screen
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Booking failed. Please try selecting a different slot.');
+      if (err.response?.status === 409) {
+        notify.error(err.response?.data?.message || 'This appointment slot has just been reserved by another patient. Please choose another time slot.');
+        if (doctor?.id && selectedDate) {
+          fetchBookedSlots(doctor.id, selectedDate);
+        }
+        setSelectedTime('');
+        setStep(3); // Return to step 3 to choose a different slot
+      } else {
+        notify.error(err.response?.data?.message || 'Booking failed. Please try selecting a different slot.');
+      }
     } finally {
       setBookingLoading(false);
     }
@@ -405,6 +442,7 @@ export const BookAppointment = () => {
             </h2>
             <p style={{ color: 'var(--slate-500)', fontSize: '0.95rem', marginBottom: '1.75rem' }}>
               Consultation hours for {selectedDate}: <strong>{doctor.available_time}</strong>
+              {loadingSlots && <span style={{ marginLeft: '1rem', color: 'var(--primary)', fontWeight: 600 }}>Checking availability...</span>}
             </p>
 
             {/* Morning Slots */}
@@ -413,27 +451,39 @@ export const BookAppointment = () => {
                 <FaClock color="var(--primary)" /> Morning Consultation (09:00 AM – 12:00 PM)
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem' }}>
-                {morningSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setSelectedTime(slot)}
-                    style={{
-                      padding: '0.8rem 0.5rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '2px solid',
-                      borderColor: selectedTime === slot ? 'var(--primary)' : 'var(--slate-200)',
-                      backgroundColor: selectedTime === slot ? 'var(--primary)' : 'var(--white)',
-                      color: selectedTime === slot ? 'white' : 'var(--slate-800)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      transition: 'var(--transition)'
-                    }}
-                  >
-                    {slot}
-                  </button>
-                ))}
+                {morningSlots.map((slot) => {
+                  const isBooked = bookedSlots.includes(slot);
+                  const isSelected = selectedTime === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={isBooked}
+                      onClick={() => !isBooked && setSelectedTime(slot)}
+                      style={{
+                        padding: '0.8rem 0.5rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '2px solid',
+                        borderColor: isSelected ? 'var(--primary)' : isBooked ? '#e2e8f0' : 'var(--slate-200)',
+                        backgroundColor: isSelected ? 'var(--primary)' : isBooked ? '#f1f5f9' : 'var(--white)',
+                        color: isSelected ? 'white' : isBooked ? '#94a3b8' : 'var(--slate-800)',
+                        fontWeight: 700,
+                        cursor: isBooked ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        transition: 'var(--transition)',
+                        textAlign: 'center'
+                      }}
+                      title={isBooked ? 'This slot has already been reserved' : `Select ${slot}`}
+                    >
+                      <span style={{ textDecoration: isBooked ? 'line-through' : 'none' }}>{slot}</span>
+                      {isBooked && (
+                        <span style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: '#ef4444', marginTop: '0.15rem' }}>
+                          Unavailable
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -443,27 +493,39 @@ export const BookAppointment = () => {
                 <FaClock color="var(--secondary)" /> Evening Consultation (04:00 PM – 07:00 PM)
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem' }}>
-                {eveningSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setSelectedTime(slot)}
-                    style={{
-                      padding: '0.8rem 0.5rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '2px solid',
-                      borderColor: selectedTime === slot ? 'var(--primary)' : 'var(--slate-200)',
-                      backgroundColor: selectedTime === slot ? 'var(--primary)' : 'var(--white)',
-                      color: selectedTime === slot ? 'white' : 'var(--slate-800)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      transition: 'var(--transition)'
-                    }}
-                  >
-                    {slot}
-                  </button>
-                ))}
+                {eveningSlots.map((slot) => {
+                  const isBooked = bookedSlots.includes(slot);
+                  const isSelected = selectedTime === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={isBooked}
+                      onClick={() => !isBooked && setSelectedTime(slot)}
+                      style={{
+                        padding: '0.8rem 0.5rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '2px solid',
+                        borderColor: isSelected ? 'var(--primary)' : isBooked ? '#e2e8f0' : 'var(--slate-200)',
+                        backgroundColor: isSelected ? 'var(--primary)' : isBooked ? '#f1f5f9' : 'var(--white)',
+                        color: isSelected ? 'white' : isBooked ? '#94a3b8' : 'var(--slate-800)',
+                        fontWeight: 700,
+                        cursor: isBooked ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        transition: 'var(--transition)',
+                        textAlign: 'center'
+                      }}
+                      title={isBooked ? 'This slot has already been reserved' : `Select ${slot}`}
+                    >
+                      <span style={{ textDecoration: isBooked ? 'line-through' : 'none' }}>{slot}</span>
+                      {isBooked && (
+                        <span style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: '#ef4444', marginTop: '0.15rem' }}>
+                          Unavailable
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -473,7 +535,7 @@ export const BookAppointment = () => {
               </button>
               <button 
                 onClick={() => setStep(4)} 
-                disabled={!selectedTime}
+                disabled={!selectedTime || bookedSlots.includes(selectedTime)}
                 className="btn btn-primary btn-lg"
               >
                 Enter Patient Details <FaArrowRight />
@@ -549,7 +611,7 @@ export const BookAppointment = () => {
               <button 
                 onClick={() => {
                   if (!patientName.trim() || !patientPhone.trim()) {
-                    alert('Please fill in both patient name and phone number.');
+                    notify.warning('Please fill in both patient name and phone number.');
                     return;
                   }
                   setStep(5);

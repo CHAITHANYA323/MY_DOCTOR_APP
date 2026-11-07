@@ -45,7 +45,8 @@ def create_app():
     CORS(
         app,
         resources={r"/*": {"origins": allowed_origin_patterns}},
-        allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With", "Origin"],
+        allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With", "Origin", "Idempotency-Key", "idempotency-key"],
+        expose_headers=["Idempotent-Replay"],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         supports_credentials=False,
         max_age=86400
@@ -175,6 +176,19 @@ def initialize_database(app):
                 db.engine.dispose()
             except Exception:
                 pass
+
+        # Dedicated one-time WAL initialization for SQLite using AUTOCOMMIT isolation
+        # Must execute on its own connection outside active session transactions
+        if db.engine.name == 'sqlite':
+            try:
+                with db.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as wal_conn:
+                    wal_mode = wal_conn.execute(text("PRAGMA journal_mode=WAL")).scalar()
+                    if str(wal_mode).lower() != 'wal':
+                        print(f"[DB Warning] SQLite WAL mode rejected; current mode is '{wal_mode}'.")
+                    else:
+                        print(f"[DB] SQLite WAL mode successfully verified: {wal_mode.upper()}")
+            except Exception as wal_err:
+                print(f"[DB Error] Failed to initialize SQLite WAL mode: {wal_err}")
 
         try:
             # Create all tables if they do not exist

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
-import { FaUserMd, FaArrowLeft, FaSave, FaImage, FaCheckCircle } from 'react-icons/fa';
+import { FaArrowLeft, FaSave, FaCheckCircle } from 'react-icons/fa';
 import { doctorService } from '../../services/doctorService';
 import { hospitalService } from '../../services/hospitalService';
+import { notify } from '../../utils/toast';
+import { Button } from '../../components/common/Button';
 
 export const DoctorForm = ({ isEdit = false }) => {
   const { id } = useParams();
@@ -121,17 +123,23 @@ export const DoctorForm = ({ isEdit = false }) => {
 
     // Validations
     if (!formData.name.trim() || !formData.qualification.trim() || !formData.location.trim()) {
-      setError('Doctor name, qualification, and location are mandatory fields.');
+      const msg = 'Doctor name, qualification, and location are mandatory fields.';
+      setError(msg);
+      notify.warning(msg);
       return;
     }
 
     if (!formData.specialization_id || !formData.hospital_id) {
-      setError('Please assign both a specialization and an affiliated hospital.');
+      const msg = 'Please assign both a specialization and an affiliated hospital.';
+      setError(msg);
+      notify.warning(msg);
       return;
     }
 
     if (Number(formData.consultation_fee) < 0) {
-      setError('Consultation fee must be a non-negative number.');
+      const msg = 'Consultation fee must be a non-negative number.';
+      setError(msg);
+      notify.warning(msg);
       return;
     }
 
@@ -149,18 +157,24 @@ export const DoctorForm = ({ isEdit = false }) => {
       if (isEdit) {
         const res = await doctorService.updateDoctor(id, payload);
         if (res.success) {
-          setSuccess(`Dr. ${payload.name} updated successfully!`);
+          const successMsg = `Dr. ${payload.name} updated successfully!`;
+          setSuccess(successMsg);
+          notify.success(successMsg);
           setTimeout(() => navigate(returnPath), 1200);
         }
       } else {
         const res = await doctorService.createDoctor(payload);
         if (res.success) {
-          setSuccess(`Dr. ${payload.name} added to Medicare directory successfully!`);
+          const successMsg = `Dr. ${payload.name} added to MediConnect directory successfully!`;
+          setSuccess(successMsg);
+          notify.success(successMsg);
           setTimeout(() => navigate(returnPath), 1200);
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save doctor information.');
+      const errMsg = err.response?.data?.message || 'Failed to save doctor information.';
+      setError(errMsg);
+      notify.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -472,17 +486,18 @@ export const DoctorForm = ({ isEdit = false }) => {
           </div>
 
           <div className="flex items-center gap-3" style={{ marginTop: '2rem' }}>
-            <button 
+            <Button 
               type="submit" 
-              disabled={loading}
-              className="btn btn-primary btn-lg"
+              loading={loading}
+              size="lg"
+              variant="primary"
               style={{ minWidth: '180px' }}
             >
-              <FaSave /> {loading ? 'Saving...' : (isEdit ? 'Update Doctor' : 'Save & Publish Doctor')}
-            </button>
-            <Link to={returnPath} className="btn btn-secondary btn-lg">
+              <FaSave /> {isEdit ? 'Update Doctor' : 'Save & Publish Doctor'}
+            </Button>
+            <Button as={Link} to={returnPath} size="lg" variant="secondary">
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

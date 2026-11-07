@@ -7,9 +7,9 @@ import {
   FaUserMd, 
   FaAmbulance, 
   FaClock, 
-  FaCheck,
-  FaHospital
+  FaCheck
 } from 'react-icons/fa';
+import { Badge } from './common/Badge';
 
 export const HospitalCard = ({ hospital }) => {
   return (
@@ -24,23 +24,11 @@ export const HospitalCard = ({ hospital }) => {
         />
 
         {/* 24/7 Emergency Badge */}
-        <div style={{
-          position: 'absolute',
-          top: '12px',
-          left: '12px',
-          backgroundColor: '#dc2626',
-          color: 'white',
-          fontSize: '0.72rem',
-          fontWeight: 700,
-          padding: '0.25rem 0.65rem',
-          borderRadius: 'var(--radius-full)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)'
-        }}>
-          <FaAmbulance size={12} />
-          <span>24/7 Emergency</span>
+        <div style={{ position: 'absolute', top: '12px', left: '12px' }}>
+          <Badge variant="danger" size="sm">
+            <FaAmbulance size={11} style={{ marginRight: '0.25rem' }} aria-hidden="true" />
+            24/7 Emergency
+          </Badge>
         </div>
 
         {/* Rating */}

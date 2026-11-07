@@ -5,6 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
 import { doctorService } from '../services/doctorService';
 import { DoctorCard } from '../components/DoctorCard';
+import { notify } from '../utils/toast';
+import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
 
 export const Profile = () => {
   const { user, updateUser, logout } = useAuth();
@@ -12,7 +15,9 @@ export const Profile = () => {
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -49,18 +54,53 @@ export const Profile = () => {
       return;
     }
 
+    // Validate password change inputs if any password field is populated
+    if (newPassword || currentPassword || confirmPassword) {
+      if (!currentPassword) {
+        setErrorMsg('Please enter your current password to authorize a password change.');
+        return;
+      }
+      if (!newPassword) {
+        setErrorMsg('Please enter your new password.');
+        return;
+      }
+      if (newPassword.length < 6) {
+        setErrorMsg('New password must be at least 6 characters long.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setErrorMsg('New password and confirm password do not match.');
+        return;
+      }
+      if (currentPassword === newPassword) {
+        setErrorMsg('New password must be different from current password.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const payload = { name, phone };
-      if (newPassword) payload.password = newPassword;
+      if (newPassword) {
+        payload.current_password = currentPassword;
+        payload.new_password = newPassword;
+        payload.password = newPassword;
+      }
 
       const res = await authService.updateProfile(payload);
       if (res.success) {
         updateUser(res.user);
+        notify.success('Profile details updated successfully!');
         setSuccessMsg('Profile details updated successfully!');
+        setCurrentPassword('');
         setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        notify.error(res.message || 'Failed to update profile.');
+        setErrorMsg(res.message || 'Failed to update profile.');
       }
     } catch (err) {
+      notify.error(err.response?.data?.message || 'Failed to update profile.');
       setErrorMsg(err.response?.data?.message || 'Failed to update profile.');
     } finally {
       setLoading(false);
@@ -171,29 +211,76 @@ export const Profile = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Update Password (Leave blank to keep current)</label>
-                <div style={{ position: 'relative' }}>
-                  <FaLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
-                  <input 
-                    type="password" 
-                    placeholder="Enter new password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="form-input"
-                    style={{ paddingLeft: '2.5rem' }}
-                  />
+              {/* Change Password Section */}
+              <div style={{
+                marginTop: '1.25rem',
+                paddingTop: '1.25rem',
+                borderTop: '1px solid var(--slate-200)',
+                marginBottom: '1rem'
+              }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--slate-700)', display: 'block', marginBottom: '0.75rem' }}>
+                  Change Password <span style={{ fontWeight: 400, color: 'var(--slate-500)', fontSize: '0.8rem' }}>(Leave blank to keep unchanged)</span>
+                </span>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Current Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <FaLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
+                    <input 
+                      type="password" 
+                      placeholder="Enter current password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="form-input"
+                      style={{ paddingLeft: '2.5rem' }}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <FaLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
+                    <input 
+                      type="password" 
+                      placeholder="Enter new password (min. 6 characters)"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="form-input"
+                      style={{ paddingLeft: '2.5rem' }}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Confirm New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <FaLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
+                    <input 
+                      type="password" 
+                      placeholder="Re-type new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="form-input"
+                      style={{ paddingLeft: '2.5rem' }}
+                      autoComplete="new-password"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <button 
+              <Button 
                 type="submit" 
-                disabled={loading}
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '0.5rem' }}
+                variant="primary"
+                fullWidth
+                loading={loading}
+                icon={<FaSave aria-hidden="true" />}
+                style={{ marginTop: '0.5rem' }}
               >
-                <FaSave /> {loading ? 'Saving Changes...' : 'Save Profile Changes'}
-              </button>
+                Save Profile Changes
+              </Button>
             </form>
 
             {/* Quick Actions: My Appointments & Logout */}

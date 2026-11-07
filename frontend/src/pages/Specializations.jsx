@@ -4,6 +4,8 @@ import { FaStethoscope, FaArrowRight, FaSearch, FaUserMd } from 'react-icons/fa'
 import { doctorService } from '../services/doctorService';
 import { SkeletonGrid } from '../components/SkeletonLoader';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
+import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
 
 export const Specializations = () => {
   const [specializations, setSpecializations] = useState([]);
@@ -43,8 +45,10 @@ export const Specializations = () => {
       <div className="container">
         {/* Page Header */}
         <div style={{ marginBottom: '2rem', textAlign: 'center', maxWidth: '750px', margin: '0 auto 2.5rem' }}>
-          <div className="section-tag">
-            <FaStethoscope /> Simple Medical Specialties
+          <div style={{ marginBottom: '0.75rem' }}>
+            <Badge variant="primary" size="md">
+              <FaStethoscope style={{ marginRight: '0.35rem' }} aria-hidden="true" /> Simple Medical Specialties
+            </Badge>
           </div>
           <h1 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.75rem' }}>
             Find the Right Doctor by Specialty
@@ -75,9 +79,9 @@ export const Specializations = () => {
             <FaStethoscope className="empty-state-icon" />
             <h3 className="empty-state-title">No categories match "{search}"</h3>
             <p className="empty-state-desc">Try searching for simple words like "heart", "eye", "child", or "pain".</p>
-            <button onClick={() => setSearch('')} className="btn btn-primary">
+            <Button variant="primary" onClick={() => setSearch('')}>
               View All Specialties
-            </button>
+            </Button>
           </div>
         ) : (
           <div style={{
@@ -117,9 +121,9 @@ export const Specializations = () => {
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--slate-900)' }}>
                       {info.layman}
                     </h3>
-                    <span className="badge badge-confirmed" style={{ fontSize: '0.72rem' }}>
+                    <Badge variant="success" size="sm">
                       {spec.doctor_count || 1}+ Doctors
-                    </span>
+                    </Badge>
                   </div>
 
                   <span style={{ fontSize: '0.8rem', color: 'var(--primary-dark)', fontWeight: 700, marginBottom: '0.5rem' }}>

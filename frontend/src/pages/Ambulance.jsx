@@ -10,9 +10,12 @@ import {
   FaShieldAlt,
   FaExclamationTriangle,
   FaPaperPlane,
-  FaHospital
+  FaHospital,
+  FaTimesCircle
 } from 'react-icons/fa';
-import { ambulanceService } from '../services/ambulanceService';
+import { toast } from 'react-toastify';
+import { ambulanceService, generateUUID } from '../services/ambulanceService';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 
 export const Ambulance = () => {
@@ -27,7 +30,14 @@ export const Ambulance = () => {
   const [pickupLocation, setPickupLocation] = useState('');
   const [destinationHospital, setDestinationHospital] = useState('Nearest Available Hospital');
   const [requestLoading, setRequestLoading] = useState(false);
-  const [requestSuccess, setRequestSuccess] = useState(null);
+  const [activeRequest, setActiveRequest] = useState(null);
+
+  // Idempotency State: UUID per intentional emergency submission
+  const [idempotencyKey, setIdempotencyKey] = useState(() => generateUUID());
+
+  // Cancellation State
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     const fetchFleet = async () => {
@@ -49,37 +59,99 @@ export const Ambulance = () => {
 
   const handleAmbulanceSubmit = async (e) => {
     e.preventDefault();
-    if (!patientName.trim() || !phone.trim() || !pickupLocation.trim()) {
-      alert('Please provide the patient name, contact phone number, and pickup address.');
+
+    const cleanName = (patientName || '').trim();
+    const cleanPhone = (phone || '').trim();
+    const cleanPickup = (pickupLocation || '').trim();
+    const cleanDest = (destinationHospital || '').trim() || 'Nearest Available Hospital';
+
+    // Client-side validation matching backend constraints
+    if (!cleanName || cleanName.length < 2) {
+      toast.error('Patient name must be at least 2 characters.');
+      return;
+    }
+    if (cleanName.length > 100) {
+      toast.error('Patient name cannot exceed 100 characters.');
+      return;
+    }
+
+    if (!cleanPhone) {
+      toast.error('Contact phone number is required for emergency dispatch.');
+      return;
+    }
+    const digits = cleanPhone.replace(/\D/g, '');
+    if (digits.length < 7 || digits.length > 15 || !/^\+?[0-9\s\-()]+$/.test(cleanPhone)) {
+      toast.error('Please enter a valid emergency contact phone number (7 to 15 digits).');
+      return;
+    }
+
+    if (!cleanPickup || cleanPickup.length < 5) {
+      toast.error('Pickup location must be at least 5 characters.');
+      return;
+    }
+    if (cleanPickup.length > 255) {
+      toast.error('Pickup location cannot exceed 255 characters.');
+      return;
+    }
+
+    if (cleanDest.length > 150) {
+      toast.error('Destination hospital cannot exceed 150 characters.');
       return;
     }
 
     setRequestLoading(true);
-    setRequestSuccess(null);
 
     try {
       const res = await ambulanceService.requestAmbulance({
-        patient_name: patientName,
-        phone,
+        patient_name: cleanName,
+        phone: cleanPhone,
         emergency_type: emergencyType,
-        pickup_location: pickupLocation,
-        destination_hospital: destinationHospital,
+        pickup_location: cleanPickup,
+        destination_hospital: cleanDest,
         patients_count: 1,
         additional_info: `Requested via Ambulance Portal at ${new Date().toLocaleTimeString()}`
-      });
+      }, idempotencyKey);
 
-      if (res.success) {
-        setRequestSuccess({
-          message: 'Ambulance dispatch request received! Our dispatch controller is coordinating with the nearest available unit.',
-          requestId: res.request?.id || 'AMB-' + Math.floor(1000 + Math.random() * 9000)
-        });
+      if (res.success && res.request) {
+        setActiveRequest(res.request);
+        toast.success(res.message || 'Ambulance request received.');
+        // Generate new key only once an intentional request is successfully processed
+        setIdempotencyKey(generateUUID());
         setPickupLocation('');
+      } else {
+        toast.error(res.message || 'Unable to register ambulance request.');
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to dispatch request. Please dial 108 directly on your phone.');
+      const msg = err.response?.data?.message || 'Failed to dispatch request. Please dial 108 directly on your phone.';
+      toast.error(msg);
+      // NOTE: idempotencyKey is preserved for retries of this exact submission
     } finally {
       setRequestLoading(false);
     }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!activeRequest) return;
+    setCancelLoading(true);
+    try {
+      const res = await ambulanceService.cancelAmbulanceRequest(activeRequest.id);
+      if (res.success) {
+        toast.success('Ambulance request cancelled successfully.');
+        setActiveRequest(res.request || { ...activeRequest, status: 'Cancelled' });
+        setIsCancelModalOpen(false);
+      } else {
+        toast.error(res.message || 'Could not cancel request.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel ambulance request.');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleStartNewRequest = () => {
+    setActiveRequest(null);
+    setIdempotencyKey(generateUUID());
   };
 
   const ambulanceTypes = [
@@ -188,29 +260,93 @@ export const Ambulance = () => {
               Submit your pickup location. Our 24/7 command center will assign the nearest unit and call you right back.
             </p>
 
-            {requestSuccess && (
+            {/* Active Request Live Tracking Banner */}
+            {activeRequest && (
               <div style={{
-                backgroundColor: 'var(--success-light)',
-                border: '1px solid #10b981',
+                backgroundColor: activeRequest.status === 'Cancelled' ? 'var(--emergency-light)' : '#f0fdf4',
+                border: `1px solid ${activeRequest.status === 'Cancelled' ? '#f87171' : '#10b981'}`,
                 padding: '1.25rem',
                 borderRadius: 'var(--radius-lg)',
-                color: '#065f46',
+                color: activeRequest.status === 'Cancelled' ? '#991b1b' : '#065f46',
                 marginBottom: '1.5rem',
                 fontSize: '0.92rem'
               }}>
-                <div className="flex items-center gap-2" style={{ fontWeight: 800, marginBottom: '0.35rem' }}>
-                  <FaCheckCircle color="#059669" size={16} /> Request Registered #{requestSuccess.requestId}
+                <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div className="flex items-center gap-2" style={{ fontWeight: 800 }}>
+                    <FaCheckCircle color={activeRequest.status === 'Cancelled' ? '#dc2626' : '#059669'} size={16} />
+                    <span>Emergency Request #{activeRequest.id}</span>
+                  </div>
+                  <span className={`badge ${
+                    activeRequest.status === 'Dispatched' ? 'badge-on-duty' :
+                    activeRequest.status === 'Arrived' ? 'badge-arrived' :
+                    activeRequest.status === 'Completed' ? 'badge-completed' :
+                    activeRequest.status === 'Cancelled' ? 'badge-cancelled' : 'badge-pending'
+                  }`}>
+                    {activeRequest.status}
+                  </span>
                 </div>
-                <p style={{ margin: 0 }}>{requestSuccess.message}</p>
-                <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#047857' }}>
-                  Keep your phone line open for the driver call.
+
+                <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>
+                  Patient: {activeRequest.patient_name} &bull; {activeRequest.emergency_type}
+                </p>
+
+                {activeRequest.assigned_ambulance ? (
+                  <div style={{
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.75rem 1rem',
+                    marginBottom: '0.75rem',
+                    border: '1px solid rgba(0,0,0,0.06)'
+                  }}>
+                    <div style={{ fontWeight: 700, color: 'var(--slate-900)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <FaAmbulance color="var(--primary)" /> Assigned: {activeRequest.assigned_ambulance.vehicle_number} ({activeRequest.assigned_ambulance.ambulance_type})
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--slate-700)', marginTop: '0.25rem' }}>
+                      Driver: <strong>{activeRequest.assigned_ambulance.driver_name}</strong>
+                    </div>
+                    {activeRequest.assigned_ambulance.driver_phone && (
+                      <div style={{ marginTop: '0.4rem' }}>
+                        <a 
+                          href={`tel:${activeRequest.assigned_ambulance.driver_phone}`}
+                          className="btn btn-secondary btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}
+                        >
+                          <FaPhoneAlt size={10} /> Call Driver ({activeRequest.assigned_ambulance.driver_phone})
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : activeRequest.status === 'Pending' ? (
+                  <div style={{ fontSize: '0.85rem', color: '#047857', marginBottom: '0.75rem', backgroundColor: 'rgba(255,255,255,0.7)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)' }}>
+                    ⏳ Dispatch Queued: Command center is assigning the nearest unit. Please keep your phone line open.
+                  </div>
+                ) : null}
+
+                <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                  {(activeRequest.status === 'Pending' || activeRequest.status === 'Dispatched') && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(true)}
+                      className="btn btn-sm"
+                      style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #f87171' }}
+                    >
+                      <FaTimesCircle /> Cancel Request
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleStartNewRequest}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    Start New Request
+                  </button>
                 </div>
               </div>
             )}
 
             <form onSubmit={handleAmbulanceSubmit}>
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label" style={{ fontWeight: 700 }}>Patient Full Name</label>
+                <label className="form-label" style={{ fontWeight: 700 }}>Patient Full Name *</label>
                 <input 
                   type="text"
                   placeholder="e.g. Ramesh Sharma"
@@ -218,18 +354,20 @@ export const Ambulance = () => {
                   onChange={(e) => setPatientName(e.target.value)}
                   required
                   className="form-input"
+                  maxLength={100}
                 />
               </div>
 
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label" style={{ fontWeight: 700 }}>Contact Phone Number</label>
+                <label className="form-label" style={{ fontWeight: 700 }}>Contact Phone Number *</label>
                 <input 
                   type="tel"
-                  placeholder="e.g. 9876543210 (Driver will call this number)"
+                  placeholder="e.g. +91 98765 43210 (Driver will call this number)"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
                   className="form-input"
+                  maxLength={30}
                 />
               </div>
 
@@ -251,7 +389,7 @@ export const Ambulance = () => {
 
               <div className="form-group" style={{ marginBottom: '1rem' }}>
                 <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <FaMapMarkerAlt color="var(--primary)" /> Current Pickup Location / Address
+                  <FaMapMarkerAlt color="var(--primary)" /> Current Pickup Location / Address *
                 </label>
                 <textarea 
                   rows="2"
@@ -260,6 +398,7 @@ export const Ambulance = () => {
                   onChange={(e) => setPickupLocation(e.target.value)}
                   required
                   className="form-textarea"
+                  maxLength={255}
                 />
               </div>
 
@@ -273,6 +412,7 @@ export const Ambulance = () => {
                   value={destinationHospital}
                   onChange={(e) => setDestinationHospital(e.target.value)}
                   className="form-input"
+                  maxLength={150}
                 />
               </div>
 
@@ -358,13 +498,15 @@ export const Ambulance = () => {
                       }`} style={{ fontSize: '0.75rem' }}>
                         {amb.status}
                       </span>
-                      <a 
-                        href={`tel:${amb.driver_phone}`} 
-                        className="btn btn-secondary btn-sm"
-                        style={{ fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                      >
-                        <FaPhoneAlt size={10} /> Call Driver
-                      </a>
+                      {amb.driver_phone && (
+                        <a 
+                          href={`tel:${amb.driver_phone}`} 
+                          className="btn btn-secondary btn-sm"
+                          style={{ fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        >
+                          <FaPhoneAlt size={10} /> Call Driver
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -429,6 +571,19 @@ export const Ambulance = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal for Patient Cancellation */}
+      <ConfirmationModal
+        isOpen={isCancelModalOpen}
+        title="Cancel Ambulance Request"
+        message={`Are you sure you want to cancel emergency request #${activeRequest?.id}? Any assigned ambulance will be released back to Available for other patients.`}
+        confirmText="Yes, Cancel Request"
+        cancelText="Keep Active"
+        isDanger={true}
+        loading={cancelLoading}
+        onConfirm={handleCancelRequest}
+        onCancel={() => setIsCancelModalOpen(false)}
+      />
 
       <style>{`
         @media (max-width: 860px) {

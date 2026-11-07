@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaUsers, FaUserShield, FaUser, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
 import { authService } from '../../services/authService';
+import { Badge } from '../../components/common/Badge';
 
 export const ManageUsers = () => {
   const [users, setUsers] = useState([]);
@@ -67,9 +67,9 @@ export const ManageUsers = () => {
                   <td>{u.email}</td>
                   <td>{u.phone || '—'}</td>
                   <td>
-                    <span className={`badge ${u.role === 'ADMIN' ? 'badge-confirmed' : 'badge-available'}`}>
+                    <Badge variant={u.role === 'ADMIN' ? 'primary' : 'neutral'}>
                       {u.role === 'ADMIN' ? 'Administrator' : 'Patient'}
-                    </span>
+                    </Badge>
                   </td>
                   <td style={{ fontSize: '0.85rem', color: 'var(--slate-500)' }}>
                     {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}

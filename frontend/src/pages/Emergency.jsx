@@ -9,9 +9,12 @@ import {
   FaCheckCircle, 
   FaMapMarkerAlt, 
   FaUserShield,
-  FaArrowRight
+  FaArrowRight,
+  FaTimesCircle
 } from 'react-icons/fa';
-import { ambulanceService } from '../services/ambulanceService';
+import { toast } from 'react-toastify';
+import { ambulanceService, generateUUID } from '../services/ambulanceService';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 
 export const Emergency = () => {
@@ -28,6 +31,13 @@ export const Emergency = () => {
   const [loading, setLoading] = useState(false);
   const [requestResult, setRequestResult] = useState(null);
 
+  // Idempotency: UUID generated per intentional submission, preserved on retry
+  const [idempotencyKey, setIdempotencyKey] = useState(() => generateUUID());
+
+  // Cancellation State
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
   const emergencyTypes = [
     "Heart Emergency",
     "Accident",
@@ -39,39 +49,113 @@ export const Emergency = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!patientName.trim() || !phone.trim() || !pickupLocation.trim()) {
-      alert('Patient name, contact number, and pickup location are required for rapid dispatch.');
+
+    const cleanName = (patientName || '').trim();
+    const cleanPhone = (phone || '').trim();
+    const cleanPickup = (pickupLocation || '').trim();
+    const cleanDest = (destinationHospital || '').trim() || 'Nearest Available Hospital';
+    const cleanInfo = (additionalInfo || '').trim();
+    const parsedPatientsCount = Number(patientsCount);
+
+    if (!cleanName || cleanName.length < 2) {
+      toast.error('Patient name must be at least 2 characters.');
+      return;
+    }
+    if (cleanName.length > 100) {
+      toast.error('Patient name cannot exceed 100 characters.');
+      return;
+    }
+
+    if (!cleanPhone) {
+      toast.error('Contact phone number is required for emergency dispatch.');
+      return;
+    }
+    const digits = cleanPhone.replace(/\D/g, '');
+    if (digits.length < 7 || digits.length > 15 || !/^\+?[0-9\s\-()]+$/.test(cleanPhone)) {
+      toast.error('Please enter a valid emergency contact phone number (7 to 15 digits).');
+      return;
+    }
+
+    if (!cleanPickup || cleanPickup.length < 5) {
+      toast.error('Pickup location must be at least 5 characters.');
+      return;
+    }
+    if (cleanPickup.length > 255) {
+      toast.error('Pickup location cannot exceed 255 characters.');
+      return;
+    }
+
+    if (cleanDest.length > 150) {
+      toast.error('Destination hospital cannot exceed 150 characters.');
+      return;
+    }
+
+    if (!Number.isInteger(parsedPatientsCount) || parsedPatientsCount < 1 || parsedPatientsCount > 10) {
+      toast.error('Patients count must be an integer between 1 and 10.');
+      return;
+    }
+
+    if (cleanInfo.length > 500) {
+      toast.error('Special instructions cannot exceed 500 characters.');
       return;
     }
 
     setLoading(true);
-    setRequestResult(null);
 
     try {
       const res = await ambulanceService.requestAmbulance({
-        patient_name: patientName,
-        phone,
+        patient_name: cleanName,
+        phone: cleanPhone,
         emergency_type: emergencyType,
-        pickup_location: pickupLocation,
-        destination_hospital: destinationHospital,
-        patients_count: patientsCount,
-        additional_info: additionalInfo
-      });
+        pickup_location: cleanPickup,
+        destination_hospital: cleanDest,
+        patients_count: parsedPatientsCount,
+        additional_info: cleanInfo || 'Emergency request submitted via emergency portal'
+      }, idempotencyKey);
 
-      if (res.success) {
+      if (res.success && res.request) {
         setRequestResult({
           success: true,
-          message: 'Ambulance request received. Our emergency team will contact you shortly.',
+          message: res.message || 'Ambulance request received. Our emergency team will contact you shortly.',
           data: res.request
         });
-        // Clear form
+        toast.success(res.message || 'Ambulance request received.');
+        // Generate new key only once request successfully registered
+        setIdempotencyKey(generateUUID());
+        // Clear form fields
         setPickupLocation('');
         setAdditionalInfo('');
+      } else {
+        toast.error(res.message || 'Unable to register ambulance request.');
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to dispatch ambulance request. Please dial 108 directly.');
+      toast.error(err.response?.data?.message || 'Failed to dispatch ambulance request. Please dial 108 directly.');
+      // idempotencyKey is preserved for retries of this exact submission
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!requestResult?.data?.id) return;
+    setCancelLoading(true);
+    try {
+      const res = await ambulanceService.cancelAmbulanceRequest(requestResult.data.id);
+      if (res.success) {
+        toast.success('Ambulance request cancelled successfully.');
+        setRequestResult({
+          ...requestResult,
+          message: 'This emergency request has been cancelled.',
+          data: res.request || { ...requestResult.data, status: 'Cancelled' }
+        });
+        setIsCancelModalOpen(false);
+      } else {
+        toast.error(res.message || 'Could not cancel request.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel ambulance request.');
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -274,28 +358,80 @@ export const Emergency = () => {
 
             {requestResult && (
               <div style={{
-                backgroundColor: '#ecfdf5',
-                border: '1px solid #10b981',
+                backgroundColor: requestResult.data?.status === 'Cancelled' ? '#fef2f2' : '#ecfdf5',
+                border: `1px solid ${requestResult.data?.status === 'Cancelled' ? '#ef4444' : '#10b981'}`,
                 borderRadius: 'var(--radius-md)',
                 padding: '1.25rem',
                 marginBottom: '1.5rem',
-                color: '#065f46'
+                color: requestResult.data?.status === 'Cancelled' ? '#991b1b' : '#065f46'
               }}>
-                <div className="flex items-center gap-2" style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: '0.35rem' }}>
-                  <FaCheckCircle color="#10b981" size={18} />
-                  <span>Ambulance Request Received!</span>
+                <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div className="flex items-center gap-2" style={{ fontWeight: 800, fontSize: '1.05rem' }}>
+                    {requestResult.data?.status === 'Cancelled' ? (
+                      <FaTimesCircle color="#ef4444" size={18} />
+                    ) : (
+                      <FaCheckCircle color="#10b981" size={18} />
+                    )}
+                    <span>{requestResult.data?.status === 'Cancelled' ? 'Request Cancelled' : 'Ambulance Request Active'}</span>
+                  </div>
+                  <span className={`badge ${
+                    requestResult.data?.status === 'Dispatched' ? 'badge-on-duty' :
+                    requestResult.data?.status === 'Arrived' ? 'badge-arrived' :
+                    requestResult.data?.status === 'Completed' ? 'badge-completed' :
+                    requestResult.data?.status === 'Cancelled' ? 'badge-cancelled' : 'badge-pending'
+                  }`}>
+                    {requestResult.data?.status || 'Pending'}
+                  </span>
                 </div>
-                <p style={{ fontSize: '0.92rem', lineHeight: 1.5 }}>
+
+                <p style={{ fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '0.5rem' }}>
                   {requestResult.message}
                 </p>
-                <p style={{ fontSize: '0.82rem', marginTop: '0.5rem', color: '#047857' }}>
-                  Dispatch Status: <strong>{requestResult.data?.status || 'Dispatched'}</strong> | Reference ID: #{requestResult.data?.id}
-                </p>
+
+                <div style={{ fontSize: '0.85rem', color: requestResult.data?.status === 'Cancelled' ? '#7f1d1d' : '#047857' }}>
+                  <div>Reference ID: <strong>#{requestResult.data?.id}</strong></div>
+                  {requestResult.data?.assigned_ambulance && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.65rem', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                      <div><strong>Assigned Vehicle:</strong> {requestResult.data.assigned_ambulance.vehicle_number} ({requestResult.data.assigned_ambulance.ambulance_type})</div>
+                      <div style={{ marginTop: '0.25rem' }}>
+                        <strong>Driver:</strong> {requestResult.data.assigned_ambulance.driver_name} &nbsp;|&nbsp;
+                        <a href={`tel:${requestResult.data.assigned_ambulance.driver_phone}`} style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>
+                          <FaPhoneAlt size={11} style={{ marginRight: '3px' }} /> Call Driver ({requestResult.data.assigned_ambulance.driver_phone})
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2" style={{ marginTop: '0.85rem' }}>
+                  {(requestResult.data?.status === 'Pending' || requestResult.data?.status === 'Dispatched') && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(true)}
+                      className="btn btn-sm"
+                      style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+                    >
+                      <FaTimesCircle /> Cancel Request
+                    </button>
+                  )}
+                  {requestResult.data?.status === 'Cancelled' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRequestResult(null);
+                        setIdempotencyKey(generateUUID());
+                      }}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Start New Request
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-grid-2col" style={{ gap: '1rem' }}>
                 {/* Patient Name */}
                 <div className="form-group">
                   <label className="form-label">Patient Full Name *</label>
@@ -363,7 +499,7 @@ export const Emergency = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem' }}>
+              <div className="form-grid-2col" style={{ gap: '1rem' }}>
                 {/* Destination Hospital */}
                 <div className="form-group">
                   <label className="form-label">Destination Hospital</label>
@@ -386,7 +522,14 @@ export const Emergency = () => {
                   >
                     <option value={1}>1 Patient</option>
                     <option value={2}>2 Patients</option>
-                    <option value={3}>3+ Patients</option>
+                    <option value={3}>3 Patients</option>
+                    <option value={4}>4 Patients</option>
+                    <option value={5}>5 Patients</option>
+                    <option value={6}>6 Patients</option>
+                    <option value={7}>7 Patients</option>
+                    <option value={8}>8 Patients</option>
+                    <option value={9}>9 Patients</option>
+                    <option value={10}>10 Patients (Max)</option>
                   </select>
                 </div>
               </div>
@@ -472,6 +615,18 @@ export const Emergency = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal 
+        isOpen={isCancelModalOpen}
+        title="Cancel Emergency Ambulance Request"
+        message={`Are you sure you want to cancel emergency ambulance request #${requestResult?.data?.id}? Our dispatch team will be immediately notified to recall the vehicle.`}
+        confirmText="Yes, Cancel Request"
+        cancelText="Keep Active"
+        isDanger={true}
+        loading={cancelLoading}
+        onConfirm={handleCancelRequest}
+        onCancel={() => setIsCancelModalOpen(false)}
+      />
 
       <style>{`
         @media (max-width: 860px) {

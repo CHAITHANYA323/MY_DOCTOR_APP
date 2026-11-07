@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FaCalendarAlt, 
@@ -10,34 +10,61 @@ import {
   FaClock, 
   FaArrowRight, 
   FaShieldAlt,
-  FaHeart
+  FaHeart,
+  FaPhoneAlt
 } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { dashboardService } from '../services/dashboardService';
+import { ambulanceService } from '../services/ambulanceService';
 import { AppointmentCard } from '../components/AppointmentCard';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 export const UserDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUserStats = async () => {
-      try {
-        setLoading(true);
-        const res = await dashboardService.getUserStats();
-        if (res.success) {
-          setStats(res);
-        }
-      } catch (err) {
-        console.error('Error fetching user stats:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Ambulance Cancellation State
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
-    fetchUserStats();
+  const fetchUserStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await dashboardService.getUserStats();
+      if (res.success) {
+        setStats(res);
+      }
+    } catch (err) {
+      console.error('Error fetching user stats:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUserStats();
+  }, [fetchUserStats]);
+
+  const handleCancelAmbulance = async () => {
+    if (!cancelTarget) return;
+    setCancelLoading(true);
+    try {
+      const res = await ambulanceService.cancelAmbulanceRequest(cancelTarget.id);
+      if (res.success) {
+        toast.success('Ambulance request cancelled successfully.');
+        setCancelTarget(null);
+        await fetchUserStats();
+      } else {
+        toast.error(res.message || 'Could not cancel request.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel ambulance request.');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   return (
     <div style={{ padding: '2.5rem 0 5rem' }}>
@@ -213,7 +240,9 @@ export const UserDashboard = () => {
                       </span>
                       <span className={`badge ${
                         req.status === 'Dispatched' ? 'badge-on-duty' :
-                        req.status === 'Completed' ? 'badge-completed' : 'badge-pending'
+                        req.status === 'Arrived' ? 'badge-arrived' :
+                        req.status === 'Completed' ? 'badge-completed' :
+                        req.status === 'Cancelled' ? 'badge-cancelled' : 'badge-pending'
                       }`}>
                         {req.status}
                       </span>
@@ -223,13 +252,56 @@ export const UserDashboard = () => {
                       {req.emergency_type} - {req.patient_name}
                     </h4>
 
-                    <p style={{ fontSize: '0.82rem', color: 'var(--slate-600)', marginBottom: '0.5rem' }}>
-                      Pickup: {req.pickup_location}
+                    <p style={{ fontSize: '0.82rem', color: 'var(--slate-600)', marginBottom: '0.35rem' }}>
+                      <strong>Pickup:</strong> {req.pickup_location}
                     </p>
 
-                    <div style={{ fontSize: '0.8rem', color: 'var(--slate-500)', borderTop: '1px solid var(--slate-100)', paddingTop: '0.5rem' }}>
-                      To: <strong>{req.destination_hospital}</strong>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--slate-600)', marginBottom: '0.5rem' }}>
+                      <strong>Destination:</strong> {req.destination_hospital}
                     </div>
+
+                    {req.assigned_ambulance && (
+                      <div style={{
+                        marginTop: '0.5rem',
+                        padding: '0.6rem 0.75rem',
+                        backgroundColor: 'var(--slate-50)',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--slate-200)',
+                        fontSize: '0.8rem'
+                      }}>
+                        <div style={{ fontWeight: 700, color: 'var(--slate-800)' }}>
+                          Vehicle: {req.assigned_ambulance.vehicle_number} ({req.assigned_ambulance.ambulance_type})
+                        </div>
+                        <div style={{ marginTop: '0.2rem', color: 'var(--slate-600)' }}>
+                          Driver: {req.assigned_ambulance.driver_name} &bull;{' '}
+                          <a 
+                            href={`tel:${req.assigned_ambulance.driver_phone}`} 
+                            style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}
+                          >
+                            <FaPhoneAlt size={10} style={{ marginRight: '3px' }} /> Call ({req.assigned_ambulance.driver_phone})
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {(req.status === 'Pending' || req.status === 'Dispatched') && (
+                      <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCancelTarget(req)}
+                          className="btn btn-sm"
+                          style={{
+                            backgroundColor: '#fee2e2',
+                            color: '#b91c1c',
+                            border: '1px solid #fca5a5',
+                            fontSize: '0.78rem',
+                            padding: '0.3rem 0.75rem'
+                          }}
+                        >
+                          <FaTimesCircle size={11} style={{ marginRight: '4px' }} /> Cancel Request
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -237,6 +309,19 @@ export const UserDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Ambulance Cancellation Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!cancelTarget}
+        title="Cancel Emergency Ambulance Request"
+        message={`Are you sure you want to cancel emergency ambulance request #${cancelTarget?.id}? Our dispatch operations team will be notified immediately.`}
+        confirmText="Yes, Cancel Request"
+        cancelText="Keep Active"
+        isDanger={true}
+        loading={cancelLoading}
+        onConfirm={handleCancelAmbulance}
+        onCancel={() => setCancelTarget(null)}
+      />
 
       <style>{`
         @media (max-width: 860px) {

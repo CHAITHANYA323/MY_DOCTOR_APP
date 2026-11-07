@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FaAmbulance, 
   FaPlus, 
@@ -8,8 +8,11 @@ import {
   FaMapMarkerAlt, 
   FaCheckCircle, 
   FaExclamationTriangle,
-  FaCheck
+  FaCheck,
+  FaTimesCircle,
+  FaUndo
 } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import { ambulanceService } from '../../services/ambulanceService';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 
@@ -18,7 +21,6 @@ export const ManageAmbulances = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('fleet'); // 'fleet' or 'requests'
-  const [notification, setNotification] = useState('');
 
   // Add / Edit Ambulance State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,7 +36,21 @@ export const ManageAmbulances = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchData = async () => {
+  // Assign & Dispatch / Reassign Modal State
+  const [assignModal, setAssignModal] = useState({
+    isOpen: false,
+    request: null,
+    mode: 'dispatch', // 'dispatch' or 'reassign'
+    selectedAmbulanceId: ''
+  });
+
+  // Admin Request Cancellation Target
+  const [cancelRequestTarget, setCancelRequestTarget] = useState(null);
+
+  // Admin Unassignment Target
+  const [unassignTarget, setUnassignTarget] = useState(null);
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [fleetRes, reqsRes] = await Promise.all([
@@ -48,11 +64,11 @@ export const ManageAmbulances = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -83,7 +99,7 @@ export const ManageAmbulances = () => {
   const handleSaveAmbulance = async (e) => {
     e.preventDefault();
     if (!form.vehicle_number || !form.driver_name || !form.driver_phone || !form.current_location) {
-      alert('Please fill all required vehicle fields.');
+      toast.error('Please fill all required vehicle fields.');
       return;
     }
 
@@ -91,15 +107,15 @@ export const ManageAmbulances = () => {
     try {
       if (editingId) {
         await ambulanceService.updateAmbulance(editingId, form);
-        setNotification('Ambulance vehicle details updated!');
+        toast.success('Ambulance vehicle details updated!');
       } else {
         await ambulanceService.createAmbulance(form);
-        setNotification('New emergency ambulance added to fleet!');
+        toast.success('New emergency ambulance added to fleet!');
       }
       setIsModalOpen(false);
-      fetchData();
+      await fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving ambulance.');
+      toast.error(err.response?.data?.message || 'Error saving ambulance.');
     } finally {
       setActionLoading(false);
     }
@@ -110,25 +126,87 @@ export const ManageAmbulances = () => {
     setActionLoading(true);
     try {
       await ambulanceService.deleteAmbulance(deleteTarget.id);
-      setNotification(`Ambulance ${deleteTarget.vehicle_number} removed.`);
+      toast.success(`Ambulance ${deleteTarget.vehicle_number} removed from fleet.`);
       setDeleteTarget(null);
-      fetchData();
+      await fetchData();
     } catch (err) {
-      alert('Failed to delete ambulance.');
+      toast.error(err.response?.data?.message || 'Failed to delete ambulance.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleRequestStatusChange = async (reqId, newStatus) => {
+  const handleUpdateRequest = async (reqId, payload, successMsg) => {
+    setActionLoading(true);
     try {
-      await ambulanceService.updateRequestStatus(reqId, newStatus);
-      setNotification(`Request #${reqId} status updated to ${newStatus}.`);
-      fetchData();
+      const res = await ambulanceService.updateRequestStatus(reqId, payload);
+      if (res.success) {
+        toast.success(successMsg || res.message || 'Request status updated.');
+        await fetchData();
+      } else {
+        toast.error(res.message || 'Could not update request.');
+      }
     } catch (err) {
-      alert('Failed to update request status.');
+      toast.error(err.response?.data?.message || 'Failed to update request.');
+    } finally {
+      setActionLoading(false);
     }
   };
+
+  const handleOpenAssignModal = (req, mode = 'dispatch') => {
+    const available = ambulances.filter(a => a.status === 'Available');
+    setAssignModal({
+      isOpen: true,
+      request: req,
+      mode,
+      selectedAmbulanceId: available.length > 0 ? String(available[0].id) : ''
+    });
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!assignModal.request || !assignModal.selectedAmbulanceId) return;
+    const ambId = Number(assignModal.selectedAmbulanceId);
+    const reqId = assignModal.request.id;
+
+    if (assignModal.mode === 'dispatch') {
+      await handleUpdateRequest(
+        reqId, 
+        { status: 'Dispatched', assigned_ambulance_id: ambId },
+        `Ambulance assigned and dispatched for Request #${reqId}!`
+      );
+    } else {
+      await handleUpdateRequest(
+        reqId, 
+        { assigned_ambulance_id: ambId },
+        `Ambulance reassigned for Request #${reqId}!`
+      );
+    }
+    setAssignModal({ isOpen: false, request: null, mode: 'dispatch', selectedAmbulanceId: '' });
+  };
+
+  const handleConfirmUnassign = async () => {
+    if (!unassignTarget) return;
+    const reqId = unassignTarget.id;
+    await handleUpdateRequest(
+      reqId,
+      { status: 'Pending', assigned_ambulance_id: null },
+      `Ambulance unassigned. Request #${reqId} returned to Pending.`
+    );
+    setUnassignTarget(null);
+  };
+
+  const handleConfirmCancelRequest = async () => {
+    if (!cancelRequestTarget) return;
+    const reqId = cancelRequestTarget.id;
+    await handleUpdateRequest(
+      reqId,
+      { status: 'Cancelled' },
+      `Request #${reqId} cancelled.`
+    );
+    setCancelRequestTarget(null);
+  };
+
+  const availableAmbulances = ambulances.filter(a => a.status === 'Available');
 
   return (
     <div>
@@ -161,23 +239,6 @@ export const ManageAmbulances = () => {
           </button>
         </div>
       </div>
-
-      {notification && (
-        <div style={{
-          padding: '1rem',
-          backgroundColor: 'var(--success-light)',
-          color: '#065f46',
-          borderRadius: 'var(--radius-md)',
-          marginBottom: '1.5rem',
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <span>{notification}</span>
-          <button onClick={() => setNotification('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>✕</button>
-        </div>
-      )}
 
       {/* Tab 1: Fleet Management */}
       {activeTab === 'fleet' && (
@@ -304,6 +365,7 @@ export const ManageAmbulances = () => {
                     <td>
                       <span className={`badge ${
                         req.status === 'Dispatched' ? 'badge-on-duty' :
+                        req.status === 'Arrived' ? 'badge-arrived' :
                         req.status === 'Completed' ? 'badge-completed' :
                         req.status === 'Cancelled' ? 'badge-cancelled' : 'badge-pending'
                       }`}>
@@ -311,18 +373,91 @@ export const ManageAmbulances = () => {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <select 
-                        value={req.status}
-                        onChange={(e) => handleRequestStatusChange(req.id, e.target.value)}
-                        className="form-select"
-                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Dispatched">Dispatched</option>
-                        <option value="Arrived">Arrived</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
+                      {/* State-aware dispatch controls */}
+                      {req.status === 'Pending' && (
+                        <div className="flex items-center justify-end gap-2" style={{ flexWrap: 'wrap' }}>
+                          <button 
+                            type="button"
+                            onClick={() => handleOpenAssignModal(req, 'dispatch')}
+                            className="btn btn-primary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            <FaAmbulance size={11} style={{ marginRight: '3px' }} /> Assign & Dispatch
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setCancelRequestTarget(req)}
+                            className="btn btn-sm"
+                            style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+
+                      {req.status === 'Dispatched' && (
+                        <div className="flex items-center justify-end gap-2" style={{ flexWrap: 'wrap' }}>
+                          <button 
+                            type="button"
+                            onClick={() => handleUpdateRequest(req.id, { status: 'Arrived' }, `Request #${req.id} marked as Arrived.`)}
+                            className="btn btn-primary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            <FaCheck size={11} style={{ marginRight: '3px' }} /> Arrived
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleOpenAssignModal(req, 'reassign')}
+                            className="btn btn-secondary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            <FaEdit size={11} style={{ marginRight: '3px' }} /> Reassign
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setUnassignTarget(req)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            <FaUndo size={10} style={{ marginRight: '3px' }} /> Unassign
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setCancelRequestTarget(req)}
+                            className="btn btn-sm"
+                            style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+
+                      {req.status === 'Arrived' && (
+                        <div className="flex items-center justify-end gap-2" style={{ flexWrap: 'wrap' }}>
+                          <button 
+                            type="button"
+                            onClick={() => handleUpdateRequest(req.id, { status: 'Completed' }, `Emergency request #${req.id} marked as Completed.`)}
+                            className="btn btn-sm"
+                            style={{ backgroundColor: '#10b981', color: 'white', fontWeight: 700, fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            <FaCheckCircle size={11} style={{ marginRight: '3px' }} /> Mark Completed
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setCancelRequestTarget(req)}
+                            className="btn btn-sm"
+                            style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+
+                      {(req.status === 'Completed' || req.status === 'Cancelled') && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--slate-400)', fontStyle: 'italic' }}>
+                          Immutable ({req.status})
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -353,7 +488,7 @@ export const ManageAmbulances = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-grid-2col" style={{ gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Driver Name *</label>
                   <input 
@@ -379,7 +514,7 @@ export const ManageAmbulances = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
+              <div className="form-grid-2col" style={{ gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Ambulance Category</label>
                   <select 
@@ -441,7 +576,93 @@ export const ManageAmbulances = () => {
         </div>
       )}
 
-      {/* Delete Confirmation */}
+      {/* Assign & Dispatch / Reassign Ambulance Modal */}
+      {assignModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setAssignModal({ isOpen: false, request: null, mode: 'dispatch', selectedAmbulanceId: '' })}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', padding: '2rem' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--slate-900)' }}>
+              {assignModal.mode === 'reassign' ? 'Reassign Ambulance Vehicle' : 'Assign & Dispatch Ambulance'}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>
+              Request #{assignModal.request?.id} &bull; Patient: <strong>{assignModal.request?.patient_name}</strong>
+            </p>
+
+            <div style={{ backgroundColor: 'var(--slate-50)', padding: '0.85rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+              <div><strong>Pickup:</strong> {assignModal.request?.pickup_location}</div>
+              <div style={{ marginTop: '0.25rem' }}><strong>Hospital:</strong> {assignModal.request?.destination_hospital}</div>
+              <div style={{ marginTop: '0.25rem' }}><strong>Emergency:</strong> {assignModal.request?.emergency_type} ({assignModal.request?.patients_count} patient(s))</div>
+            </div>
+
+            {availableAmbulances.length === 0 ? (
+              <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 'var(--radius-md)', color: '#991b1b', fontSize: '0.88rem', marginBottom: '1.5rem' }}>
+                <FaExclamationTriangle style={{ marginRight: '0.4rem' }} />
+                No fleet ambulances are currently <strong>Available</strong>. All vehicles are On Duty or in Maintenance.
+              </div>
+            ) : (
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Select Available Ambulance Vehicle *</label>
+                <select 
+                  value={assignModal.selectedAmbulanceId}
+                  onChange={(e) => setAssignModal({ ...assignModal, selectedAmbulanceId: e.target.value })}
+                  className="form-select"
+                >
+                  {availableAmbulances.map((amb) => (
+                    <option key={amb.id} value={amb.id}>
+                      {amb.vehicle_number} - {amb.driver_name} ({amb.ambulance_type}) [{amb.current_location}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button 
+                type="button" 
+                onClick={() => setAssignModal({ isOpen: false, request: null, mode: 'dispatch', selectedAmbulanceId: '' })}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                disabled={actionLoading || availableAmbulances.length === 0 || !assignModal.selectedAmbulanceId}
+                onClick={handleConfirmAssign}
+                className="btn btn-primary"
+              >
+                {actionLoading ? 'Dispatching...' : assignModal.mode === 'reassign' ? 'Confirm Reassignment' : 'Confirm & Dispatch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unassign Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!unassignTarget}
+        title="Unassign Ambulance Vehicle"
+        message={`Are you sure you want to unassign ambulance from request #${unassignTarget?.id}? The vehicle will be released to Available status, and the request will return to Pending.`}
+        confirmText="Yes, Unassign Vehicle"
+        cancelText="Keep Dispatched"
+        isDanger={false}
+        loading={actionLoading}
+        onConfirm={handleConfirmUnassign}
+        onCancel={() => setUnassignTarget(null)}
+      />
+
+      {/* Cancel Request Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!cancelRequestTarget}
+        title="Cancel Emergency Request"
+        message={`Are you sure you want to cancel request #${cancelRequestTarget?.id}? This will transition the request to terminal Cancelled status and release any assigned ambulance back to Available.`}
+        confirmText="Yes, Cancel Request"
+        cancelText="Keep Active"
+        isDanger={true}
+        loading={actionLoading}
+        onConfirm={handleConfirmCancelRequest}
+        onCancel={() => setCancelRequestTarget(null)}
+      />
+
+      {/* Delete Ambulance Confirmation Modal */}
       <ConfirmationModal 
         isOpen={!!deleteTarget}
         title="Remove Vehicle"

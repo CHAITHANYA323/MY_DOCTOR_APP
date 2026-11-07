@@ -4,11 +4,9 @@ import {
   FaHospitalSymbol, 
   FaShieldAlt, 
   FaUserMd, 
-  FaHeartbeat, 
   FaAmbulance, 
   FaAward, 
   FaCheckCircle, 
-  FaUsers, 
   FaHandHoldingHeart, 
   FaClock, 
   FaPhoneAlt,
@@ -87,7 +85,7 @@ export const About = () => {
               Dedicated to Compassionate, World-Class <span style={{ color: 'var(--primary)' }}>Medical Care</span>
             </h1>
             <p style={{ fontSize: '1.15rem', color: 'var(--slate-600)', lineHeight: 1.7, marginBottom: '2rem' }}>
-              MediCare Plus bridges the gap between patients, verified medical specialists, leading hospitals, and emergency dispatch services. We believe quality healthcare must be transparent, immediate, and accessible to all.
+              MediConnect bridges the gap between patients, verified medical specialists, leading hospitals, and emergency dispatch services. We believe quality healthcare must be transparent, immediate, and accessible to all.
             </p>
             <div className="flex items-center justify-center gap-3" style={{ flexWrap: 'wrap' }}>
               <Link to="/doctors" className="btn btn-primary btn-lg">
@@ -129,7 +127,7 @@ export const About = () => {
         <div className="container">
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             alignItems: 'center',
             gap: '3.5rem'
           }}>
@@ -137,7 +135,7 @@ export const About = () => {
               <div className="section-tag">Our Founding Purpose</div>
               <h2 className="section-title">Bridging Medical Expertise with Modern Patient Care</h2>
               <p style={{ fontSize: '1rem', color: 'var(--slate-700)', lineHeight: 1.7, marginBottom: '1.25rem' }}>
-                Founded by a coalition of senior doctors and healthcare administrators, MediCare Plus was built to resolve real healthcare frustrations: endless hospital queues, lack of transparent consultation fees, and delay in emergency ambulance response.
+                Founded by a coalition of senior doctors and healthcare administrators, MediConnect was built to resolve real healthcare frustrations: endless hospital queues, lack of transparent consultation fees, and delay in emergency ambulance response.
               </p>
               <p style={{ fontSize: '1rem', color: 'var(--slate-700)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 Today, our digital platform connects tens of thousands of families with NABH-accredited multi-speciality hospitals and board-certified clinicians across 20 distinct medical departments.
@@ -181,7 +179,7 @@ export const About = () => {
                 borderRadius: 'var(--radius-lg)',
                 boxShadow: 'var(--shadow-md)',
                 border: '1px solid var(--slate-200)',
-                maxWidth: '240px'
+                maxWidth: 'min(240px, calc(100% - 40px))'
               }}>
                 <div className="flex items-center gap-2" style={{ color: 'var(--primary)', marginBottom: '0.35rem' }}>
                   <FaAward size={20} />
@@ -253,7 +251,7 @@ export const About = () => {
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 270px), 1fr))',
             gap: '2rem'
           }}>
             {leadership.map((leader, idx) => (
@@ -295,7 +293,7 @@ export const About = () => {
             boxShadow: 'var(--shadow-xl)'
           }}>
             <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>
-              Experience the MediCare Plus Difference Today
+              Experience the MediConnect Difference Today
             </h2>
             <p style={{ fontSize: '1.1rem', color: '#e0f2fe', maxWidth: '650px', margin: '0 auto 2rem', lineHeight: 1.6 }}>
               Whether you need a routine health check, a second medical opinion, or urgent emergency care, our verified network is ready to assist you.

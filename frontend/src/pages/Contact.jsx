@@ -12,6 +12,7 @@ import {
   FaHospital, 
   FaQuestionCircle 
 } from 'react-icons/fa';
+import { Button } from '../components/common/Button';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
@@ -136,8 +137,8 @@ export const Contact = () => {
           alignItems: 'flex-start'
         }} className="contact-grid">
           {/* Left Column: Direct Contact Details */}
-          <div>
-            <div className="card" style={{ padding: '2rem', marginBottom: '1.75rem', border: '1px solid var(--slate-200)' }}>
+          <div style={{ minWidth: 0 }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 4vw, 2rem)', marginBottom: '1.75rem', border: '1px solid var(--slate-200)' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--slate-900)', marginBottom: '1.5rem' }}>
                 Direct Contact Channels
               </h3>
@@ -159,7 +160,7 @@ export const Contact = () => {
                   }}>
                     <FaPhoneAlt />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)', fontWeight: 600, display: 'block' }}>Toll-Free Patient Desk</span>
                     <a href="tel:1800102102" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--slate-900)' }}>
                       1800-102-102
@@ -183,10 +184,10 @@ export const Contact = () => {
                   }}>
                     <FaEnvelope />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)', fontWeight: 600, display: 'block' }}>Support Email</span>
-                    <a href="mailto:support@medicareplus.org" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--slate-900)' }}>
-                      support@medicareplus.org
+                    <a href="mailto:support@mediconnect.org" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--slate-900)', wordBreak: 'break-all' }}>
+                      support@mediconnect.org
                     </a>
                   </div>
                 </div>
@@ -207,9 +208,9 @@ export const Contact = () => {
                   }}>
                     <FaMapMarkerAlt />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)', fontWeight: 600, display: 'block' }}>National Operations Hub</span>
-                    <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--slate-800)', margin: 0 }}>
+                    <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--slate-800)', margin: 0, wordBreak: 'break-word' }}>
                       Health City, Chinagadila, Visakhapatnam, AP 530040
                     </p>
                   </div>
@@ -231,9 +232,9 @@ export const Contact = () => {
                   }}>
                     <FaClock />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)', fontWeight: 600, display: 'block' }}>Working Hours</span>
-                    <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--slate-800)', margin: 0 }}>
+                    <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--slate-800)', margin: 0, wordBreak: 'break-word' }}>
                       24 Hours / 7 Days (Emergency & OPD Booking)
                     </p>
                   </div>
@@ -242,7 +243,7 @@ export const Contact = () => {
             </div>
 
             {/* Regional Network Offices */}
-            <div className="card" style={{ padding: '1.75rem', border: '1px solid var(--slate-200)' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 4vw, 1.75rem)', border: '1px solid var(--slate-200)' }}>
               <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--slate-900)' }}>
                 Regional Coordinating Hubs
               </h4>
@@ -264,7 +265,7 @@ export const Contact = () => {
           </div>
 
           {/* Right Column: Interactive Contact Form */}
-          <div className="card" style={{ padding: '2.5rem', border: '1px solid var(--slate-200)', boxShadow: 'var(--shadow-md)' }}>
+          <div className="card" style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)', border: '1px solid var(--slate-200)', boxShadow: 'var(--shadow-md)' }}>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
               Send Us a Message
             </h3>
@@ -308,7 +309,7 @@ export const Contact = () => {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1.25rem' }}>
                 <div className="form-group">
                   <label className="form-label">Full Name *</label>
                   <input 
@@ -336,7 +337,7 @@ export const Contact = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1.25rem' }}>
                 <div className="form-group">
                   <label className="form-label">Contact Phone Number</label>
                   <input 
@@ -392,14 +393,15 @@ export const Contact = () => {
                 />
               </div>
 
-              <button 
+              <Button 
                 type="submit" 
-                disabled={loading}
-                className="btn btn-primary btn-lg"
-                style={{ minWidth: '180px', marginTop: '0.5rem' }}
+                loading={loading}
+                variant="primary"
+                size="lg"
+                style={{ minWidth: 'min(180px, 100%)', marginTop: '0.5rem' }}
               >
-                <FaPaperPlane /> {loading ? 'Sending Message...' : 'Send Message'}
-              </button>
+                <FaPaperPlane /> Send Message
+              </Button>
             </form>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { doctorService } from '../services/doctorService';
 import { DoctorCard } from '../components/DoctorCard';
 import { SkeletonGrid } from '../components/SkeletonLoader';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
+import { Badge } from '../components/common/Badge';
 
 export const SpecializationDoctors = () => {
   const { name } = useParams();
@@ -72,9 +73,11 @@ export const SpecializationDoctors = () => {
             </div>
 
             <div style={{ flex: 1, minWidth: '260px' }}>
-              <span className="section-tag" style={{ marginBottom: '0.4rem' }}>
-                Medical Specialty Department
-              </span>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <Badge variant="primary" size="sm">
+                  Medical Specialty Department
+                </Badge>
+              </div>
               <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.4rem' }}>
                 {specialtyInfo.layman} Doctors ({decodedName})
               </h1>

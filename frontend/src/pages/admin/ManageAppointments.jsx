@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FaCalendarCheck, FaSearch, FaFilter, FaCheck, FaTimes, FaBan, FaHourglassHalf, FaHospital } from 'react-icons/fa';
+import { FaCalendarCheck, FaSearch } from 'react-icons/fa';
 import { appointmentService } from '../../services/appointmentService';
+import { notify } from '../../utils/toast';
+import { Badge } from '../../components/common/Badge';
 
 export const ManageAppointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -31,10 +33,11 @@ export const ManageAppointments = () => {
   const handleStatusChange = async (id, newStatus) => {
     try {
       await appointmentService.updateAppointmentStatus(id, newStatus);
+      notify.success(`Appointment #${id} updated to ${newStatus}.`);
       setNotification(`Appointment #${id} updated to ${newStatus}.`);
       fetchAppointments();
     } catch (err) {
-      alert('Failed to update status');
+      notify.error(err.response?.data?.message || 'Failed to update status');
     }
   };
 
@@ -165,13 +168,7 @@ export const ManageAppointments = () => {
                   </td>
                   <td style={{ fontWeight: 700 }}>₹{appt.consultation_fee}</td>
                   <td>
-                    <span className={`badge ${
-                      appt.status === 'Confirmed' ? 'badge-confirmed' :
-                      appt.status === 'Completed' ? 'badge-completed' :
-                      appt.status === 'Cancelled' ? 'badge-cancelled' : 'badge-pending'
-                    }`}>
-                      {appt.status}
-                    </span>
+                    <Badge status={appt.status} />
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <select 

@@ -14,6 +14,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { doctorService } from '../services/doctorService';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
+import { notify } from '../utils/toast';
+import { Badge } from './common/Badge';
 
 // Guaranteed unique portraits for each doctor to prevent duplicate images
 const FALLBACK_DOCTOR_IMAGES = [
@@ -47,7 +49,7 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
-      alert('Please sign in to bookmark your favorite doctors.');
+      notify.warning('Please sign in to bookmark your favorite doctors.');
       return;
     }
 
@@ -172,13 +174,21 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
               fontWeight: 800, 
               color: 'var(--slate-800)' 
             }}
-            title={`${doctor.rating || 4.9} out of 5 stars`}
+            title={doctor.total_reviews > 0 ? `${doctor.rating} out of 5 stars` : 'New Doctor - No reviews yet'}
           >
-            <FaStar color="#f59e0b" size={15} />
-            <span>{doctor.rating || 4.9}</span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--slate-400)', fontWeight: 500 }}>
-              ({doctor.total_reviews || 0})
-            </span>
+            {doctor.total_reviews > 0 ? (
+              <>
+                <FaStar color="#f59e0b" size={15} />
+                <span>{doctor.rating}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--slate-400)', fontWeight: 500 }}>
+                  ({doctor.total_reviews})
+                </span>
+              </>
+            ) : (
+              <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)', fontWeight: 600 }}>
+                New Doctor
+              </span>
+            )}
           </div>
         </div>
 
@@ -234,21 +244,9 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
             <FaClock size={12} color="var(--primary)" />
             <span>{doctor.available_days || 'Mon - Sat'}</span>
           </div>
-          <span 
-            style={{ 
-              fontSize: '0.76rem', 
-              fontWeight: 700, 
-              color: '#15803d', 
-              backgroundColor: '#dcfce7', 
-              padding: '0.2rem 0.55rem', 
-              borderRadius: 'var(--radius-full)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.25rem'
-            }}
-          >
-            🟢 Available
-          </span>
+          <Badge variant="success" size="sm">
+            Available
+          </Badge>
         </div>
 
         {/* Consultation Fee & Clear Actions */}
@@ -262,19 +260,9 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
                 ₹{doctor.consultation_fee}
               </span>
             </div>
-            <span 
-              style={{ 
-                fontSize: '0.74rem', 
-                color: '#047857', 
-                fontWeight: 700, 
-                backgroundColor: '#ecfdf5', 
-                padding: '0.25rem 0.6rem', 
-                borderRadius: 'var(--radius-full)',
-                border: '1px solid #a7f3d0'
-              }}
-            >
+            <Badge variant="secondary" size="sm">
               Zero Platform Fee
-            </span>
+            </Badge>
           </div>
 
           {/* Action Buttons: [ View Profile ] and [ Book Appointment ] */}

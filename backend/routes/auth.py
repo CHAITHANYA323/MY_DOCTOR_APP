@@ -49,15 +49,13 @@ def register():
     if existing_user:
         return jsonify({'success': False, 'message': 'Email already registered.'}), 409
 
-    role = data.get('role', 'USER').upper()
-    if role not in ['USER', 'ADMIN']:
-        role = 'USER'
-
+    # Public registration must ALWAYS create regular USER accounts.
+    # Any role value provided by the client is strictly ignored.
     user = User(
         name=name,
         email=email,
         phone=phone,
-        role=role,
+        role='USER',
         avatar=data.get('avatar', '')
     )
     user.set_password(password)
@@ -131,10 +129,42 @@ def update_profile():
         user.phone = data['phone'].strip()
     if 'avatar' in data:
         user.avatar = data['avatar'].strip()
-    if 'password' in data and data['password']:
-        if len(data['password']) < 6:
-            return jsonify({'success': False, 'message': 'New password must be at least 6 characters long.'}), 400
-        user.set_password(data['password'])
+
+    # Secure Password Update: require and verify current_password
+    new_password = (data.get('new_password') or data.get('password') or '').strip()
+    current_password = data.get('current_password') or ''
+
+    if new_password:
+        if not current_password:
+            return jsonify({
+                'success': False,
+                'message': 'Current password is required to set a new password.'
+            }), 400
+
+        if not user.check_password(current_password):
+            return jsonify({
+                'success': False,
+                'message': 'Current password is incorrect. Please try again.'
+            }), 400
+
+        if len(new_password) < 6:
+            return jsonify({
+                'success': False,
+                'message': 'New password must be at least 6 characters long.'
+            }), 400
+
+        if current_password == new_password:
+            return jsonify({
+                'success': False,
+                'message': 'New password must be different from current password.'
+            }), 400
+
+        user.set_password(new_password)
+    elif current_password:
+        return jsonify({
+            'success': False,
+            'message': 'New password is required when providing current password.'
+        }), 400
 
     db.session.commit()
     return jsonify({

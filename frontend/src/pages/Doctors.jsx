@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   FaSearch, 
@@ -11,7 +11,8 @@ import {
   FaSlidersH,
   FaCalendarCheck,
   FaStethoscope,
-  FaCheckCircle
+  FaCheckCircle,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import { doctorService } from '../services/doctorService';
 import { hospitalService } from '../services/hospitalService';
@@ -23,11 +24,14 @@ export const Doctors = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filter & Search State
-  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const initialSearch = searchParams.get('search') || '';
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
   const [specialization, setSpecialization] = useState(searchParams.get('specialization') || '');
   const [hospital, setHospital] = useState(searchParams.get('hospital') || '');
   const [location, setLocation] = useState(searchParams.get('location') || '');
   const [minExp, setMinExp] = useState(searchParams.get('min_experience') || '');
+  const [minFee, setMinFee] = useState(searchParams.get('min_fee') || '');
   const [maxFee, setMaxFee] = useState(searchParams.get('max_fee') || '');
   const [availability, setAvailability] = useState(searchParams.get('availability') || '');
   const [sortBy, setSortBy] = useState(searchParams.get('sort_by') || 'rating_desc');
@@ -43,7 +47,37 @@ export const Doctors = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Close mobile filter drawer on Escape key and prevent background scroll
+  useEffect(() => {
+    if (!mobileFilterOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileFilterOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [mobileFilterOpen]);
+
+  // Debounce search input changes by 350ms to prevent rapid-fire API requests
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // Quick Layman Specialty Selection Pills
   const quickCategories = [
@@ -68,10 +102,11 @@ export const Doctors = () => {
     if (hospital) count++;
     if (location) count++;
     if (minExp) count++;
+    if (minFee) count++;
     if (maxFee) count++;
     if (availability) count++;
     return count;
-  }, [search, specialization, hospital, location, minExp, maxFee, availability]);
+  }, [search, specialization, hospital, location, minExp, minFee, maxFee, availability]);
 
   // Load Filter Metadata (Specializations, Hospitals)
   useEffect(() => {
@@ -90,61 +125,69 @@ export const Doctors = () => {
     loadMetadata();
   }, []);
 
-  // Fetch Doctors whenever filters or pagination change
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      setLoading(true);
-      try {
-        const params = {
-          search,
-          specialization,
-          hospital,
-          location,
-          min_experience: minExp,
-          max_fee: maxFee,
-          availability,
-          sort_by: sortBy,
-          page,
-          limit: 9
-        };
+  // Fetch Doctors whenever filters, search, or pagination change
+  const fetchDoctors = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = {
+        search,
+        specialization,
+        hospital,
+        location,
+        min_experience: minExp,
+        min_fee: minFee,
+        max_fee: maxFee,
+        availability,
+        sort_by: sortBy,
+        page,
+        limit: 9
+      };
 
-        // Sync with browser URL
-        const newParams = new URLSearchParams();
-        Object.entries(params).forEach(([k, v]) => {
-          if (v) newParams.set(k, v);
-        });
-        setSearchParams(newParams, { replace: true });
+      // Sync with browser URL
+      const newParams = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v) newParams.set(k, v);
+      });
+      setSearchParams(newParams, { replace: true });
 
-        const res = await doctorService.getDoctors(params);
-        if (res.success) {
-          setDoctors(res.doctors);
-          setTotal(res.total);
-          setTotalPages(res.total_pages);
-          if (res.available_locations) {
-            setAvailableLocations(res.available_locations);
-          }
+      const res = await doctorService.getDoctors(params);
+      if (res.success) {
+        setDoctors(res.doctors);
+        setTotal(res.total);
+        setTotalPages(res.total_pages);
+        if (res.available_locations) {
+          setAvailableLocations(res.available_locations);
         }
-      } catch (err) {
-        console.error('Error fetching doctors:', err);
-      } finally {
-        setLoading(false);
+      } else {
+        setError(res.message || 'Failed to load doctors.');
       }
-    };
+    } catch (err) {
+      console.error('Error fetching doctors:', err);
+      setError(err.response?.data?.message || 'Unable to load doctors. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, specialization, hospital, location, minExp, minFee, maxFee, availability, sortBy, page, setSearchParams]);
 
+  useEffect(() => {
     fetchDoctors();
-  }, [search, specialization, hospital, location, minExp, maxFee, availability, sortBy, page]);
+  }, [fetchDoctors]);
 
   // Reset all filters
   const handleResetFilters = () => {
+    setSearchInput('');
     setSearch('');
     setSpecialization('');
     setHospital('');
     setLocation('');
     setMinExp('');
+    setMinFee('');
     setMaxFee('');
     setAvailability('');
     setSortBy('rating_desc');
     setPage(1);
+    setError(null);
     setMobileFilterOpen(false);
   };
 
@@ -225,15 +268,15 @@ export const Doctors = () => {
             
             <input 
               type="text" 
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search doctor, specialty, hospital or symptom"
               aria-label="Search doctor, specialty, hospital or symptom"
               style={{
                 width: '100%',
                 height: '56px',
                 paddingLeft: '3.2rem',
-                paddingRight: search ? '3rem' : '1.25rem',
+                paddingRight: searchInput ? '3rem' : '1.25rem',
                 fontSize: '1.1rem',
                 fontWeight: 500,
                 color: 'var(--slate-900)',
@@ -255,10 +298,10 @@ export const Doctors = () => {
             />
 
             {/* Clear Search 'X' Button */}
-            {search && (
+            {searchInput && (
               <button
                 type="button"
-                onClick={() => { setSearch(''); setPage(1); }}
+                onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
                 aria-label="Clear search input"
                 style={{
                   position: 'absolute',
@@ -599,13 +642,44 @@ export const Doctors = () => {
               </select>
             </div>
 
-            {/* Filter 5: Consultation Fee */}
+            {/* Filter 5: Min Consultation Fee */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label 
+                htmlFor="filter-min-fee"
+                style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.4rem' }}
+              >
+                Min Consultation Fee
+              </label>
+              <select 
+                id="filter-min-fee"
+                value={minFee}
+                onChange={(e) => { setMinFee(e.target.value); setPage(1); }}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--slate-300)',
+                  backgroundColor: '#ffffff',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  color: 'var(--slate-800)',
+                  outline: 'none'
+                }}
+              >
+                <option value="">Any Min Fee</option>
+                <option value="500">₹500 and above</option>
+                <option value="800">₹800 and above</option>
+                <option value="1000">₹1,000 and above</option>
+              </select>
+            </div>
+
+            {/* Filter 6: Max Consultation Fee */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label 
                 htmlFor="filter-max-fee"
                 style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.4rem' }}
               >
-                Consultation Fee
+                Max Consultation Fee
               </label>
               <select 
                 id="filter-max-fee"
@@ -623,7 +697,7 @@ export const Doctors = () => {
                   outline: 'none'
                 }}
               >
-                <option value="">Any Fee</option>
+                <option value="">Any Max Fee</option>
                 <option value="500">Up to ₹500</option>
                 <option value="800">Up to ₹800</option>
                 <option value="1000">Up to ₹1,000</option>
@@ -631,7 +705,7 @@ export const Doctors = () => {
               </select>
             </div>
 
-            {/* Filter 6: Availability */}
+            {/* Filter 7: Availability */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label 
                 htmlFor="filter-availability"
@@ -737,6 +811,7 @@ export const Doctors = () => {
                   <option value="rating_desc">Highest Rated ⭐</option>
                   <option value="experience_desc">Most Experienced</option>
                   <option value="fee_asc">Lowest Consultation Fee</option>
+                  <option value="fee_desc">Highest Consultation Fee</option>
                   <option value="name_asc">Doctor Name: A to Z</option>
                 </select>
               </div>
@@ -773,7 +848,7 @@ export const Doctors = () => {
                     }}
                   >
                     "{search}"
-                    <FaTimes size={10} style={{ cursor: 'pointer' }} onClick={() => setSearch('')} />
+                    <FaTimes size={10} style={{ cursor: 'pointer' }} onClick={() => { setSearchInput(''); setSearch(''); }} />
                   </span>
                 )}
 
@@ -853,6 +928,25 @@ export const Doctors = () => {
                   </span>
                 )}
 
+                {minFee && (
+                  <span 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      backgroundColor: 'var(--slate-200)',
+                      color: 'var(--slate-800)',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      padding: '0.3rem 0.65rem',
+                      borderRadius: 'var(--radius-full)'
+                    }}
+                  >
+                    Min Fee: ₹{minFee}
+                    <FaTimes size={10} style={{ cursor: 'pointer' }} onClick={() => setMinFee('')} />
+                  </span>
+                )}
+
                 {maxFee && (
                   <span 
                     style={{
@@ -891,9 +985,62 @@ export const Doctors = () => {
               </div>
             )}
 
-            {/* Results Grid / Loading / No Results */}
+            {/* Results Grid / Loading / Error / No Results */}
             {loading ? (
               <SkeletonGrid count={6} />
+            ) : error ? (
+              /* API Error State with Retry Button */
+              <div 
+                style={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: 'var(--radius-xl)',
+                  border: '1px solid #fecaca',
+                  padding: '3.5rem 2rem',
+                  textAlign: 'center',
+                  boxShadow: '0 2px 10px rgba(239, 68, 68, 0.06)'
+                }}
+              >
+                <div 
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    backgroundColor: '#fee2e2',
+                    color: '#ef4444',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.8rem',
+                    marginBottom: '1rem'
+                  }}
+                >
+                  <FaExclamationTriangle />
+                </div>
+
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
+                  Unable to load doctors
+                </h3>
+
+                <p style={{ color: 'var(--slate-600)', fontSize: '0.98rem', maxWidth: '440px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
+                  {error}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={fetchDoctors}
+                  className="btn btn-primary"
+                  style={{
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    padding: '0.65rem 1.5rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <FaRedo size={12} /> Retry
+                </button>
+              </div>
             ) : doctors.length === 0 ? (
               /* ====================================================
                  14. NO RESULTS STATE
@@ -1197,10 +1344,33 @@ export const Doctors = () => {
                 </select>
               </div>
 
-              {/* Consultation Fee */}
+              {/* Min Consultation Fee */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.4rem' }}>
-                  Consultation Fee
+                  Min Consultation Fee
+                </label>
+                <select 
+                  value={minFee}
+                  onChange={(e) => { setMinFee(e.target.value); setPage(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--slate-300)',
+                    fontSize: '0.92rem'
+                  }}
+                >
+                  <option value="">Any Min Fee</option>
+                  <option value="500">₹500 and above</option>
+                  <option value="800">₹800 and above</option>
+                  <option value="1000">₹1,000 and above</option>
+                </select>
+              </div>
+
+              {/* Max Consultation Fee */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.4rem' }}>
+                  Max Consultation Fee
                 </label>
                 <select 
                   value={maxFee}
@@ -1213,7 +1383,7 @@ export const Doctors = () => {
                     fontSize: '0.92rem'
                   }}
                 >
-                  <option value="">Any Fee</option>
+                  <option value="">Any Max Fee</option>
                   <option value="500">Up to ₹500</option>
                   <option value="800">Up to ₹800</option>
                   <option value="1000">Up to ₹1,000</option>

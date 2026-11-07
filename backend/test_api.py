@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 from app import create_app
 from models import db
 
@@ -71,8 +72,8 @@ def test_api_suite():
         json={
             'doctor_id': doc_id,
             'hospital_id': doc_detail['hospital_id'],
-            'appointment_date': '2026-10-15',
-            'appointment_time': '10:00 AM',
+            'appointment_date': (date.today() + timedelta(days=1)).isoformat(),
+            'appointment_time': '02:00 PM',
             'reason': 'Follow up cardiology review.'
         }
     )

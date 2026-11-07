@@ -119,10 +119,12 @@ CREATE TABLE `appointments` (
   `reason` TEXT NOT NULL,
   `status` ENUM('Pending', 'Confirmed', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Pending',
   `notes` TEXT NULL,
+  `active_slot_key` VARCHAR(100) GENERATED ALWAYS AS (CASE WHEN `status` IN ('Pending', 'Confirmed') THEN CONCAT(`doctor_id`, '_', `appointment_date`, '_', `appointment_time`) ELSE NULL END) STORED,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_appointments_user` (`user_id`),
   INDEX `idx_appointments_doctor` (`doctor_id`),
   INDEX `idx_appointments_status` (`status`),
+  UNIQUE KEY `uq_active_doctor_slot` (`active_slot_key`),
   CONSTRAINT `fk_appts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_appts_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_appts_hosp` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -140,7 +142,8 @@ CREATE TABLE `ambulances` (
   `current_location` VARCHAR(150) NOT NULL,
   `status` ENUM('Available', 'On Duty', 'Maintenance') NOT NULL DEFAULT 'Available',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_ambulances_status` (`status`)
+  INDEX `idx_ambulances_status` (`status`),
+  CONSTRAINT `chk_ambulance_status` CHECK (`status` IN ('Available', 'On Duty', 'Maintenance'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -148,6 +151,7 @@ CREATE TABLE `ambulances` (
 -- --------------------------------------------------------
 CREATE TABLE `ambulance_requests` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `idempotency_key` VARCHAR(64) NULL UNIQUE,
   `user_id` INT NULL,
   `patient_name` VARCHAR(100) NOT NULL,
   `phone` VARCHAR(30) NOT NULL,
@@ -160,6 +164,7 @@ CREATE TABLE `ambulance_requests` (
   `assigned_ambulance_id` INT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_requests_status` (`status`),
+  CONSTRAINT `chk_ambulance_request_status` CHECK (`status` IN ('Pending', 'Dispatched', 'Arrived', 'Completed', 'Cancelled')),
   CONSTRAINT `fk_req_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_req_amb` FOREIGN KEY (`assigned_ambulance_id`) REFERENCES `ambulances` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -171,11 +176,15 @@ CREATE TABLE `reviews` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
   `doctor_id` INT NOT NULL,
+  `appointment_id` INT NULL,
   `rating` INT NOT NULL CHECK (`rating` >= 1 AND `rating` <= 5),
   `comment` TEXT NOT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_reviews_doctor` (`doctor_id`),
+  UNIQUE KEY `uq_review_appointment` (`appointment_id`),
   CONSTRAINT `fk_rev_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_rev_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_rev_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_rev_appointment` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

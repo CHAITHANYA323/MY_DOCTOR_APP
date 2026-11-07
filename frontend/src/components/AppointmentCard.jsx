@@ -4,40 +4,40 @@ import {
   FaCalendarAlt, 
   FaClock, 
   FaHospital, 
-  FaUserMd, 
   FaTimesCircle, 
   FaCheckCircle, 
   FaHourglassHalf, 
-  FaBan,
-  FaFileAlt
+  FaBan
 } from 'react-icons/fa';
+import { Badge } from './common/Badge';
+import { Button } from './common/Button';
 
 export const AppointmentCard = ({ appointment, onCancel, isAdmin = false, onStatusChange }) => {
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
       case 'confirmed':
         return (
-          <span className="badge badge-confirmed">
-            <FaCheckCircle size={11} /> Confirmed
-          </span>
+          <Badge variant="success" size="sm">
+            <FaCheckCircle size={11} style={{ marginRight: '0.25rem' }} aria-hidden="true" /> Confirmed
+          </Badge>
         );
       case 'completed':
         return (
-          <span className="badge badge-completed">
-            <FaCheckCircle size={11} /> Completed
-          </span>
+          <Badge variant="primary" size="sm">
+            <FaCheckCircle size={11} style={{ marginRight: '0.25rem' }} aria-hidden="true" /> Completed
+          </Badge>
         );
       case 'cancelled':
         return (
-          <span className="badge badge-cancelled">
-            <FaBan size={11} /> Cancelled
-          </span>
+          <Badge variant="danger" size="sm">
+            <FaBan size={11} style={{ marginRight: '0.25rem' }} aria-hidden="true" /> Cancelled
+          </Badge>
         );
       default:
         return (
-          <span className="badge badge-pending">
-            <FaHourglassHalf size={11} /> Pending Confirmation
-          </span>
+          <Badge variant="warning" size="sm">
+            <FaHourglassHalf size={11} style={{ marginRight: '0.25rem' }} aria-hidden="true" /> Pending
+          </Badge>
         );
     }
   };
@@ -150,18 +150,18 @@ export const AppointmentCard = ({ appointment, onCancel, isAdmin = false, onStat
           ) : (
             <>
               {isCancellable && onCancel && (
-                <button 
+                <Button 
+                  variant="outline"
+                  size="sm"
                   onClick={() => onCancel(appointment)}
-                  className="btn btn-sm"
+                  icon={<FaTimesCircle aria-hidden="true" />}
                   style={{
-                    backgroundColor: 'var(--emergency-light)',
                     color: 'var(--emergency)',
-                    border: '1px solid var(--emergency-border)',
-                    fontWeight: 600
+                    borderColor: 'var(--emergency-border)'
                   }}
                 >
-                  <FaTimesCircle /> Cancel
-                </button>
+                  Cancel
+                </Button>
               )}
             </>
           )}

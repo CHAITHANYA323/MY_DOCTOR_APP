@@ -1,28 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Button } from './common/Button';
 import { 
   FaHospitalSymbol, 
-  FaUserMd, 
-  FaHospital,
-  FaNotesMedical,
-  FaAmbulance, 
-  FaCalendarCheck, 
   FaPhoneAlt, 
   FaBars, 
   FaTimes, 
   FaSignOutAlt, 
-  FaUserCircle, 
-  FaShieldAlt,
   FaChevronDown,
+  FaUserMd,
+  FaHospital,
+  FaStethoscope,
+  FaCalendarCheck,
   FaInfoCircle,
-  FaEnvelope
+  FaEnvelope,
+  FaAmbulance,
+  FaShieldAlt,
+  FaUser
 } from 'react-icons/fa';
 
+/**
+ * Universal responsive Navbar supporting guest, patient, and admin views.
+ * Features an emergency 108 strip, desktop navigation, dropdown menus,
+ * and an accessible mobile off-canvas drawer.
+ */
 export const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef(null);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -36,326 +43,426 @@ export const Navbar = () => {
     setMoreMenuOpen(false);
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    if (moreMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [moreMenuOpen]);
+
+  // Close mobile drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setMobileOpen(false);
+        setMoreMenuOpen(false);
+      }
+    };
+    if (mobileOpen || moreMenuOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, moreMenuOpen]);
+
   return (
-    <header style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 900,
-      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-      backdropFilter: 'blur(8px)',
-      borderBottom: '1px solid var(--slate-200)',
-      boxShadow: 'var(--shadow-xs)'
-    }}>
-      {/* Top Emergency Strip (Only visible when logged in) */}
-      {isAuthenticated && (
-        <div style={{
-          backgroundColor: '#991b1b',
-          color: '#fee2e2',
-          fontSize: '0.8rem',
-          padding: '0.35rem 0',
-          fontWeight: 600
-        }}>
-          <div className="container flex items-center justify-between" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div className="flex items-center gap-2">
-              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }}></span>
-              <span>24/7 Medical Emergency Hotline:</span>
-              <a href="tel:108" style={{ color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'underline' }}>
-                <FaPhoneAlt size={10} /> Dial 108 Free
-              </a>
-            </div>
-            <div>
-              <Link to="/ambulance" style={{ color: '#fef08a', textDecoration: 'underline' }}>
-                Request Ambulance Online &rarr;
-              </Link>
-            </div>
+    <header className="navbar-header">
+      {/* 24/7 Emergency Hotline Strip (Available for both Guests & Patients) */}
+      <div className="navbar-emergency-strip">
+        <div className="container flex items-center justify-between" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div className="flex items-center gap-2 flex-wrap" style={{ flexWrap: 'wrap' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} aria-hidden="true" />
+            <span>24/7 Medical Emergency Hotline:</span>
+            <a 
+              href="tel:108" 
+              style={{ color: '#ffffff', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'underline' }}
+              aria-label="Dial 108 Emergency Ambulance Hotline"
+            >
+              <FaPhoneAlt size={10} aria-hidden="true" /> Dial 108 Free
+            </a>
+          </div>
+          <div>
+            <Link 
+              to="/ambulance" 
+              style={{ color: '#fef08a', textDecoration: 'underline', fontWeight: 700 }}
+              onClick={closeMobile}
+            >
+              Request Ambulance Online &rarr;
+            </Link>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Main Navbar */}
-      <div className="container flex items-center justify-between" style={{ height: '74px' }}>
-        {/* Logo: links to /doctors if logged in, / if not logged in */}
-        <Link to={isAuthenticated ? "/doctors" : "/"} className="flex items-center gap-2" onClick={closeMobile} style={{ textDecoration: 'none' }}>
+      {/* Main Navbar Bar */}
+      <div className="container flex items-center justify-between navbar-main">
+        {/* Logo / Brand Link */}
+        <Link 
+          to={isAuthenticated ? "/doctors" : "/"} 
+          className="flex items-center gap-2" 
+          onClick={closeMobile} 
+          style={{ textDecoration: 'none' }}
+          aria-label="MediConnect Healthcare Platform Home"
+        >
           <div style={{
-            width: 44,
-            height: 44,
+            width: 42,
+            height: 42,
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+            background: 'linear-gradient(135deg, var(--primary, #0284c7), var(--primary-hover, #0369a1))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+            boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
+            flexShrink: 0
           }}>
-            <FaHospitalSymbol size={24} />
+            <FaHospitalSymbol size={22} aria-hidden="true" />
           </div>
           <div>
-            <span style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--slate-900)' }}>
-              Medi<span style={{ color: 'var(--primary)' }}>Connect</span>
+            <span style={{ fontSize: '1.35rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--slate-900)' }}>
+              Medi<span style={{ color: 'var(--primary, #0284c7)' }}>Connect</span>
             </span>
-            <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--slate-500)', marginTop: '-4px' }}>
+            <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--slate-500)', marginTop: '-4px' }}>
               Healthcare Platform
             </span>
           </div>
         </Link>
 
-        {/* Desktop Navigation Links (No Home section after authentication) */}
-        <nav style={{ display: 'none', gap: '1.25rem', alignItems: 'center' }} className="desktop-nav">
-          {/* PROTECTED NAVIGATION: ONLY VISIBLE AFTER LOGIN */}
-          {isAuthenticated && (
+        {/* Desktop Navigation Links */}
+        <nav className="desktop-nav" style={{ gap: '1.25rem', alignItems: 'center' }}>
+          {isAuthenticated ? (
+            /* Authenticated Patient / Admin Navigation */
             <>
               <NavLink 
                 to="/doctors" 
-                style={({ isActive }) => ({
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: isActive ? 'var(--primary)' : 'var(--slate-700)',
-                  padding: '0.4rem 0.2rem',
-                  borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent'
-                })}
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
               >
                 Find a Doctor
               </NavLink>
 
               <NavLink 
                 to="/hospitals" 
-                style={({ isActive }) => ({
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: isActive ? 'var(--primary)' : 'var(--slate-700)',
-                  padding: '0.4rem 0.2rem',
-                  borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent'
-                })}
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
               >
                 Hospitals
               </NavLink>
 
               <NavLink 
                 to="/specializations" 
-                style={({ isActive }) => ({
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: isActive ? 'var(--primary)' : 'var(--slate-700)',
-                  padding: '0.4rem 0.2rem',
-                  borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent'
-                })}
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
               >
                 Specialties
               </NavLink>
 
               <NavLink 
                 to="/appointments" 
-                style={({ isActive }) => ({
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: isActive ? 'var(--primary)' : 'var(--slate-700)',
-                  padding: '0.4rem 0.2rem',
-                  borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent'
-                })}
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
               >
                 Appointments
               </NavLink>
 
-              {/* More Dropdown (Only after login) */}
-              <div style={{ position: 'relative' }}>
+              {/* More Dropdown */}
+              <div ref={moreMenuRef} style={{ position: 'relative' }}>
                 <button 
+                  type="button"
                   onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                  aria-expanded={moreMenuOpen}
+                  aria-haspopup="true"
+                  className="navbar-link"
                   style={{
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.95rem',
-                    color: 'var(--slate-700)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.4rem 0.2rem'
+                    gap: '0.35rem'
                   }}
                 >
-                  More <FaChevronDown size={11} color="var(--slate-400)" />
+                  More <FaChevronDown size={10} color="var(--slate-400)" aria-hidden="true" />
                 </button>
 
                 {moreMenuOpen && (
-                  <div 
-                    onMouseLeave={() => setMoreMenuOpen(false)}
-                    style={{
-                      position: 'absolute',
-                      top: '110%',
-                      left: 0,
-                      width: '180px',
-                      backgroundColor: 'white',
-                      borderRadius: 'var(--radius-md)',
-                      boxShadow: 'var(--shadow-lg)',
-                      border: '1px solid var(--slate-200)',
-                      padding: '0.5rem 0',
-                      zIndex: 950
-                    }}
-                  >
+                  <div className="navbar-dropdown-menu" role="menu">
                     <Link 
                       to="/about" 
                       onClick={() => setMoreMenuOpen(false)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.9rem', color: 'var(--slate-700)', fontWeight: 600 }}
+                      className="navbar-dropdown-item"
+                      role="menuitem"
                     >
-                      <FaInfoCircle color="var(--primary)" /> About Us
+                      <FaInfoCircle color="var(--primary)" aria-hidden="true" /> About Us
                     </Link>
                     <Link 
                       to="/contact" 
                       onClick={() => setMoreMenuOpen(false)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.9rem', color: 'var(--slate-700)', fontWeight: 600 }}
+                      className="navbar-dropdown-item"
+                      role="menuitem"
                     >
-                      <FaEnvelope color="var(--primary)" /> Contact Us
+                      <FaEnvelope color="var(--primary)" aria-hidden="true" /> Contact Us
                     </Link>
                     <Link 
                       to="/ambulance" 
                       onClick={() => setMoreMenuOpen(false)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.9rem', color: 'var(--emergency)', fontWeight: 700 }}
+                      className="navbar-dropdown-item"
+                      style={{ color: 'var(--emergency)', fontWeight: 700 }}
+                      role="menuitem"
                     >
-                      <FaAmbulance color="var(--emergency)" /> Ambulance 108
+                      <FaAmbulance color="var(--emergency)" aria-hidden="true" /> Ambulance 108
                     </Link>
                     {isAdmin && (
                       <Link 
                         to="/admin" 
                         onClick={() => setMoreMenuOpen(false)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.9rem', color: 'var(--primary-dark)', fontWeight: 700, borderTop: '1px solid var(--slate-100)' }}
+                        className="navbar-dropdown-item"
+                        style={{ color: 'var(--primary-dark)', fontWeight: 700, borderTop: '1px solid var(--slate-100)' }}
+                        role="menuitem"
                       >
-                        <FaShieldAlt color="var(--primary)" /> Admin Portal
+                        <FaShieldAlt color="var(--primary)" aria-hidden="true" /> Admin Portal
                       </Link>
                     )}
                   </div>
                 )}
               </div>
             </>
+          ) : (
+            /* Guest Public Navigation */
+            <>
+              <NavLink 
+                to="/doctors" 
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+              >
+                Find Doctors
+              </NavLink>
+              <NavLink 
+                to="/hospitals" 
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+              >
+                Hospitals
+              </NavLink>
+              <NavLink 
+                to="/specializations" 
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+              >
+                Specialties
+              </NavLink>
+              <NavLink 
+                to="/about" 
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+              >
+                About Us
+              </NavLink>
+              <NavLink 
+                to="/contact" 
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+              >
+                Contact
+              </NavLink>
+              <NavLink 
+                to="/ambulance" 
+                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+                style={{ color: 'var(--emergency)' }}
+              >
+                Ambulance (108)
+              </NavLink>
+            </>
           )}
         </nav>
 
-        {/* Right Section: User Profile & Logout (When Logged In) */}
+        {/* Right Section: Actions / Auth / Profile */}
         <div className="flex items-center gap-3">
-          {isAuthenticated && (
-            <div className="flex items-center gap-3">
-              {/* User Name / Profile Link */}
+          {isAuthenticated ? (
+            /* Logged in User Pill & Logout */
+            <div className="navbar-user-actions flex items-center gap-2">
               <Link 
                 to="/profile"
                 className="flex items-center gap-2"
+                onClick={closeMobile}
                 style={{
                   textDecoration: 'none',
-                  padding: '0.4rem 0.85rem',
+                  padding: '0.35rem 0.75rem',
                   backgroundColor: 'var(--slate-100)',
                   border: '1px solid var(--slate-200)',
                   borderRadius: 'var(--radius-full)',
-                  transition: 'all 0.2s ease'
+                  transition: 'var(--transition)'
                 }}
+                aria-label={`View profile for ${user?.name || 'User'}`}
               >
                 <img 
                   src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=0284c7&color=fff`} 
-                  alt={user?.name}
-                  style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }} 
+                  alt={user?.name || 'User'}
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} 
                 />
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--slate-800)' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--slate-800)' }}>
                   Hi, {user?.name?.split(' ')[0] || 'User'}
                 </span>
               </Link>
 
-              {/* Logout Button */}
-              <button 
+              <Button 
+                variant="secondary"
+                size="sm"
+                className="navbar-logout-btn"
                 onClick={handleLogout}
-                className="btn btn-secondary btn-sm"
                 style={{
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
                   color: 'var(--emergency)',
                   borderColor: 'var(--slate-200)',
-                  cursor: 'pointer'
+                  gap: '0.35rem'
                 }}
                 title="Log out of your account"
+                icon={<FaSignOutAlt aria-hidden="true" />}
               >
-                <FaSignOutAlt />
-                <span>Logout</span>
-              </button>
+                Logout
+              </Button>
+            </div>
+          ) : (
+            /* Guest Login / Register CTA Buttons */
+            <div className="navbar-guest-actions flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/login')}
+              >
+                Login
+              </Button>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={() => navigate('/register')}
+              >
+                Register
+              </Button>
             </div>
           )}
 
-          {/* Mobile Toggle Button (Visible when authenticated) */}
-          {isAuthenticated && (
-            <button 
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="mobile-toggle-btn"
-              aria-label="Open Navigation Menu"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 42,
-                height: 42,
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--slate-200)',
-                backgroundColor: 'var(--white)',
-                color: 'var(--slate-800)',
-                cursor: 'pointer'
-              }}
-            >
-              {mobileOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
-            </button>
-          )}
+          {/* Mobile Drawer Hamburger Button */}
+          <button 
+            type="button"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="mobile-toggle-btn"
+            aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileOpen}
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 42,
+              height: 42,
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--slate-200)',
+              backgroundColor: 'var(--white)',
+              color: 'var(--slate-800)',
+              cursor: 'pointer'
+            }}
+          >
+            {mobileOpen ? <FaTimes size={18} aria-hidden="true" /> : <FaBars size={18} aria-hidden="true" />}
+          </button>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu (Authenticated) */}
-      {mobileOpen && isAuthenticated && (
-        <div style={{
-          backgroundColor: 'var(--white)',
-          borderBottom: '2px solid var(--slate-200)',
-          padding: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          boxShadow: 'var(--shadow-xl)'
-        }}>
-          <NavLink to="/doctors" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 700, color: 'var(--slate-900)', fontSize: '1.05rem' }}>
-            👨‍⚕️ Find a Doctor
-          </NavLink>
-          <NavLink to="/hospitals" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 700, color: 'var(--slate-900)', fontSize: '1.05rem' }}>
-            🏥 Hospitals
-          </NavLink>
-          <NavLink to="/specializations" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 700, color: 'var(--slate-900)', fontSize: '1.05rem' }}>
-            🩺 Specialties
-          </NavLink>
-          <NavLink to="/appointments" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 700, color: 'var(--slate-900)', fontSize: '1.05rem' }}>
-            📅 Appointments
-          </NavLink>
-          <NavLink to="/about" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 600, color: 'var(--slate-700)' }}>
-            ℹ️ About Us
-          </NavLink>
-          <NavLink to="/contact" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 600, color: 'var(--slate-700)' }}>
-            ✉️ Contact Us
-          </NavLink>
-          <NavLink to="/ambulance" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 700, color: 'var(--emergency)' }}>
-            🚑 Ambulance (108)
-          </NavLink>
-          <NavLink to="/profile" onClick={closeMobile} style={{ padding: '0.6rem', fontWeight: 700, color: 'var(--primary)' }}>
-            👤 My Profile ({user?.name})
-          </NavLink>
-
-          <div style={{ borderTop: '1px solid var(--slate-200)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-            <button 
-              onClick={handleLogout} 
-              className="btn btn-outline" 
-              style={{ width: '100%', color: 'var(--emergency)', borderColor: 'var(--emergency)', justifyContent: 'center' }}
-            >
-              <FaSignOutAlt /> Logout
-            </button>
-          </div>
-        </div>
+      {/* Mobile Drawer Overlay Backdrop */}
+      {mobileOpen && (
+        <div 
+          className="navbar-mobile-backdrop" 
+          onClick={closeMobile} 
+          aria-hidden="true" 
+        />
       )}
 
-      <style>{`
-        @media (min-width: 900px) {
-          .desktop-nav { display: flex !important; }
-          .mobile-toggle-btn { display: none !important; }
-        }
-      `}</style>
+      {/* Mobile Off-Canvas Drawer */}
+      {mobileOpen && (
+        <div 
+          className="navbar-mobile-drawer" 
+          role="dialog" 
+          aria-label="Mobile Navigation Menu"
+        >
+          {isAuthenticated ? (
+            /* Authenticated Mobile Navigation Links */
+            <>
+              <NavLink to="/doctors" onClick={closeMobile} className="navbar-mobile-link">
+                <FaUserMd color="var(--primary)" aria-hidden="true" /> Find a Doctor
+              </NavLink>
+              <NavLink to="/hospitals" onClick={closeMobile} className="navbar-mobile-link">
+                <FaHospital color="var(--primary)" aria-hidden="true" /> Hospitals
+              </NavLink>
+              <NavLink to="/specializations" onClick={closeMobile} className="navbar-mobile-link">
+                <FaStethoscope color="var(--primary)" aria-hidden="true" /> Specialties
+              </NavLink>
+              <NavLink to="/appointments" onClick={closeMobile} className="navbar-mobile-link">
+                <FaCalendarCheck color="var(--primary)" aria-hidden="true" /> Appointments
+              </NavLink>
+              <NavLink to="/about" onClick={closeMobile} className="navbar-mobile-link">
+                <FaInfoCircle color="var(--slate-500)" aria-hidden="true" /> About Us
+              </NavLink>
+              <NavLink to="/contact" onClick={closeMobile} className="navbar-mobile-link">
+                <FaEnvelope color="var(--slate-500)" aria-hidden="true" /> Contact Us
+              </NavLink>
+              <NavLink to="/ambulance" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--emergency)' }}>
+                <FaAmbulance color="var(--emergency)" aria-hidden="true" /> Ambulance (108)
+              </NavLink>
+              <NavLink to="/profile" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--primary-dark)' }}>
+                <FaUser color="var(--primary)" aria-hidden="true" /> My Profile ({user?.name})
+              </NavLink>
+
+              {isAdmin && (
+                <NavLink to="/admin" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--primary-dark)', fontWeight: 800 }}>
+                  <FaShieldAlt color="var(--primary)" aria-hidden="true" /> Admin Portal
+                </NavLink>
+              )}
+
+              <div style={{ borderTop: '1px solid var(--slate-200)', paddingTop: '0.85rem', marginTop: '0.5rem' }}>
+                <Button 
+                  variant="outline" 
+                  fullWidth
+                  onClick={handleLogout}
+                  style={{ color: 'var(--emergency)', borderColor: 'var(--emergency)' }}
+                  icon={<FaSignOutAlt aria-hidden="true" />}
+                >
+                  Logout
+                </Button>
+              </div>
+            </>
+          ) : (
+            /* Guest Mobile Navigation Links */
+            <>
+              <NavLink to="/doctors" onClick={closeMobile} className="navbar-mobile-link">
+                <FaUserMd color="var(--primary)" aria-hidden="true" /> Find Doctors
+              </NavLink>
+              <NavLink to="/hospitals" onClick={closeMobile} className="navbar-mobile-link">
+                <FaHospital color="var(--primary)" aria-hidden="true" /> Hospitals
+              </NavLink>
+              <NavLink to="/specializations" onClick={closeMobile} className="navbar-mobile-link">
+                <FaStethoscope color="var(--primary)" aria-hidden="true" /> Specialties
+              </NavLink>
+              <NavLink to="/about" onClick={closeMobile} className="navbar-mobile-link">
+                <FaInfoCircle color="var(--slate-500)" aria-hidden="true" /> About Us
+              </NavLink>
+              <NavLink to="/contact" onClick={closeMobile} className="navbar-mobile-link">
+                <FaEnvelope color="var(--slate-500)" aria-hidden="true" /> Contact Us
+              </NavLink>
+              <NavLink to="/ambulance" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--emergency)' }}>
+                <FaAmbulance color="var(--emergency)" aria-hidden="true" /> Ambulance Dispatch (108)
+              </NavLink>
+
+              <div style={{ borderTop: '1px solid var(--slate-200)', paddingTop: '1rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <Button 
+                  variant="secondary" 
+                  fullWidth 
+                  onClick={() => { closeMobile(); navigate('/login'); }}
+                >
+                  Login
+                </Button>
+                <Button 
+                  variant="primary" 
+                  fullWidth 
+                  onClick={() => { closeMobile(); navigate('/register'); }}
+                >
+                  Register
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </header>
   );
 };

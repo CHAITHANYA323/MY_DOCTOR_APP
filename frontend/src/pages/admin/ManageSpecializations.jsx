@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaStethoscope, FaPlus, FaTrash, FaCheck } from 'react-icons/fa';
+import { FaPlus } from 'react-icons/fa';
 import { doctorService } from '../../services/doctorService';
+import { notify } from '../../utils/toast';
+import { Button } from '../../components/common/Button';
+import { Badge } from '../../components/common/Badge';
 
 export const ManageSpecializations = () => {
   const [specializations, setSpecializations] = useState([]);
@@ -36,13 +39,14 @@ export const ManageSpecializations = () => {
     try {
       const res = await doctorService.createSpecialization({ name, description });
       if (res.success) {
+        notify.success(`Specialization "${name}" added successfully.`);
         setMsg(`Specialization "${name}" added successfully.`);
         setName('');
         setDescription('');
         fetchSpecs();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error creating specialization.');
+      notify.error(err.response?.data?.message || 'Error creating specialization.');
     } finally {
       setSubmitting(false);
     }
@@ -60,12 +64,12 @@ export const ManageSpecializations = () => {
       </div>
 
       {msg && (
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontWeight: 600 }}>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--success-light)', color: '#065f46', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontWeight: 600 }}>
           {msg}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '2rem', alignItems: 'flex-start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '2rem', alignItems: 'flex-start' }} className="admin-specializations-grid">
         {/* Table */}
         <div className="table-responsive card">
           <table className="data-table">
@@ -78,7 +82,11 @@ export const ManageSpecializations = () => {
               </tr>
             </thead>
             <tbody>
-              {specializations.map((spec) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Loading specializations...</td>
+                </tr>
+              ) : specializations.map((spec) => (
                 <tr key={spec.id}>
                   <td style={{ fontWeight: 700 }}>#{spec.id}</td>
                   <td style={{ fontWeight: 700, color: 'var(--slate-900)' }}>{spec.name}</td>
@@ -86,9 +94,9 @@ export const ManageSpecializations = () => {
                     {spec.description}
                   </td>
                   <td>
-                    <span className="badge badge-confirmed">
+                    <Badge variant="info">
                       {spec.doctor_count || 0} Doctors
-                    </span>
+                    </Badge>
                   </td>
                 </tr>
               ))}
@@ -126,17 +134,25 @@ export const ManageSpecializations = () => {
               />
             </div>
 
-            <button 
+            <Button 
               type="submit" 
-              disabled={submitting}
-              className="btn btn-primary"
+              loading={submitting}
+              variant="primary"
               style={{ width: '100%' }}
             >
-              <FaPlus /> {submitting ? 'Adding...' : 'Add Department'}
-            </button>
+              <FaPlus /> Add Department
+            </Button>
           </form>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 860px) {
+          .admin-specializations-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

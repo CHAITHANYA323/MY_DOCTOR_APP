@@ -6,13 +6,13 @@ import {
   FaSearch, 
   FaEdit, 
   FaTrash, 
-  FaCheck, 
-  FaTimes, 
-  FaStar,
-  FaHospital
+  FaStar
 } from 'react-icons/fa';
 import { doctorService } from '../../services/doctorService';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { notify } from '../../utils/toast';
+import { Badge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
 
 export const ManageDoctors = () => {
   const [doctors, setDoctors] = useState([]);
@@ -50,12 +50,13 @@ export const ManageDoctors = () => {
     try {
       const res = await doctorService.deleteDoctor(deleteTarget.id);
       if (res.success) {
+        notify.success(res.message || 'Doctor deleted successfully.');
         setNotification(res.message);
         setDeleteTarget(null);
         fetchDoctors();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete doctor.');
+      notify.error(err.response?.data?.message || 'Failed to delete doctor.');
     } finally {
       setDeleteLoading(false);
     }
@@ -65,9 +66,10 @@ export const ManageDoctors = () => {
     const newStatus = doctor.status === 'Active' ? 'Inactive' : 'Active';
     try {
       await doctorService.updateDoctor(doctor.id, { status: newStatus });
+      notify.success(`Dr. ${doctor.name} status updated to ${newStatus}`);
       fetchDoctors();
     } catch (err) {
-      alert('Failed to update doctor status');
+      notify.error('Failed to update doctor status');
     }
   };
 
@@ -84,9 +86,9 @@ export const ManageDoctors = () => {
           </p>
         </div>
 
-        <Link to="/admin/doctors/add" className="btn btn-primary">
+        <Button as={Link} to="/admin/doctors/add" variant="primary">
           <FaPlus /> Add New Doctor
-        </Link>
+        </Button>
       </div>
 
       {notification && (
@@ -192,43 +194,33 @@ export const ManageDoctors = () => {
                   </td>
                   <td>
                     <button
+                      type="button"
                       onClick={() => handleToggleStatus(doc)}
-                      style={{
-                        padding: '0.2rem 0.6rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        borderRadius: 'var(--radius-full)',
-                        border: 'none',
-                        cursor: 'pointer',
-                        backgroundColor: doc.status === 'Active' ? 'var(--success-light)' : 'var(--slate-200)',
-                        color: doc.status === 'Active' ? '#047857' : 'var(--slate-600)'
-                      }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       title="Click to toggle status"
                     >
-                      {doc.status}
+                      <Badge variant={doc.status === 'Active' ? 'success' : 'neutral'}>
+                        {doc.status}
+                      </Badge>
                     </button>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="flex items-center justify-end gap-2">
-                      <Link 
+                      <Button 
+                        as={Link}
                         to={`/admin/doctors/edit/${doc.id}`}
-                        className="btn btn-secondary btn-sm"
-                        style={{ padding: '0.35rem 0.65rem' }}
+                        variant="secondary"
+                        size="sm"
                       >
                         <FaEdit /> Edit
-                      </Link>
-                      <button 
+                      </Button>
+                      <Button 
+                        variant="danger"
+                        size="sm"
                         onClick={() => setDeleteTarget(doc)}
-                        className="btn btn-sm"
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          backgroundColor: 'var(--emergency-light)',
-                          color: 'var(--emergency)',
-                          border: '1px solid var(--emergency-border)'
-                        }}
                       >
                         <FaTrash /> Delete
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
