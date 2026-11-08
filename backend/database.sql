@@ -9,6 +9,8 @@ USE `doctor_hospital_db`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS `audit_logs`;
+DROP TABLE IF EXISTS `invitations`;
 DROP TABLE IF EXISTS `favorites`;
 DROP TABLE IF EXISTS `reviews`;
 DROP TABLE IF EXISTS `ambulance_requests`;
@@ -30,11 +32,15 @@ CREATE TABLE `users` (
   `email` VARCHAR(120) NOT NULL UNIQUE,
   `phone` VARCHAR(25) NULL,
   `password_hash` VARCHAR(255) NOT NULL,
-  `role` ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
+  `role` VARCHAR(30) NOT NULL DEFAULT 'PATIENT', -- 'PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'PATIENT', 'ADMIN', 'USER'
+  `hospital_id` INT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
   `avatar` VARCHAR(255) NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_users_email` (`email`),
-  INDEX `idx_users_role` (`role`)
+  INDEX `idx_users_role` (`role`),
+  INDEX `idx_users_hospital` (`hospital_id`),
+  CONSTRAINT `fk_users_hospital` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -78,6 +84,7 @@ CREATE TABLE `hospitals` (
 -- --------------------------------------------------------
 CREATE TABLE `doctors` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NULL UNIQUE,
   `name` VARCHAR(120) NOT NULL,
   `gender` VARCHAR(20) DEFAULT 'Not Specified',
   `image` VARCHAR(255) NOT NULL,
@@ -102,6 +109,7 @@ CREATE TABLE `doctors` (
   INDEX `idx_doctors_hospital` (`hospital_id`),
   INDEX `idx_doctors_location` (`location`),
   INDEX `idx_doctors_status` (`status`),
+  CONSTRAINT `fk_doctors_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_doctors_spec` FOREIGN KEY (`specialization_id`) REFERENCES `specializations` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_doctors_hosp` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -198,6 +206,49 @@ CREATE TABLE `favorites` (
   UNIQUE KEY `unique_user_doctor_fav` (`user_id`, `doctor_id`),
   CONSTRAINT `fk_fav_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_fav_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Table: invitations
+-- --------------------------------------------------------
+CREATE TABLE `invitations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `email` VARCHAR(120) NOT NULL,
+  `role` VARCHAR(30) NOT NULL,
+  `hospital_id` INT NULL,
+  `doctor_profile_id` INT NULL,
+  `token_hash` VARCHAR(64) NOT NULL UNIQUE,
+  `invited_by_id` INT NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used_at` DATETIME NULL,
+  `revoked_at` DATETIME NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_invitations_token` (`token_hash`),
+  INDEX `idx_invitations_email` (`email`),
+  INDEX `idx_invitations_hospital` (`hospital_id`),
+  INDEX `idx_invitations_revoked` (`revoked_at`),
+  CONSTRAINT `fk_inv_hospital` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_inv_doctor` FOREIGN KEY (`doctor_profile_id`) REFERENCES `doctors` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_inv_invited_by` FOREIGN KEY (`invited_by_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Table: audit_logs
+-- --------------------------------------------------------
+CREATE TABLE `audit_logs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `hospital_id` INT NULL,
+  `user_id` INT NOT NULL,
+  `action` VARCHAR(64) NOT NULL,
+  `resource_type` VARCHAR(32) NOT NULL,
+  `resource_id` INT NULL,
+  `details` TEXT NULL,
+  `ip_address` VARCHAR(45) NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_audit_hospital` (`hospital_id`),
+  INDEX `idx_audit_created` (`created_at`),
+  CONSTRAINT `fk_audit_hospital` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================================
