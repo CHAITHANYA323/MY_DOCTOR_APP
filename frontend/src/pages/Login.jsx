@@ -119,14 +119,39 @@ export const Login = () => {
     setError('');
     setMismatchRole(null);
 
-    if (roleKey === 'PATIENT') {
-      setSelectedRole(ROLES.PATIENT);
-      setEmail('patient@medicare.com');
-      setPassword('Patient@123');
-    } else if (roleKey === 'ADMIN') {
-      setSelectedRole(ROLES.ADMIN);
-      setEmail('admin@medicare.com');
-      setPassword('Admin@123');
+    switch (roleKey) {
+      case 'PLATFORM_OWNER':
+        setSelectedRole(ROLES.PLATFORM_OWNER);
+        setEmail('owner@mediconnect.com');
+        setPassword('Owner@123');
+        break;
+      case 'HOSPITAL_SUPER_ADMIN':
+        setSelectedRole(ROLES.HOSPITAL_SUPER_ADMIN);
+        setEmail('admin.hosp1@medicare.com');
+        setPassword('Admin@123');
+        break;
+      case 'RECEPTIONIST':
+        setSelectedRole(ROLES.RECEPTIONIST);
+        setEmail('reception.hosp1@medicare.com');
+        setPassword('Reception@123');
+        break;
+      case 'DOCTOR':
+        setSelectedRole(ROLES.DOCTOR);
+        setEmail('dr.one@medicare.com');
+        setPassword('Doctor@123');
+        break;
+      case 'PATIENT':
+        setSelectedRole(ROLES.PATIENT);
+        setEmail('patient.alpha@test.com');
+        setPassword('Patient@123');
+        break;
+      case 'ADMIN':
+        setSelectedRole(ROLES.ADMIN);
+        setEmail('legacy.admin@medicare.com');
+        setPassword('Admin@123');
+        break;
+      default:
+        break;
     }
   };
 
@@ -376,16 +401,16 @@ export const Login = () => {
           borderRadius: 'var(--radius-md)'
         }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--slate-600)', fontWeight: 700, display: 'block', marginBottom: '0.45rem' }}>
-            ⚡ Quick Demo Accounts:
+            ⚡ 1-Click Demo Accounts:
           </span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.4rem' }}>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => handleDemoFill('PATIENT')}
               icon={<FaUser aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.75rem', padding: '0.4rem 0.5rem' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
             >
               Demo Patient
             </Button>
@@ -393,18 +418,53 @@ export const Login = () => {
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => handleDemoFill('DOCTOR')}
+              icon={<FaUserMd aria-hidden="true" />}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+            >
+              Demo Doctor
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDemoFill('RECEPTIONIST')}
+              icon={<FaClipboardList aria-hidden="true" />}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+            >
+              Demo Receptionist
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDemoFill('HOSPITAL_SUPER_ADMIN')}
+              icon={<FaHospitalSymbol aria-hidden="true" />}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+            >
+              Demo Super Admin
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDemoFill('PLATFORM_OWNER')}
+              icon={<FaShieldAlt aria-hidden="true" />}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+            >
+              Demo Owner
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleDemoFill('ADMIN')}
               icon={<FaShieldAlt aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.75rem', padding: '0.4rem 0.5rem' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
             >
-              Demo Legacy Admin
+              Legacy Admin
             </Button>
           </div>
-          {selectedRole !== ROLES.PATIENT && (
-            <p style={{ fontSize: '0.72rem', color: 'var(--slate-500)', marginTop: '0.5rem', marginBottom: 0 }}>
-              💡 Staff accounts are onboarded via cryptographic invitation links.
-            </p>
-          )}
         </div>
 
         {/* Bottom Navigation */}
