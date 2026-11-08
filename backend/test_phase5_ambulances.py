@@ -42,6 +42,9 @@ MigrationPreconditionError004 = migration_004.MigrationPreconditionError
 class TestPhase5Ambulances(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from config import Config
+        Config.DATABASE_URL = f"sqlite:///{_TEMP_DB_PATH}"
+        os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DB_PATH}"
         cls.app = create_app()
         cls.app.config['TESTING'] = True
         cls.client = cls.app.test_client()
@@ -58,6 +61,10 @@ class TestPhase5Ambulances(unittest.TestCase):
         with cls.app.app_context():
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()
+        os.environ.pop("DATABASE_URL", None)
+        from config import Config
+        Config.DATABASE_URL = None
         if os.path.exists(_TEMP_DB_PATH):
             try:
                 os.remove(_TEMP_DB_PATH)
@@ -648,8 +655,8 @@ class TestPhase5Ambulances(unittest.TestCase):
 
             # 2. Index physically created by previous interrupted attempt
             conn.execute(text("""
-                CREATE UNIQUE INDEX uq_active_ambulance_dispatch 
-                ON ambulance_requests (assigned_ambulance_id) 
+                CREATE UNIQUE INDEX uq_active_ambulance_dispatch
+                ON ambulance_requests (assigned_ambulance_id)
                 WHERE status IN ('Dispatched', 'Arrived') AND assigned_ambulance_id IS NOT NULL
             """))
 
@@ -753,8 +760,8 @@ class TestPhase5Ambulances(unittest.TestCase):
             """))
             # Pre-existing index before migration runs
             conn.execute(text("""
-                CREATE UNIQUE INDEX uq_active_ambulance_dispatch 
-                ON ambulance_requests (assigned_ambulance_id) 
+                CREATE UNIQUE INDEX uq_active_ambulance_dispatch
+                ON ambulance_requests (assigned_ambulance_id)
                 WHERE status IN ('Dispatched', 'Arrived') AND assigned_ambulance_id IS NOT NULL
             """))
             conn.commit()
@@ -1321,11 +1328,14 @@ class TestPhase5Ambulances(unittest.TestCase):
         if not email:
             email = f"user_{uuid.uuid4().hex[:8]}@example.com"
         with self.app.app_context():
+            # In multi-hospital RBAC, administrative dispatch testing requires authorized roles:
+            # map legacy ADMIN fixture parameter to PLATFORM_OWNER
+            effective_role = "PLATFORM_OWNER" if role == "ADMIN" else role
             u = User(
                 name="Test User",
                 email=email,
                 phone="+91 98000 77777",
-                role=role
+                role=effective_role
             )
             u.set_password("Password123!")
             db.session.add(u)

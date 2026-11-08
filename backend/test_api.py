@@ -1,10 +1,25 @@
+import os
+import sys
+import tempfile
+import shutil
+import uuid
 import json
 from datetime import date, timedelta
-from app import create_app
+
+# Create an isolated temporary database for smoke testing
+_TEMP_TEST_DIR = os.path.join(tempfile.gettempdir(), f"smoke_test_{uuid.uuid4().hex[:8]}")
+os.makedirs(_TEMP_TEST_DIR, exist_ok=True)
+_TEMP_DB_PATH = os.path.join(_TEMP_TEST_DIR, "doctor_hospital_smoke.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DB_PATH}"
+
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+from app import create_app, initialize_database
 from models import db
 
 def test_api_suite():
     app = create_app()
+    initialize_database(app)
     client = app.test_client()
 
     print("=== Testing Flask API Endpoints ===")
@@ -67,7 +82,7 @@ def test_api_suite():
     print(f"[OK] GET /api/doctors/{doc_id} details passed with {len(doc_detail['reviews'])} reviews")
 
     # 8. Book Appointment as Patient
-    res = client.post('/api/appointments', 
+    res = client.post('/api/appointments',
         headers={'Authorization': f'Bearer {patient_token}'},
         json={
             'doctor_id': doc_id,
@@ -102,14 +117,46 @@ def test_api_suite():
     amb_req = json.loads(res.data)['request']
     print(f"[OK] POST /api/ambulance-requests passed. Request ID: {amb_req['id']}")
 
-    # 11. Admin Dashboard Stats
-    res = client.get('/api/admin/stats', headers={'Authorization': f'Bearer {admin_token}'})
+    # 11. Multi-Hospital RBAC Verification for Admin Dashboard Stats
+    # 11a. Unassigned legacy ADMIN receives 403 Forbidden (Zero Wildcard Fallback)
+    res_legacy = client.get('/api/admin/stats', headers={'Authorization': f'Bearer {admin_token}'})
+    assert res_legacy.status_code == 403, f"Security violation: legacy unassigned ADMIN accessed stats: {res_legacy.status_code}"
+    print("[OK] GET /api/admin/stats correctly returned 403 for unassigned legacy ADMIN (Zero Wildcard Fallback)")
+
+    # 11b. Explicit promotion to PLATFORM_OWNER via manage.py promote-owner CLI enables access
+    with app.app_context():
+        import manage
+        manage.promote_owner(email='admin@medicare.com', force_yes=True)
+
+    # Re-login to obtain updated JWT token with PLATFORM_OWNER role
+    res = client.post('/api/auth/login', json={
+        'email': 'admin@medicare.com',
+        'password': 'Admin@123'
+    })
+    assert res.status_code == 200
+    owner_token = json.loads(res.data)['token']
+    assert json.loads(res.data)['user']['role'] == 'PLATFORM_OWNER'
+
+    res = client.get('/api/admin/stats', headers={'Authorization': f'Bearer {owner_token}'})
     assert res.status_code == 200
     admin_stats = json.loads(res.data)
     metrics = admin_stats['metrics']
-    print(f"[OK] GET /api/admin/stats passed: Doctors: {metrics['total_doctors']}, Appointments: {metrics['total_appointments']}, Ambulances: {metrics['total_ambulances']}")
+    print(f"[OK] GET /api/admin/stats passed for PLATFORM_OWNER: Doctors: {metrics['total_doctors']}, Appointments: {metrics['total_appointments']}, Ambulances: {metrics['total_ambulances']}")
 
     print("\nSUCCESS: ALL BACKEND SMOKE TESTS PASSED CLEANLY!")
 
 if __name__ == '__main__':
-    test_api_suite()
+    try:
+        test_api_suite()
+    finally:
+        try:
+            db.session.remove()
+            db.engine.dispose()
+        except Exception:
+            pass
+        os.environ.pop("DATABASE_URL", None)
+        if os.path.exists(_TEMP_TEST_DIR):
+            try:
+                shutil.rmtree(_TEMP_TEST_DIR)
+            except Exception:
+                pass

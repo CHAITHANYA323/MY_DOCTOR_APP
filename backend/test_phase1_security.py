@@ -153,8 +153,8 @@ def test_phase1_security():
     # ----------------------------------------------------
     # TEST 9: Normal profile update without password works cleanly
     # ----------------------------------------------------
-    res_profile = client.put('/api/auth/profile', 
-        headers={'Authorization': f'Bearer {new_token}'}, 
+    res_profile = client.put('/api/auth/profile',
+        headers={'Authorization': f'Bearer {new_token}'},
         json={
             'name': 'Rahul Sharma Renamed',
             'phone': '+91 91234 56780'
@@ -177,8 +177,12 @@ def test_phase1_security():
     print("[PASS] 10b. Regular USER token blocked from POST /api/doctors (HTTP 403)")
 
     # ----------------------------------------------------
-    # TEST 11: Seed ADMIN token succeeds on ADMIN endpoints (HTTP 200)
+    # TEST 11: Authorized PLATFORM_OWNER token succeeds on ADMIN endpoints (HTTP 200)
     # ----------------------------------------------------
+    with app.app_context():
+        import manage
+        manage.promote_owner('admin@medicare.com', force_yes=True)
+
     res_admin_login = client.post('/api/auth/login', json={
         'email': 'admin@medicare.com',
         'password': 'Admin@123'
@@ -188,7 +192,7 @@ def test_phase1_security():
 
     res_admin_stats = client.get('/api/admin/stats', headers={'Authorization': f'Bearer {admin_token}'})
     assert res_admin_stats.status_code == 200
-    print("[PASS] 11. Legitimate ADMIN token succeeds on /api/admin/stats (HTTP 200)")
+    print("[PASS] 11. Legitimate PLATFORM_OWNER token succeeds on /api/admin/stats (HTTP 200)")
 
     print("\n==================================================")
     print("ALL PHASE 1 SECURITY TESTS PASSED SUCCESSFULLY!")
@@ -206,4 +210,3 @@ def test_phase1_security():
 
 if __name__ == '__main__':
     test_phase1_security()
-

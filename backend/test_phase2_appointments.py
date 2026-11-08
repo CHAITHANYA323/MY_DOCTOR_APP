@@ -43,6 +43,9 @@ MIGRATION_VERSION = migration_001.MIGRATION_VERSION
 class TestAppointmentReliability(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from config import Config
+        Config.DATABASE_URL = f"sqlite:///{_TEMP_DB_PATH}"
+        os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DB_PATH}"
         cls.db_path = _TEMP_DB_PATH
         cls.db_uri = f"sqlite:///{_TEMP_DB_PATH}"
 
@@ -126,12 +129,12 @@ class TestAppointmentReliability(unittest.TestCase):
             )
             user2.set_password("SecurePass123!")
 
-            # Seed admin user
+            # Seed authorized platform owner admin user
             admin = User(
                 name="Admin Supervisor",
                 email="admin.phase2@test.com",
                 phone="555-0199",
-                role="ADMIN"
+                role="PLATFORM_OWNER"
             )
             admin.set_password("AdminPass123!")
 
@@ -156,6 +159,8 @@ class TestAppointmentReliability(unittest.TestCase):
             db.session.remove()
             db.engine.dispose()
         os.environ.pop("DATABASE_URL", None)
+        from config import Config
+        Config.DATABASE_URL = None
         try:
             shutil.rmtree(_TEMP_TEST_DIR_PATH, ignore_errors=True)
         except Exception:
@@ -702,8 +707,8 @@ def _concurrent_booking_worker(db_path, doctor_id, appt_date, appt_time, user_id
         # Conflict check
         cur = conn.cursor()
         cur.execute("""
-            SELECT id FROM appointments 
-            WHERE doctor_id = ? AND appointment_date = ? AND appointment_time = ? 
+            SELECT id FROM appointments
+            WHERE doctor_id = ? AND appointment_date = ? AND appointment_time = ?
               AND status IN ('Pending', 'Confirmed')
         """, (doctor_id, appt_date, appt_time))
         conflict = cur.fetchone()
@@ -754,8 +759,8 @@ class TestMultiProcessConcurrency(unittest.TestCase):
                 )
             """)
             conn.execute("""
-                CREATE UNIQUE INDEX uq_active_doctor_slot 
-                ON appointments (doctor_id, appointment_date, appointment_time) 
+                CREATE UNIQUE INDEX uq_active_doctor_slot
+                ON appointments (doctor_id, appointment_date, appointment_time)
                 WHERE status IN ('Pending', 'Confirmed')
             """)
             conn.commit()

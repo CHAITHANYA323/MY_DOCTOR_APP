@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import uuid
+import shutil
 import unittest
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -28,6 +29,9 @@ from utils.auth_middleware import generate_token
 class TestPhase4Reviews(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from config import Config
+        Config.DATABASE_URL = f"sqlite:///{_TEMP_DB_PATH}"
+        os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DB_PATH}"
         cls.db_path = _TEMP_DB_PATH
         cls.db_uri = f"sqlite:///{_TEMP_DB_PATH}"
 
@@ -1066,6 +1070,24 @@ class TestPhase4Reviews(unittest.TestCase):
         self.assertFalse(rev_anon['is_owner'])
         self.assertIsNone(rev_anon['appointment_id'])
         self.assertTrue(rev_anon['is_verified'])
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            with cls.app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+        except Exception:
+            pass
+        os.environ.pop("DATABASE_URL", None)
+        from config import Config
+        Config.DATABASE_URL = None
+        if os.path.exists(_TEMP_TEST_DIR_PATH):
+            try:
+                shutil.rmtree(_TEMP_TEST_DIR_PATH, ignore_errors=True)
+            except Exception:
+                pass
 
 
 if __name__ == '__main__':

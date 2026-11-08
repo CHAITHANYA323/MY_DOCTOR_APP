@@ -20,18 +20,26 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DB_PATH}"
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from app import create_app
+from app import create_app, initialize_database
 from models import db, Doctor, Specialization, Hospital, User, Appointment, Review
 
 
 class TestPhase3DoctorSearchAndFilter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from config import Config
+        Config.DATABASE_URL = f"sqlite:///{_TEMP_DB_PATH}"
+        os.environ["DATABASE_URL"] = f"sqlite:///{_TEMP_DB_PATH}"
         cls.app = create_app()
         cls.app.config['TESTING'] = True
         cls.client = cls.app.test_client()
 
         with cls.app.app_context():
+            db.drop_all()
+            db.create_all()
+            from seed import run_seed
+            run_seed()
+
             # The seeder creates 14 doctors, 20 specializations, 6 hospitals, and patient user
             # Let's add an Inactive doctor to verify inactive doctor filtering
             apollo = Hospital.query.filter_by(slug="apollo-hospitals-visakhapatnam").first()
@@ -337,6 +345,23 @@ class TestPhase3DoctorSearchAndFilter(unittest.TestCase):
         self.assertEqual(res_slots.status_code, 200)
         slots_data = res_slots.get_json()
         self.assertIn("10:00 AM", slots_data['booked_slots'])
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            with cls.app.app_context():
+                db.session.remove()
+                db.engine.dispose()
+        except Exception:
+            pass
+        os.environ.pop("DATABASE_URL", None)
+        from config import Config
+        Config.DATABASE_URL = None
+        if os.path.exists(_TEMP_TEST_DIR_PATH):
+            try:
+                shutil.rmtree(_TEMP_TEST_DIR_PATH)
+            except Exception:
+                pass
 
 
 if __name__ == '__main__':
