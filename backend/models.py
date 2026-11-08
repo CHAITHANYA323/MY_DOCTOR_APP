@@ -25,15 +25,23 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     phone = db.Column(db.String(25))
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default='USER', nullable=False)  # 'USER' or 'ADMIN'
+    role = db.Column(db.String(30), default='USER', nullable=False)  # 'USER', 'PATIENT', 'ADMIN', 'PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST', 'DOCTOR'
     avatar = db.Column(db.String(255), default='')
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='SET NULL'), nullable=True, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+    temporary_password_expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
+    hospital = db.relationship('Hospital', foreign_keys=[hospital_id], backref=db.backref('staff_users', lazy=True))
+    doctor_profile = db.relationship('Doctor', back_populates='user', uselist=False, foreign_keys='Doctor.user_id')
     appointments = db.relationship('Appointment', back_populates='user', cascade='all, delete-orphan')
     reviews = db.relationship('Review', back_populates='user', cascade='all, delete-orphan')
     favorites = db.relationship('Favorite', back_populates='user', cascade='all, delete-orphan')
     ambulance_requests = db.relationship('AmbulanceRequest', back_populates='user')
+    invitations_sent = db.relationship('Invitation', foreign_keys='Invitation.invited_by_id', back_populates='invited_by', cascade='all, delete-orphan')
+    audit_logs = db.relationship('AuditLog', back_populates='user', cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -48,6 +56,11 @@ class User(db.Model):
             'email': self.email,
             'phone': self.phone,
             'role': self.role,
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
+            'is_active': bool(self.is_active) if self.is_active is not None else True,
+            'must_change_password': bool(self.must_change_password) if self.must_change_password is not None else False,
+            'temporary_password_expires_at': self.temporary_password_expires_at.isoformat() if self.temporary_password_expires_at else None,
             'avatar': self.avatar or f"https://ui-avatars.com/api/?name={self.name.replace(' ', '+')}&background=0284c7&color=fff",
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
@@ -129,6 +142,7 @@ class Doctor(db.Model):
     __tablename__ = 'doctors'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, unique=True)
     name = db.Column(db.String(120), nullable=False, index=True)
     gender = db.Column(db.String(20), default='Not Specified')
     image = db.Column(db.String(255), nullable=False)
@@ -151,6 +165,7 @@ class Doctor(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
+    user = db.relationship('User', back_populates='doctor_profile', foreign_keys=[user_id])
     specialization = db.relationship('Specialization', back_populates='doctors')
     hospital = db.relationship('Hospital', back_populates='doctors')
     appointments = db.relationship('Appointment', back_populates='doctor', cascade='all, delete-orphan')
@@ -160,6 +175,8 @@ class Doctor(db.Model):
     def to_dict(self, brief=False):
         data = {
             'id': self.id,
+            'user_id': self.user_id,
+            'is_linked': self.user_id is not None,
             'name': self.name,
             'gender': self.gender,
             'image': self.image,
@@ -251,6 +268,7 @@ class Ambulance(db.Model):
     ambulance_type = db.Column(db.String(60), default='Basic Life Support') # 'Basic Life Support', 'Advanced Life Support', 'ICU Ambulance', 'Patient Transport'
     current_location = db.Column(db.String(150), nullable=False)
     status = db.Column(db.String(30), default='Available', nullable=False, index=True) # 'Available', 'On Duty', 'Maintenance'
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='SET NULL'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -260,6 +278,7 @@ class Ambulance(db.Model):
         ),
     )
 
+    hospital = db.relationship('Hospital', foreign_keys=[hospital_id], backref=db.backref('ambulances', lazy=True))
     requests = db.relationship('AmbulanceRequest', back_populates='assigned_ambulance')
 
     def to_dict(self):
@@ -271,6 +290,8 @@ class Ambulance(db.Model):
             'ambulance_type': self.ambulance_type,
             'current_location': self.current_location,
             'status': self.status,
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -290,6 +311,7 @@ class AmbulanceRequest(db.Model):
     additional_info = db.Column(db.Text, default='')
     status = db.Column(db.String(30), default='Pending', nullable=False, index=True) # 'Pending', 'Dispatched', 'Arrived', 'Completed', 'Cancelled'
     assigned_ambulance_id = db.Column(db.Integer, db.ForeignKey('ambulances.id'), nullable=True)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='SET NULL'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -302,6 +324,7 @@ class AmbulanceRequest(db.Model):
 
     user = db.relationship('User', back_populates='ambulance_requests')
     assigned_ambulance = db.relationship('Ambulance', back_populates='requests')
+    hospital = db.relationship('Hospital', foreign_keys=[hospital_id], backref=db.backref('ambulance_requests', lazy=True))
 
     def to_dict(self):
         return {
@@ -317,6 +340,8 @@ class AmbulanceRequest(db.Model):
             'status': self.status,
             'assigned_ambulance_id': self.assigned_ambulance_id,
             'assigned_ambulance': self.assigned_ambulance.to_dict() if self.assigned_ambulance else None,
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -374,5 +399,96 @@ class Favorite(db.Model):
             'user_id': self.user_id,
             'doctor_id': self.doctor_id,
             'doctor': self.doctor.to_dict(brief=True) if self.doctor else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class Invitation(db.Model):
+    __tablename__ = 'invitations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    role = db.Column(db.String(30), nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='CASCADE'), nullable=True, index=True)
+    doctor_profile_id = db.Column(db.Integer, db.ForeignKey('doctors.id', ondelete='SET NULL'), nullable=True)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    invited_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime, nullable=True)
+    revoked_at = db.Column(db.DateTime, nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    hospital = db.relationship('Hospital')
+    doctor_profile = db.relationship('Doctor')
+    invited_by = db.relationship('User', foreign_keys=[invited_by_id], back_populates='invitations_sent')
+
+    def is_expired(self):
+        now = datetime.now(timezone.utc)
+        exp = self.expires_at if self.expires_at.tzinfo else self.expires_at.replace(tzinfo=timezone.utc)
+        return now > exp
+
+    def is_valid(self):
+        return self.used_at is None and self.revoked_at is None and not self.is_expired()
+
+    def get_status(self):
+        if self.revoked_at is not None:
+            return 'Revoked'
+        if self.used_at is not None:
+            return 'Accepted'
+        if self.is_expired():
+            return 'Expired'
+        return 'Pending'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'role': self.role,
+            'status': self.get_status(),
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
+            'doctor_profile_id': self.doctor_profile_id,
+            'doctor_name': self.doctor_profile.name if self.doctor_profile else None,
+            'invited_by_id': self.invited_by_id,
+            'invited_by_name': self.invited_by.name if self.invited_by else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'used_at': self.used_at.isoformat() if self.used_at else None,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'is_valid': self.is_valid(),
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='SET NULL'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    action = db.Column(db.String(64), nullable=False)
+    resource_type = db.Column(db.String(32), nullable=False)
+    resource_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(45), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    # Relationships
+    hospital = db.relationship('Hospital')
+    user = db.relationship('User', back_populates='audit_logs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
+            'user_id': self.user_id,
+            'user_name': self.user.name if self.user else None,
+            'user_email': self.user.email if self.user else None,
+            'action': self.action,
+            'resource_type': self.resource_type,
+            'resource_id': self.resource_id,
+            'details': self.details,
+            'ip_address': self.ip_address,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

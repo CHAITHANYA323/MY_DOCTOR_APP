@@ -2,7 +2,7 @@ import re
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError
-from models import db, Ambulance, AmbulanceRequest
+from models import db, Ambulance, AmbulanceRequest, Hospital
 from utils.auth_middleware import admin_required, optional_jwt, jwt_required
 
 ambulances_bp = Blueprint('ambulances', __name__, url_prefix='/api')
@@ -176,13 +176,19 @@ def create_ambulance():
     if Ambulance.query.filter_by(vehicle_number=vehicle_number).first():
         return jsonify({'success': False, 'message': f'Ambulance with vehicle number {vehicle_number} already exists.'}), 409
 
+    user = getattr(g, 'current_user', None)
+    target_hospital_id = data.get('hospital_id')
+    if user and user.role == 'HOSPITAL_SUPER_ADMIN':
+        target_hospital_id = user.hospital_id
+
     ambulance = Ambulance(
         vehicle_number=vehicle_number,
         driver_name=driver_name,
         driver_phone=driver_phone,
         ambulance_type=ambulance_type,
         current_location=current_location,
-        status=status
+        status=status,
+        hospital_id=target_hospital_id
     )
     db.session.add(ambulance)
     db.session.commit()
@@ -199,6 +205,11 @@ def update_ambulance(amb_id):
     ambulance = Ambulance.query.get(amb_id)
     if not ambulance:
         return jsonify({'success': False, 'message': 'Ambulance vehicle not found.'}), 404
+
+    user = getattr(g, 'current_user', None)
+    if user and user.role == 'HOSPITAL_SUPER_ADMIN':
+        if ambulance.hospital_id and ambulance.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Access denied: You cannot modify ambulances belonging to other hospitals.'}), 403
 
     data = request.get_json() or {}
     if 'vehicle_number' in data and data['vehicle_number'].strip():
@@ -232,6 +243,11 @@ def delete_ambulance(amb_id):
     ambulance = Ambulance.query.get(amb_id)
     if not ambulance:
         return jsonify({'success': False, 'message': 'Ambulance vehicle not found.'}), 404
+
+    user = getattr(g, 'current_user', None)
+    if user and user.role == 'HOSPITAL_SUPER_ADMIN':
+        if ambulance.hospital_id and ambulance.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Access denied: You cannot delete ambulances belonging to other hospitals.'}), 403
 
     veh = ambulance.vehicle_number
     db.session.delete(ambulance)
@@ -345,6 +361,15 @@ def create_ambulance_request():
             assigned_amb.status = 'On Duty'
             initial_status = 'Dispatched'
 
+        # Resolve destination hospital to hospital_id if available
+        target_hospital = None
+        if destination_hospital:
+            target_hospital = Hospital.query.filter(
+                (Hospital.name.ilike(destination_hospital)) |
+                (Hospital.slug.ilike(destination_hospital))
+            ).first()
+        dest_hospital_id = target_hospital.id if target_hospital else None
+
         req = AmbulanceRequest(
             idempotency_key=idempotency_key,
             user_id=user_id,
@@ -353,6 +378,7 @@ def create_ambulance_request():
             emergency_type=emergency_type,
             pickup_location=pickup_location,
             destination_hospital=destination_hospital,
+            hospital_id=dest_hospital_id,
             patients_count=patients_count,
             additional_info=additional_info,
             status=initial_status,
@@ -400,6 +426,7 @@ def create_ambulance_request():
                 emergency_type=emergency_type,
                 pickup_location=pickup_location,
                 destination_hospital=destination_hospital,
+                hospital_id=dest_hospital_id,
                 patients_count=patients_count,
                 additional_info=additional_info,
                 status='Pending',
@@ -427,7 +454,11 @@ def get_ambulance_requests():
     status = request.args.get('status', '').strip()
 
     query = AmbulanceRequest.query
-    if user.role != 'ADMIN':
+    if user.role in ('ADMIN', 'PLATFORM_OWNER'):
+        pass
+    elif user.role == 'HOSPITAL_SUPER_ADMIN':
+        query = query.filter(AmbulanceRequest.hospital_id == user.hospital_id)
+    else:
         query = query.filter_by(user_id=user.id)
 
     if status and status.lower() != 'all':
@@ -453,6 +484,22 @@ def update_ambulance_request(req_id):
         if not req:
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Ambulance request not found.'}), 404
+
+        # Multi-tenant scoping: Only PLATFORM_OWNER/ADMIN or assigned HOSPITAL_SUPER_ADMIN can modify
+        user = g.current_user
+        if user.role not in ('PLATFORM_OWNER', 'ADMIN'):
+            if req.hospital_id is None:
+                db.session.rollback()
+                return jsonify({
+                    'success': False,
+                    'message': 'Access denied: Emergency requests without an assigned hospital can only be managed by Platform Owners.'
+                }), 403
+            if req.hospital_id != getattr(user, 'hospital_id', None):
+                db.session.rollback()
+                return jsonify({
+                    'success': False,
+                    'message': 'Access denied: You cannot modify emergency requests belonging to other hospitals.'
+                }), 403
 
         # Terminal state immutability check
         if req.status in ['Completed', 'Cancelled']:
@@ -670,10 +717,28 @@ def cancel_ambulance_request(req_id):
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Ambulance request not found.'}), 404
 
-        current_user = g.current_user
-        if current_user.role != 'ADMIN' and req.user_id != current_user.id:
-            db.session.rollback()
-            return jsonify({'success': False, 'message': 'You are not authorized to cancel this emergency request.'}), 403
+        # Authorization & multi-tenant scoping for cancellation:
+        user = g.current_user
+        is_creator = (req.user_id is not None and req.user_id == user.id)
+
+        if not is_creator:
+            if user.role not in ('ADMIN', 'PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN'):
+                db.session.rollback()
+                return jsonify({'success': False, 'message': 'You are not authorized to cancel this emergency request.'}), 403
+
+            if user.role == 'HOSPITAL_SUPER_ADMIN':
+                if req.hospital_id is None:
+                    db.session.rollback()
+                    return jsonify({
+                        'success': False,
+                        'message': 'Access denied: Emergency requests without an assigned hospital can only be managed by Platform Owners.'
+                    }), 403
+                if req.hospital_id != user.hospital_id:
+                    db.session.rollback()
+                    return jsonify({
+                        'success': False,
+                        'message': 'Access denied: You cannot modify emergency requests belonging to other hospitals.'
+                    }), 403
 
         if req.status in ['Completed', 'Cancelled']:
             db.session.rollback()

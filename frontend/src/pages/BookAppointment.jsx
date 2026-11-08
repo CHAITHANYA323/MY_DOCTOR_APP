@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  FaUserMd, 
-  FaCalendarAlt, 
-  FaClock, 
-  FaUser, 
-  FaPhoneAlt, 
-  FaHospital, 
-  FaCheckCircle, 
-  FaArrowLeft, 
-  FaArrowRight, 
-  FaShieldAlt,
-  FaNotesMedical
+import {
+  FaUserMd,
+  FaClock,
+  FaHospital,
+  FaCheckCircle,
+  FaArrowLeft,
+  FaArrowRight,
+  FaShieldAlt
 } from 'react-icons/fa';
 import { doctorService } from '../services/doctorService';
 import { appointmentService } from '../services/appointmentService';
@@ -340,9 +336,9 @@ export const BookAppointment = () => {
           border: '1px solid var(--slate-200)',
           backgroundColor: 'var(--white)'
         }}>
-          <img 
-            src={doctor.image} 
-            alt={doctor.name} 
+          <img
+            src={doctor.image}
+            alt={doctor.name}
             style={{ width: '70px', height: '70px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }}
           />
           <div style={{ flex: 1, minWidth: '220px' }}>
@@ -410,7 +406,7 @@ export const BookAppointment = () => {
             {/* Custom Date Input Option */}
             <div style={{ maxWidth: '300px', marginBottom: '2rem' }}>
               <label className="form-label">Or pick another date from calendar:</label>
-              <input 
+              <input
                 type="date"
                 min={new Date().toISOString().split('T')[0]}
                 value={selectedDate}
@@ -423,8 +419,8 @@ export const BookAppointment = () => {
               <button onClick={() => navigate(`/doctors/${doctor.id}`)} className="btn btn-secondary">
                 <FaArrowLeft /> Back
               </button>
-              <button 
-                onClick={() => setStep(3)} 
+              <button
+                onClick={() => setStep(3)}
                 disabled={!selectedDate}
                 className="btn btn-primary btn-lg"
               >
@@ -533,8 +529,8 @@ export const BookAppointment = () => {
               <button onClick={() => setStep(2)} className="btn btn-secondary">
                 <FaArrowLeft /> Change Date
               </button>
-              <button 
-                onClick={() => setStep(4)} 
+              <button
+                onClick={() => setStep(4)}
                 disabled={!selectedTime || bookedSlots.includes(selectedTime)}
                 className="btn btn-primary btn-lg"
               >
@@ -557,8 +553,8 @@ export const BookAppointment = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Patient Full Name *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="e.g. Rahul Sharma"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
@@ -569,8 +565,8 @@ export const BookAppointment = () => {
 
               <div className="form-group">
                 <label className="form-label">Contact Phone Number *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="e.g. +91 98765 43210"
                   value={patientPhone}
                   onChange={(e) => setPatientPhone(e.target.value)}
@@ -581,8 +577,8 @@ export const BookAppointment = () => {
 
               <div className="form-group">
                 <label className="form-label">Patient Age (Years)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   min="1"
                   max="120"
                   placeholder="e.g. 34"
@@ -595,7 +591,7 @@ export const BookAppointment = () => {
 
             <div className="form-group">
               <label className="form-label">Reason for Visit / Main Symptoms</label>
-              <textarea 
+              <textarea
                 rows="3"
                 placeholder="Briefly describe what you would like to discuss (e.g. Chest heaviness, regular annual checkup, headache follow-up...)"
                 value={visitReason}
@@ -608,14 +604,14 @@ export const BookAppointment = () => {
               <button onClick={() => setStep(3)} className="btn btn-secondary">
                 <FaArrowLeft /> Change Time
               </button>
-              <button 
+              <button
                 onClick={() => {
                   if (!patientName.trim() || !patientPhone.trim()) {
                     notify.warning('Please fill in both patient name and phone number.');
                     return;
                   }
                   setStep(5);
-                }} 
+                }}
                 className="btn btn-primary btn-lg"
               >
                 Review & Confirm <FaArrowRight />
@@ -701,7 +697,7 @@ export const BookAppointment = () => {
               <button onClick={() => setStep(4)} className="btn btn-secondary">
                 <FaArrowLeft /> Edit Details
               </button>
-              <button 
+              <button
                 onClick={handleConfirmBooking}
                 disabled={bookingLoading}
                 className="btn btn-primary btn-lg"

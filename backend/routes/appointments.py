@@ -4,7 +4,7 @@ from datetime import datetime, date, timezone
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, IntegrityError
-from models import db, Appointment, Doctor, Hospital
+from models import db, Appointment, Doctor, Hospital, User
 from utils.auth_middleware import jwt_required
 
 appointments_bp = Blueprint('appointments', __name__, url_prefix='/api/appointments')
@@ -22,22 +22,22 @@ def normalize_appointment_time(time_str: str) -> str:
     """
     if not time_str or not isinstance(time_str, str):
         raise ValueError("Appointment time is required.")
-    
+
     cleaned = time_str.strip()
-    
+
     # 1. Match 12-hour format: hour 1-12, minute 00-59, AM/PM
     m12 = TIME_12H_REGEX.match(cleaned)
     if m12:
         hour, minute, period = m12.groups()
         return f"{int(hour):02d}:{int(minute):02d} {period.upper()}"
-        
+
     # 2. Match 24-hour format: hour 00-23, minute 00-59
     m24 = TIME_24H_REGEX.match(cleaned)
     if m24:
         hour, minute, _ = m24.groups()
         dt = datetime.strptime(f"{int(hour):02d}:{int(minute):02d}", "%H:%M")
         return dt.strftime("%I:%M %p")
-        
+
     raise ValueError(
         f"Invalid appointment time '{time_str}'. Time must be in valid 12-hour (e.g., '09:30 AM') or 24-hour (e.g., '14:30') format."
     )
@@ -109,14 +109,31 @@ def get_appointments():
     user = g.current_user
     status = request.args.get('status', '').strip()
     doctor_id = request.args.get('doctor_id')
+    hospital_id_param = request.args.get('hospital_id')
+    view_mode = request.args.get('view', '').strip().lower()
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 50))
 
     query = Appointment.query
 
-    # If not admin, restrict to current user's appointments
-    if user.role != 'ADMIN':
+    # Multi-tenant hospital isolation with SEC-05 dual-context personal view
+    if view_mode in ('patient', 'personal') or user.role in ('PATIENT', 'USER'):
+        # Strict ownership check: personal view is strictly scoped to the caller's own user_id
         query = query.filter_by(user_id=user.id)
+    elif user.role == 'PLATFORM_OWNER':
+        if hospital_id_param and hospital_id_param.isdigit():
+            query = query.filter_by(hospital_id=int(hospital_id_param))
+    elif user.role in ('HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST'):
+        if not user.hospital_id:
+            return jsonify({'success': False, 'message': 'Staff user has no hospital assigned.'}), 403
+        query = query.filter_by(hospital_id=user.hospital_id)
+    elif user.role == 'DOCTOR':
+        if not user.doctor_profile:
+            return jsonify({'success': True, 'total': 0, 'page': page, 'limit': limit, 'appointments': []}), 200
+        query = query.filter_by(doctor_id=user.doctor_profile.id)
+    else:
+        # Unassigned legacy ADMIN or unknown role has no wildcard bypass
+        return jsonify({'success': False, 'message': 'Access denied. Account must be assigned to an authorized role.'}), 403
 
     if status and status.lower() != 'all':
         query = query.filter(Appointment.status.ilike(status))
@@ -139,12 +156,26 @@ def get_appointments():
 @appointments_bp.route('/<int:appointment_id>', methods=['GET'])
 @jwt_required
 def get_appointment(appointment_id):
-    appointment = Appointment.query.get(appointment_id)
+    appointment = db.session.get(Appointment, appointment_id)
     if not appointment:
         return jsonify({'success': False, 'message': 'Appointment not found.'}), 404
 
-    # Permission check: either owner or admin
-    if g.current_user.role != 'ADMIN' and appointment.user_id != g.current_user.id:
+    user = g.current_user
+    # Multi-tenant authorization check
+    authorized = False
+    if appointment.user_id == user.id:
+        # User is the patient who booked this appointment
+        authorized = True
+    elif user.role == 'PLATFORM_OWNER':
+        authorized = True
+    elif user.role in ('HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST'):
+        authorized = (user.hospital_id is not None and appointment.hospital_id == user.hospital_id)
+    elif user.role == 'DOCTOR':
+        authorized = (user.doctor_profile is not None and appointment.doctor_id == user.doctor_profile.id)
+    elif user.role in ('PATIENT', 'USER'):
+        authorized = (appointment.user_id == user.id)
+
+    if not authorized:
         return jsonify({'success': False, 'message': 'Unauthorized access to appointment details.'}), 403
 
     return jsonify({
@@ -171,13 +202,49 @@ def create_appointment():
     if not doctor:
         return jsonify({'success': False, 'message': 'Selected doctor does not exist.'}), 400
 
-    # Auto-resolve hospital if not provided
-    if not hospital_id:
+    # Role-based hospital scoping and patient identity resolution
+    user = g.current_user
+    booking_user_id = current_user_id
+
+    if user.role == 'RECEPTIONIST':
+        if not user.hospital_id:
+            return jsonify({'success': False, 'message': 'Staff user has no hospital assigned.'}), 403
+        if doctor.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Receptionists can only book appointments for doctors in their assigned hospital.'}), 403
+        # Strict tenant override: force hospital_id to receptionist's hospital
+        hospital_id = user.hospital_id
+
+        target_patient_id = data.get('patient_id') or data.get('user_id')
+        if not target_patient_id:
+            return jsonify({'success': False, 'message': 'Patient selection is required for reception appointment booking.'}), 400
+        patient_record = db.session.get(User, target_patient_id)
+        if not patient_record:
+            return jsonify({'success': False, 'message': 'Specified patient account does not exist.'}), 404
+        if patient_record.role not in ('USER', 'PATIENT'):
+            return jsonify({'success': False, 'message': 'Appointments can only be booked for patients.'}), 400
+        booking_user_id = patient_record.id
+    elif user.role in ('PATIENT', 'USER'):
         hospital_id = doctor.hospital_id
+    elif user.role in ('HOSPITAL_SUPER_ADMIN',):
+        if not user.hospital_id:
+            return jsonify({'success': False, 'message': 'Hospital Admin has no hospital assigned.'}), 403
+        if doctor.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Hospital Admins can only book appointments for their assigned hospital.'}), 403
+        hospital_id = user.hospital_id
+        target_patient_id = data.get('patient_id') or data.get('user_id')
+        if target_patient_id:
+            patient_record = db.session.get(User, target_patient_id)
+            if not patient_record:
+                return jsonify({'success': False, 'message': 'Patient account not found.'}), 404
+            booking_user_id = patient_record.id
     else:
-        hospital = Hospital.query.get(hospital_id)
-        if not hospital:
+        # Auto-resolve hospital if not provided
+        if not hospital_id:
             hospital_id = doctor.hospital_id
+        else:
+            hospital = Hospital.query.get(hospital_id)
+            if not hospital:
+                hospital_id = doctor.hospital_id
 
     # Date validation: format and must not be in past
     try:
@@ -223,7 +290,7 @@ def create_appointment():
             }), 409
 
         appointment = Appointment(
-            user_id=current_user_id,
+            user_id=booking_user_id,
             doctor_id=doctor.id,
             hospital_id=hospital_id,
             appointment_date=appointment_date,
@@ -262,8 +329,17 @@ def create_appointment():
 @appointments_bp.route('/<int:appointment_id>', methods=['PUT'])
 @jwt_required
 def update_appointment(appointment_id):
-    current_user_id = g.current_user.id
-    is_admin = (g.current_user.role == 'ADMIN')
+    user = g.current_user
+    current_user_id = user.id
+    role = user.role
+
+    is_platform_owner = (role == 'PLATFORM_OWNER')
+    is_hospital_admin = (role == 'HOSPITAL_SUPER_ADMIN')
+    is_receptionist = (role == 'RECEPTIONIST')
+    is_doctor = (role == 'DOCTOR')
+    is_patient = (role in ('PATIENT', 'USER'))
+    is_staff = (is_platform_owner or is_hospital_admin or is_receptionist)
+
     data = request.get_json() or {}
 
     # 1. Guard against unsupported mutations: doctor_id, hospital_id, user_id
@@ -303,21 +379,45 @@ def update_appointment(appointment_id):
     else:
         normalized_new_time = None
 
-    # 4. Role authorization: non-admin patients can only cancel
-    if not is_admin:
+    # 4. Role capability restrictions
+    if is_patient:
         if target_status != 'Cancelled' or new_date or new_time:
             return jsonify({
                 'success': False,
                 'message': 'Patients can only cancel appointments. Rescheduling or modifying details requires administrative support.'
             }), 403
+    elif is_receptionist:
+        if target_status and target_status not in ('Confirmed', 'Cancelled'):
+            return jsonify({
+                'success': False,
+                'message': 'Receptionists can only confirm (check-in) or cancel appointments.'
+            }), 403
+    elif is_doctor:
+        if target_status and target_status not in ('Completed', 'Confirmed', 'Cancelled'):
+            return jsonify({
+                'success': False,
+                'message': 'Doctors can only mark consultations as Completed, Confirmed, or Cancelled.'
+            }), 403
 
-    # 5. Initial lightweight read to identify doctor_id and verify ownership
+    # 5. Initial read and multi-tenant authorization
     initial_appt = Appointment.query.filter_by(id=appointment_id).first()
     if not initial_appt:
         return jsonify({'success': False, 'message': 'Appointment not found.'}), 404
 
-    if not is_admin and initial_appt.user_id != current_user_id:
-        return jsonify({'success': False, 'message': 'Unauthorized to update this appointment.'}), 403
+    # Hospital boundary isolation check
+    if is_platform_owner:
+        pass
+    elif is_hospital_admin or is_receptionist:
+        if not user.hospital_id or initial_appt.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Unauthorized. Cross-hospital mutation is blocked.'}), 403
+    elif is_doctor:
+        if not user.doctor_profile or initial_appt.doctor_id != user.doctor_profile.id:
+            return jsonify({'success': False, 'message': 'Unauthorized. Doctor can only modify their own appointments.'}), 403
+    elif is_patient:
+        if initial_appt.user_id != current_user_id:
+            return jsonify({'success': False, 'message': 'Unauthorized to update this appointment.'}), 403
+    else:
+        return jsonify({'success': False, 'message': 'Access denied. Account must be assigned an authorized role.'}), 403
 
     target_doctor_id = initial_appt.doctor_id
 
@@ -332,9 +432,12 @@ def update_appointment(appointment_id):
             return jsonify({'success': False, 'message': 'Appointment was deleted by another request.'}), 404
 
         # Re-verify ownership on fresh record
-        if not is_admin and appointment.user_id != current_user_id:
+        if is_patient and appointment.user_id != current_user_id:
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Unauthorized.'}), 403
+        elif (is_hospital_admin or is_receptionist) and (not user.hospital_id or appointment.hospital_id != user.hospital_id):
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Unauthorized. Cross-hospital mutation is blocked.'}), 403
 
         # Guard: Completed appointments are terminal historical records
         if appointment.status == 'Completed':
@@ -350,17 +453,17 @@ def update_appointment(appointment_id):
                     'success': False,
                     'message': 'Slot parameters of completed consultations are immutable.'
                 }), 400
-            # Allow authorized admin note append
-            if 'notes' in data and is_admin:
+            # Allow authorized staff or doctor note append
+            if 'notes' in data and (is_staff or is_doctor):
                 new_note = str(data['notes']).strip()
                 existing_notes = (appointment.notes or '').strip()
                 if new_note and new_note != existing_notes:
                     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-                    appointment.notes = f"{existing_notes}\n[Admin Note {timestamp}]: {new_note}".strip()
+                    appointment.notes = f"{existing_notes}\n[{role} Note {timestamp}]: {new_note}".strip()
                     db.session.commit()
                     return jsonify({
                         'success': True,
-                        'message': 'Administrative note appended to completed appointment.',
+                        'message': 'Clinical/administrative note appended to completed appointment.',
                         'appointment': appointment.to_dict()
                     }), 200
             db.session.rollback()
@@ -370,7 +473,7 @@ def update_appointment(appointment_id):
             }), 400
 
         # Patient cancellation workflow
-        if not is_admin and target_status == 'Cancelled':
+        if is_patient and target_status == 'Cancelled':
             appointment.status = 'Cancelled'
             db.session.commit()
             return jsonify({
@@ -386,7 +489,7 @@ def update_appointment(appointment_id):
 
         # Conflict check if reactivating or rescheduling
         is_reactivating = (appointment.status == 'Cancelled' and target_effective_status in ACTIVE_STATUSES)
-        is_rescheduling = (target_effective_status in ACTIVE_STATUSES and 
+        is_rescheduling = (target_effective_status in ACTIVE_STATUSES and
                            (target_date != appointment.appointment_date or target_time != appointment.appointment_time))
 
         if is_reactivating or is_rescheduling:
@@ -446,15 +549,14 @@ def update_appointment(appointment_id):
 @appointments_bp.route('/<int:appointment_id>', methods=['DELETE'])
 @jwt_required
 def delete_appointment(appointment_id):
-    # Hard deletion is strictly restricted to ADMIN role.
-    # Patients must cancel appointments rather than destroying historical records.
-    if g.current_user.role != 'ADMIN':
+    # Hard deletion is strictly restricted to PLATFORM_OWNER role.
+    if g.current_user.role != 'PLATFORM_OWNER':
         return jsonify({
             'success': False,
-            'message': 'Patients cannot delete appointment records. Please cancel your appointment instead.'
+            'message': 'Access denied. Patients cannot delete appointment records. Hard deletion is restricted strictly to Platform Owners.'
         }), 403
 
-    initial_appt = Appointment.query.get(appointment_id)
+    initial_appt = db.session.get(Appointment, appointment_id)
     if not initial_appt:
         return jsonify({'success': False, 'message': 'Appointment not found.'}), 404
 
@@ -463,7 +565,7 @@ def delete_appointment(appointment_id):
     try:
         acquire_doctor_lock(target_doctor_id)
 
-        appointment = Appointment.query.get(appointment_id)
+        appointment = db.session.get(Appointment, appointment_id)
         if not appointment:
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Appointment not found or already deleted.'}), 404

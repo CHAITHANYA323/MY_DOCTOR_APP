@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  FaCalendarAlt, 
-  FaCheckCircle, 
-  FaTimesCircle, 
-  FaAmbulance, 
-  FaUserMd, 
-  FaHospital, 
-  FaClock, 
-  FaArrowRight, 
-  FaShieldAlt,
-  FaHeart,
+import {
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaAmbulance,
+  FaUserMd,
+  FaClock,
+  FaArrowRight,
   FaPhoneAlt
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -274,8 +271,8 @@ export const UserDashboard = () => {
                         </div>
                         <div style={{ marginTop: '0.2rem', color: 'var(--slate-600)' }}>
                           Driver: {req.assigned_ambulance.driver_name} &bull;{' '}
-                          <a 
-                            href={`tel:${req.assigned_ambulance.driver_phone}`} 
+                          <a
+                            href={`tel:${req.assigned_ambulance.driver_phone}`}
                             style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}
                           >
                             <FaPhoneAlt size={10} style={{ marginRight: '3px' }} /> Call ({req.assigned_ambulance.driver_phone})
@@ -311,7 +308,7 @@ export const UserDashboard = () => {
       </div>
 
       {/* Ambulance Cancellation Confirmation Modal */}
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={!!cancelTarget}
         title="Cancel Emergency Ambulance Request"
         message={`Are you sure you want to cancel emergency ambulance request #${cancelTarget?.id}? Our dispatch operations team will be notified immediately.`}

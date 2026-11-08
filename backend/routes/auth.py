@@ -1,8 +1,15 @@
 import re
+from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy.exc import IntegrityError
 from models import db, User
 from utils.auth_middleware import generate_token, jwt_required, admin_required
+from utils.rate_limiter import (
+    get_client_ip,
+    check_failed_password_limit,
+    record_failed_password,
+    clear_failed_passwords,
+)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -91,15 +98,49 @@ def login():
     if not email or not password:
         return jsonify({'success': False, 'message': 'Email and password are required.'}), 400
 
+    client_ip = get_client_ip()
+
+    # Rate limiting: 5 failed attempts per 15 minutes per (IP, email)
+    is_limited, retry_after = check_failed_password_limit(client_ip, email)
+    if is_limited:
+        return jsonify({
+            'success': False,
+            'message': f'Too many failed login attempts. Please try again in {retry_after} seconds.'
+        }), 429
+
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
+        record_failed_password(client_ip, email)
         return jsonify({'success': False, 'message': 'Invalid email or password. Please try again.'}), 401
 
+    if getattr(user, 'is_active', True) is False:
+        return jsonify({'success': False, 'message': 'Your account has been deactivated. Please contact support.'}), 403
+
+    # Check temporary password expiration
+    if getattr(user, 'must_change_password', False) and getattr(user, 'temporary_password_expires_at', None):
+        now_utc = datetime.now(timezone.utc)
+        expiry = user.temporary_password_expires_at
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if now_utc > expiry:
+            record_failed_password(client_ip, email)
+            return jsonify({
+                'success': False,
+                'code': 'TEMPORARY_PASSWORD_EXPIRED',
+                'message': 'Your temporary password has expired. Please contact hospital reception to receive a new password.'
+            }), 401
+
+    clear_failed_passwords(client_ip, email)
+
+    must_change = bool(getattr(user, 'must_change_password', False))
     token = generate_token(user)
+
+    welcome_msg = 'Password change required before accessing platform features.' if must_change else f'Welcome back, {user.name}!'
     return jsonify({
         'success': True,
-        'message': f'Welcome back, {user.name}!',
+        'message': welcome_msg,
         'token': token,
+        'must_change_password': must_change,
         'user': user.to_dict()
     }), 200
 
@@ -160,6 +201,8 @@ def update_profile():
             }), 400
 
         user.set_password(new_password)
+        user.must_change_password = False
+        user.temporary_password_expires_at = None
     elif current_password:
         return jsonify({
             'success': False,
@@ -167,19 +210,97 @@ def update_profile():
         }), 400
 
     db.session.commit()
+    new_token = generate_token(user, is_restricted=False)
     return jsonify({
         'success': True,
         'message': 'Profile updated successfully.',
+        'token': new_token,
+        'must_change_password': False,
+        'user': user.to_dict()
+    }), 200
+
+
+@auth_bp.route('/change-password', methods=['POST', 'OPTIONS'], strict_slashes=False)
+@jwt_required
+def change_password():
+    """
+    Dedicated endpoint for changing temporary passwords and unblocking restricted sessions.
+    Validates current password, minimum length, distinctness, and optional confirmation.
+    Clears must_change_password and temporary_password_expires_at upon success.
+    Issues a fresh, unrestricted JWT session token.
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+
+    data = request.get_json() or {}
+    current_password = data.get('current_password') or ''
+    new_password = (data.get('new_password') or data.get('password') or '').strip()
+    confirm_password = (data.get('confirm_password') or '').strip()
+
+    user = g.current_user
+
+    if not current_password or not new_password:
+        return jsonify({
+            'success': False,
+            'message': 'Current password and new password are required.'
+        }), 400
+
+    if not user.check_password(current_password):
+        return jsonify({
+            'success': False,
+            'message': 'Current password is incorrect. Please try again.'
+        }), 400
+
+    if len(new_password) < 6:
+        return jsonify({
+            'success': False,
+            'message': 'New password must be at least 6 characters long.'
+        }), 400
+
+    if current_password == new_password:
+        return jsonify({
+            'success': False,
+            'message': 'New password must be different from current password.'
+        }), 400
+
+    if confirm_password and new_password != confirm_password:
+        return jsonify({
+            'success': False,
+            'message': 'New passwords do not match.'
+        }), 400
+
+    user.set_password(new_password)
+    user.must_change_password = False
+    user.temporary_password_expires_at = None
+
+    db.session.commit()
+
+    new_token = generate_token(user, is_restricted=False)
+    return jsonify({
+        'success': True,
+        'message': 'Password changed successfully. Full account access granted.',
+        'token': new_token,
+        'must_change_password': False,
         'user': user.to_dict()
     }), 200
 
 
 @auth_bp.route('/users', methods=['GET', 'OPTIONS'], strict_slashes=False)
-@admin_required
+@jwt_required
 def list_users():
     if request.method == 'OPTIONS':
         return jsonify({'success': True}), 200
-    users = User.query.order_by(User.created_at.desc()).all()
+
+    user = g.current_user
+    if user.role == 'PLATFORM_OWNER':
+        users = User.query.order_by(User.created_at.desc()).all()
+    elif user.role == 'HOSPITAL_SUPER_ADMIN':
+        if not user.hospital_id:
+            return jsonify({'success': False, 'message': 'Admin has no hospital assigned.'}), 403
+        users = User.query.filter_by(hospital_id=user.hospital_id).order_by(User.created_at.desc()).all()
+    else:
+        return jsonify({'success': False, 'message': 'Access denied. Administrator privileges required.'}), 403
+
     return jsonify({
         'success': True,
         'count': len(users),

@@ -27,6 +27,20 @@ export const authService = {
 
   updateProfile: async (data) => {
     const response = await api.put('/api/auth/profile', data);
+    if (response.data.token) {
+      localStorage.setItem('medicare_token', response.data.token);
+    }
+    if (response.data.user) {
+      localStorage.setItem('medicare_user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
+  changePassword: async (data) => {
+    const response = await api.post('/api/auth/change-password', data);
+    if (response.data.token) {
+      localStorage.setItem('medicare_token', response.data.token);
+    }
     if (response.data.user) {
       localStorage.setItem('medicare_user', JSON.stringify(response.data.user));
     }

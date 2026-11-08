@@ -1,7 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from sqlalchemy.orm import joinedload
 from models import db, Doctor, Specialization, Hospital, Review
-from utils.auth_middleware import admin_required, decode_token
+from utils.auth_middleware import admin_required, jwt_required, roles_required, decode_token
 
 doctors_bp = Blueprint('doctors', __name__, url_prefix='/api/doctors')
 
@@ -223,8 +223,12 @@ def get_doctor(doctor_id):
     }), 200
 
 @doctors_bp.route('', methods=['POST'])
-@admin_required
+@jwt_required
 def create_doctor():
+    user = g.current_user
+    if user.role not in ('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN'):
+        return jsonify({'success': False, 'message': 'Access denied. Insufficient permissions to add doctors.'}), 403
+
     data = request.get_json() or {}
 
     name = (data.get('name') or '').strip()
@@ -232,11 +236,19 @@ def create_doctor():
     qualification = (data.get('qualification') or '').strip()
     experience = data.get('experience')
     specialization_id = data.get('specialization_id')
-    hospital_id = data.get('hospital_id')
     location = (data.get('location') or '').strip()
     consultation_fee = data.get('consultation_fee')
     email = (data.get('email') or '').strip()
     phone = (data.get('phone') or '').strip()
+
+    # Hospital ID spoofing defense:
+    # If caller is HOSPITAL_SUPER_ADMIN, strictly force hospital_id to caller's assigned hospital!
+    if user.role == 'HOSPITAL_SUPER_ADMIN':
+        if not user.hospital_id:
+            return jsonify({'success': False, 'message': 'Hospital Admin has no hospital assigned.'}), 403
+        hospital_id = user.hospital_id
+    else:
+        hospital_id = data.get('hospital_id')
 
     # Validations
     if not name or not qualification or not location or experience is None or not specialization_id or not hospital_id or consultation_fee is None:
@@ -250,10 +262,10 @@ def create_doctor():
     except (ValueError, TypeError):
         return jsonify({'success': False, 'message': 'Invalid numeric value for experience, fee, specialization, or hospital.'}), 400
 
-    if not Specialization.query.get(specialization_id):
+    if not db.session.get(Specialization, specialization_id):
         return jsonify({'success': False, 'message': 'Selected specialization does not exist.'}), 400
 
-    if not Hospital.query.get(hospital_id):
+    if not db.session.get(Hospital, hospital_id):
         return jsonify({'success': False, 'message': 'Selected hospital does not exist.'}), 400
 
     default_image = 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=600&auto=format&fit=crop&q=80'
@@ -289,55 +301,95 @@ def create_doctor():
         'doctor': doctor.to_dict()
     }), 201
 
+
 @doctors_bp.route('/<int:doctor_id>', methods=['PUT'])
-@admin_required
+@jwt_required
 def update_doctor(doctor_id):
-    doctor = Doctor.query.get(doctor_id)
+    doctor = db.session.get(Doctor, doctor_id)
     if not doctor:
         return jsonify({'success': False, 'message': 'Doctor not found.'}), 404
 
+    user = g.current_user
+    # Multi-tenant scoping checks:
+    if user.role == 'PLATFORM_OWNER':
+        pass
+    elif user.role == 'HOSPITAL_SUPER_ADMIN':
+        if not user.hospital_id or doctor.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Access denied. You can only manage doctors in your own hospital.'}), 403
+    elif user.role == 'DOCTOR':
+        if not doctor.user_id or doctor.user_id != user.id:
+            return jsonify({'success': False, 'message': 'Access denied. Doctors can only update their own profile.'}), 403
+    else:
+        return jsonify({'success': False, 'message': 'Access denied.'}), 403
+
     data = request.get_json() or {}
 
-    if 'name' in data and data['name'].strip():
-        doctor.name = data['name'].strip()
-    if 'gender' in data:
-        doctor.gender = data['gender']
-    if 'image' in data and data['image'].strip():
-        doctor.image = data['image'].strip()
-    if 'qualification' in data and data['qualification'].strip():
-        doctor.qualification = data['qualification'].strip()
-    if 'experience' in data:
-        doctor.experience = int(data['experience'])
-    if 'specialization_id' in data:
-        spec_id = int(data['specialization_id'])
-        if not Specialization.query.get(spec_id):
-            return jsonify({'success': False, 'message': 'Specialization does not exist.'}), 400
-        doctor.specialization_id = spec_id
-    if 'hospital_id' in data:
-        hosp_id = int(data['hospital_id'])
-        if not Hospital.query.get(hosp_id):
-            return jsonify({'success': False, 'message': 'Hospital does not exist.'}), 400
-        doctor.hospital_id = hosp_id
-    if 'location' in data and data['location'].strip():
-        doctor.location = data['location'].strip()
-    if 'phone' in data:
-        doctor.phone = data['phone'].strip()
-    if 'email' in data:
-        doctor.email = data['email'].strip()
-    if 'consultation_fee' in data:
-        doctor.consultation_fee = float(data['consultation_fee'])
-    if 'available_days' in data:
-        doctor.available_days = data['available_days']
-    if 'available_time' in data:
-        doctor.available_time = data['available_time']
-    if 'languages' in data:
-        doctor.languages = data['languages']
-    if 'about' in data:
-        doctor.about = data['about']
-    if 'consultation_type' in data:
-        doctor.consultation_type = data['consultation_type']
-    if 'status' in data:
-        doctor.status = data['status']
+    # Disallow hospital_id tampering by non-platform-owners
+    if 'hospital_id' in data and user.role != 'PLATFORM_OWNER':
+        return jsonify({'success': False, 'message': 'Reassigning doctor hospital is restricted to Platform Owners.'}), 403
+
+    if user.role == 'DOCTOR':
+        # Limited fields for doctor self-service
+        if 'about' in data:
+            doctor.about = data['about']
+        if 'languages' in data:
+            doctor.languages = data['languages']
+        if 'consultation_type' in data:
+            doctor.consultation_type = data['consultation_type']
+        if 'consultation_fee' in data:
+            doctor.consultation_fee = float(data['consultation_fee'])
+        if 'available_days' in data:
+            doctor.available_days = data['available_days']
+        if 'available_time' in data:
+            doctor.available_time = data['available_time']
+        if 'phone' in data:
+            doctor.phone = data['phone'].strip()
+        if 'email' in data:
+            doctor.email = data['email'].strip()
+        if 'status' in data and data['status'] in ('Active', 'Inactive'):
+            doctor.status = data['status']
+    else:
+        # Full administrative fields
+        if 'name' in data and data['name'].strip():
+            doctor.name = data['name'].strip()
+        if 'gender' in data:
+            doctor.gender = data['gender']
+        if 'image' in data and data['image'].strip():
+            doctor.image = data['image'].strip()
+        if 'qualification' in data and data['qualification'].strip():
+            doctor.qualification = data['qualification'].strip()
+        if 'experience' in data:
+            doctor.experience = int(data['experience'])
+        if 'specialization_id' in data:
+            spec_id = int(data['specialization_id'])
+            if not db.session.get(Specialization, spec_id):
+                return jsonify({'success': False, 'message': 'Specialization does not exist.'}), 400
+            doctor.specialization_id = spec_id
+        if 'hospital_id' in data and user.role == 'PLATFORM_OWNER':
+            hosp_id = int(data['hospital_id'])
+            if not db.session.get(Hospital, hosp_id):
+                return jsonify({'success': False, 'message': 'Hospital does not exist.'}), 400
+            doctor.hospital_id = hosp_id
+        if 'location' in data and data['location'].strip():
+            doctor.location = data['location'].strip()
+        if 'phone' in data:
+            doctor.phone = data['phone'].strip()
+        if 'email' in data:
+            doctor.email = data['email'].strip()
+        if 'consultation_fee' in data:
+            doctor.consultation_fee = float(data['consultation_fee'])
+        if 'available_days' in data:
+            doctor.available_days = data['available_days']
+        if 'available_time' in data:
+            doctor.available_time = data['available_time']
+        if 'languages' in data:
+            doctor.languages = data['languages']
+        if 'about' in data:
+            doctor.about = data['about']
+        if 'consultation_type' in data:
+            doctor.consultation_type = data['consultation_type']
+        if 'status' in data:
+            doctor.status = data['status']
 
     db.session.commit()
 
@@ -347,16 +399,31 @@ def update_doctor(doctor_id):
         'doctor': doctor.to_dict()
     }), 200
 
+
 @doctors_bp.route('/<int:doctor_id>', methods=['DELETE'])
-@admin_required
+@jwt_required
 def delete_doctor(doctor_id):
-    doctor = Doctor.query.get(doctor_id)
+    doctor = db.session.get(Doctor, doctor_id)
     if not doctor:
         return jsonify({'success': False, 'message': 'Doctor not found.'}), 404
+
+    user = g.current_user
+    if user.role == 'PLATFORM_OWNER':
+        pass
+    elif user.role == 'HOSPITAL_SUPER_ADMIN':
+        if not user.hospital_id or doctor.hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Access denied. You can only delete doctors from your own hospital.'}), 403
+    else:
+        return jsonify({'success': False, 'message': 'Access denied. Insufficient permissions.'}), 403
 
     doctor_name = doctor.name
     db.session.delete(doctor)
     db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': f'Doctor {doctor_name} has been removed successfully.'
+    }), 200
 
     return jsonify({
         'success': True,

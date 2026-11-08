@@ -1,7 +1,7 @@
 import re
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from models import db, Hospital, Doctor
-from utils.auth_middleware import admin_required
+from utils.auth_middleware import admin_required, jwt_required, roles_required
 
 hospitals_bp = Blueprint('hospitals', __name__, url_prefix='/api/hospitals')
 
@@ -68,7 +68,7 @@ def get_hospital(hospital_id):
     }), 200
 
 @hospitals_bp.route('', methods=['POST'])
-@admin_required
+@roles_required('PLATFORM_OWNER')
 def create_hospital():
     data = request.get_json() or {}
     name = (data.get('name') or '').strip()
@@ -121,9 +121,18 @@ def create_hospital():
     }), 201
 
 @hospitals_bp.route('/<int:hospital_id>', methods=['PUT'])
-@admin_required
+@jwt_required
 def update_hospital(hospital_id):
-    hospital = Hospital.query.get(hospital_id)
+    user = g.current_user
+    if user.role == 'PLATFORM_OWNER':
+        pass
+    elif user.role == 'HOSPITAL_SUPER_ADMIN':
+        if not user.hospital_id or hospital_id != user.hospital_id:
+            return jsonify({'success': False, 'message': 'Access denied. You can only update your assigned hospital.'}), 403
+    else:
+        return jsonify({'success': False, 'message': 'Access denied. Insufficient permissions.'}), 403
+
+    hospital = db.session.get(Hospital, hospital_id)
     if not hospital:
         return jsonify({'success': False, 'message': 'Hospital not found.'}), 404
 
@@ -160,9 +169,9 @@ def update_hospital(hospital_id):
     }), 200
 
 @hospitals_bp.route('/<int:hospital_id>', methods=['DELETE'])
-@admin_required
+@roles_required('PLATFORM_OWNER')
 def delete_hospital(hospital_id):
-    hospital = Hospital.query.get(hospital_id)
+    hospital = db.session.get(Hospital, hospital_id)
     if not hospital:
         return jsonify({'success': False, 'message': 'Hospital not found.'}), 404
 

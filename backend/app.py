@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import text
@@ -15,8 +16,15 @@ from routes.appointments import appointments_bp
 from routes.ambulances import ambulances_bp
 from routes.dashboard import dashboard_bp
 from routes.reviews import reviews_bp
+from routes.invitations import invitations_bp
+from routes.reception import reception_bp
+from routes.doctor_portal import doctor_portal_bp
+from routes.patient_portal import patient_portal_bp
 
 def create_app():
+    # Enforce production security policies at startup
+    Config.validate_production_config()
+
     app = Flask(__name__)
 
     # Match routes with or without trailing slash
@@ -27,13 +35,16 @@ def create_app():
     app.config['SECRET_KEY'] = Config.SECRET_KEY
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.get_engine_options()
 
-    # Configure CORS: local development, Vercel preview/production domains, and custom env origins
-    allowed_origin_patterns = [
-        r"^https?://localhost(:\d+)?$",
-        r"^https?://127\.0\.0\.1(:\d+)?$",
-        r"^https://.*\.vercel\.app$",
-    ]
+    # Configure CORS: explicit validated origins only (BLK-05)
+    allowed_origin_patterns = []
+    if not Config.is_production():
+        allowed_origin_patterns.extend([
+            r"^https?://localhost(:\d+)?$",
+            r"^https?://127\.0\.0\.1(:\d+)?$",
+            r"^https?://\[::1\](:\d+)?$",
+        ])
 
     custom_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("FRONTEND_URL")
     if custom_origins:
@@ -41,6 +52,25 @@ def create_app():
             cleaned = orig.strip()
             if cleaned and cleaned not in allowed_origin_patterns:
                 allowed_origin_patterns.append(cleaned)
+    elif not Config.is_production():
+        # Default safe preview pattern only in non-production mode
+        allowed_origin_patterns.append(r"^https://.*\.vercel\.app$")
+
+    def is_origin_allowed(origin_header):
+        if not origin_header or not isinstance(origin_header, str):
+            return False
+        clean = origin_header.strip()
+        if not clean or clean.lower() == 'null':
+            return False
+        for pattern in allowed_origin_patterns:
+            if pattern == clean:
+                return True
+            try:
+                if re.match(pattern, clean, re.IGNORECASE):
+                    return True
+            except re.error:
+                continue
+        return False
 
     CORS(
         app,
@@ -52,27 +82,41 @@ def create_app():
         max_age=86400
     )
 
-    # Seamless preflight OPTIONS handler
+    # Secure preflight OPTIONS handler (BLK-05: never blindly reflect unauthorized origins)
     @app.before_request
     def handle_preflight():
         if request.method == 'OPTIONS':
             response = app.make_default_options_response()
             origin = request.headers.get('Origin')
-            if origin:
+            if origin and is_origin_allowed(origin):
                 response.headers['Access-Control-Allow-Origin'] = origin
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Idempotency-Key, idempotency-key'
                 response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
                 response.headers['Access-Control-Max-Age'] = '86400'
+                response.headers['Vary'] = 'Origin'
             return response
 
     @app.after_request
     def add_cors_headers(response):
         origin = request.headers.get('Origin')
-        if origin:
+        if origin and is_origin_allowed(origin):
             response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Idempotency-Key, idempotency-key'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+            response.headers['Vary'] = 'Origin'
         return response
+
+    # Reverse proxy middleware: wrap with ProxyFix if TRUST_PROXY_HEADERS is enabled (BLK-04)
+    if Config.TRUST_PROXY_HEADERS:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=Config.PROXY_FIX_X_FOR,
+            x_proto=Config.PROXY_FIX_X_PROTO,
+            x_host=Config.PROXY_FIX_X_HOST,
+            x_port=Config.PROXY_FIX_X_PORT,
+            x_prefix=Config.PROXY_FIX_X_PREFIX,
+        )
 
     db.init_app(app)
 
@@ -85,6 +129,10 @@ def create_app():
     app.register_blueprint(ambulances_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(reviews_bp)
+    app.register_blueprint(invitations_bp)
+    app.register_blueprint(reception_bp)
+    app.register_blueprint(doctor_portal_bp)
+    app.register_blueprint(patient_portal_bp)
 
     # Register root aliases for blueprints so requests without /api prefix also resolve cleanly
     app.register_blueprint(auth_bp, name='auth_alt', url_prefix='/auth')
@@ -95,6 +143,10 @@ def create_app():
     app.register_blueprint(ambulances_bp, name='ambulances_alt', url_prefix='')
     app.register_blueprint(dashboard_bp, name='dashboard_alt', url_prefix='')
     app.register_blueprint(reviews_bp, name='reviews_alt', url_prefix='')
+    app.register_blueprint(invitations_bp, name='invitations_alt', url_prefix='')
+    app.register_blueprint(reception_bp, name='reception_alt', url_prefix='/reception')
+    app.register_blueprint(doctor_portal_bp, name='doctor_portal_alt', url_prefix='/doctor')
+    app.register_blueprint(patient_portal_bp, name='patient_portal_alt', url_prefix='/patient')
 
     # Root and API status endpoints
     @app.route('/', methods=['GET', 'OPTIONS'])
@@ -123,6 +175,7 @@ def create_app():
     # Route aliases for backward compatibility
     from routes.auth import register as auth_register_view
     from routes.auth import login as auth_login_view
+    from routes.auth import change_password as auth_change_password_view
 
     app.add_url_rule('/api/register', endpoint='alias_api_register', view_func=auth_register_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
     app.add_url_rule('/auth/register', endpoint='alias_auth_register', view_func=auth_register_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
@@ -131,6 +184,10 @@ def create_app():
     app.add_url_rule('/api/login', endpoint='alias_api_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
     app.add_url_rule('/auth/login', endpoint='alias_auth_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
     app.add_url_rule('/login', endpoint='alias_root_login', view_func=auth_login_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+
+    app.add_url_rule('/api/change-password', endpoint='alias_api_change_password', view_func=auth_change_password_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/auth/change-password', endpoint='alias_auth_change_password', view_func=auth_change_password_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
+    app.add_url_rule('/change-password', endpoint='alias_root_change_password', view_func=auth_change_password_view, methods=['POST', 'OPTIONS'], strict_slashes=False)
 
     # Global Error Handlers
     @app.errorhandler(404)
@@ -160,8 +217,13 @@ def initialize_database(app):
             db.session.execute(text("SELECT 1"))
             print(f"[DB] Successfully connected using {app.config['SQLALCHEMY_DATABASE_URI'].split('://')[0].upper()}")
         except Exception as conn_err:
+            if Config.is_production():
+                raise RuntimeError(
+                    f"CRITICAL DATABASE CONNECTION FAILURE: Failed to connect to production database: {conn_err}. "
+                    "Silent fallback to SQLite is strictly forbidden in production."
+                ) from conn_err
             print(f"[DB Notice] Could not connect to configured database: {conn_err}")
-            # Fallback to local / tmp SQLite if primary failed
+            # Fallback to local / tmp SQLite if primary failed (Dev / Test only)
             if os.getenv("VERCEL"):
                 import tempfile
                 tmp_dir = Path("/tmp") if os.name != "nt" else Path(tempfile.gettempdir())
@@ -196,7 +258,7 @@ def initialize_database(app):
 
             # Check if seeder needs to run
             from models import User
-            if User.query.count() == 0:
+            if User.query.count() == 0 and not os.getenv("SKIP_AUTO_SEED"):
                 print("[DB] Database is empty. Running initial seeder...")
                 from seed import run_seed
                 run_seed()

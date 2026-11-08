@@ -1,6 +1,6 @@
 import re
 from datetime import datetime, date, timedelta, timezone
-from models import db, User, Specialization, Hospital, Doctor, Ambulance, AmbulanceRequest, Appointment, Review, Favorite
+from models import db, User, Specialization, Hospital, Doctor, Ambulance, AmbulanceRequest, Appointment, Review, Favorite, Invitation, AuditLog
 
 def slugify(text):
     text = text.lower().strip()

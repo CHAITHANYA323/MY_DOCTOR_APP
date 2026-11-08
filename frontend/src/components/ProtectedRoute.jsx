@@ -1,26 +1,33 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { RoleRoute } from './RoleRoute';
 
-export const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { user, isAuthenticated, loading, isAdmin } = useAuth();
-  const location = useLocation();
+/**
+ * ProtectedRoute component for MediConnect.
+ * Maintains full backward compatibility with legacy `adminOnly={true}` calls
+ * while seamlessly supporting modern `allowedRoles={['...']}` role matrices.
+ */
+export const ProtectedRoute = ({
+  children,
+  adminOnly = false,
+  allowedRoles = null,
+  redirectTo = null,
+  requireHospital = false
+}) => {
+  // If legacy adminOnly is specified without explicit allowedRoles,
+  // allow any administrative role (Platform Owner, Super Admin, Receptionist, Legacy Admin)
+  const effectiveRoles = allowedRoles
+    ? allowedRoles
+    : (adminOnly ? ['PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST', 'ADMIN'] : null);
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="skeleton" style={{ width: 120, height: 40, borderRadius: 8 }}></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location, message: 'Please login to continue.' }} replace />;
-  }
-
-  if (adminOnly && !isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
+  return (
+    <RoleRoute
+      allowedRoles={effectiveRoles}
+      redirectTo={redirectTo}
+      requireHospital={requireHospital}
+    >
+      {children}
+    </RoleRoute>
+  );
 };
+
+export default ProtectedRoute;

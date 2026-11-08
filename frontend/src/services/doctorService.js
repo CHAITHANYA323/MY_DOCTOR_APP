@@ -69,5 +69,41 @@ export const doctorService = {
   getFavorites: async () => {
     const response = await api.get('/api/favorites');
     return response.data;
+  },
+
+  // Doctor Portal Methods (/doctor/*)
+  getDoctorProfile: async () => {
+    const response = await api.get('/api/doctor/profile');
+    return response.data;
+  },
+
+  updateDoctorProfile: async (doctorData) => {
+    const response = await api.put('/api/doctor/profile', doctorData);
+    return response.data;
+  },
+
+  getDoctorStats: async () => {
+    const response = await api.get('/api/doctor/stats');
+    return response.data;
+  },
+
+  getDoctorPatients: async (params = {}) => {
+    const response = await api.get('/api/doctor/patients', { params });
+    return response.data;
+  },
+
+  getDoctorPatientDetails: async (patientId) => {
+    const response = await api.get(`/api/doctor/patients/${patientId}`);
+    return response.data;
+  },
+
+  updateDoctorAppointment: async (appointmentId, data) => {
+    const response = await api.put(`/api/doctor/appointments/${appointmentId}`, data);
+    return response.data;
+  },
+
+  getDoctorAppointments: async (params = {}) => {
+    const response = await api.get('/api/appointments', { params });
+    return response.data;
   }
 };

@@ -16,6 +16,15 @@ export const hospitalService = {
     return response.data;
   },
 
+  /**
+   * Platform Owner: Onboard hospital and generate initial Super Admin invitation.
+   * Endpoint: POST /api/platform/hospitals
+   */
+  createPlatformHospital: async (payload) => {
+    const response = await api.post('/api/platform/hospitals', payload);
+    return response.data;
+  },
+
   updateHospital: async (id, hospitalData) => {
     const response = await api.put(`/api/hospitals/${id}`, hospitalData);
     return response.data;
@@ -26,3 +35,5 @@ export const hospitalService = {
     return response.data;
   }
 };
+
+export default hospitalService;
