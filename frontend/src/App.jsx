@@ -32,6 +32,7 @@ const PatientCheckIn = React.lazy(() => import('./pages/admin/PatientCheckIn').t
 const ReceptionAppointments = React.lazy(() => import('./pages/admin/ReceptionAppointments').then(m => ({ default: m.ReceptionAppointments })));
 const RegisterPatient = React.lazy(() => import('./pages/admin/RegisterPatient').then(m => ({ default: m.RegisterPatient })));
 const PatientSearch = React.lazy(() => import('./pages/admin/PatientSearch').then(m => ({ default: m.PatientSearch })));
+const DoctorForm = React.lazy(() => import('./pages/admin/DoctorForm').then(m => ({ default: m.DoctorForm })));
 
 // Platform Owner Portal Pages
 const OwnerLayout = React.lazy(() => import('./pages/owner/OwnerLayout').then(m => ({ default: m.OwnerLayout })));

@@ -278,7 +278,7 @@ export const ManagePlatformHospitals = () => {
                 </p>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '1rem' }}>
-                  {hosp.facilities ? hosp.facilities.split(',').slice(0, 3).map((f, i) => (
+                  {(Array.isArray(hosp.facilities) ? hosp.facilities : (typeof hosp.facilities === 'string' ? hosp.facilities.split(',') : [])).slice(0, 3).map((f, i) => (
                     <span
                       key={i}
                       style={{
@@ -289,9 +289,9 @@ export const ManagePlatformHospitals = () => {
                         borderRadius: '4px'
                       }}
                     >
-                      {f.trim()}
+                      {(typeof f === 'string' ? f.trim() : f)}
                     </span>
-                  )) : null}
+                  ))}
                 </div>
               </div>
 
@@ -378,7 +378,7 @@ export const ManagePlatformHospitals = () => {
               <span style={{ color: 'var(--slate-800)' }}>{detailsHospital.working_hours || '24/7'}</span>
 
               <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Facilities:</span>
-              <span style={{ color: 'var(--slate-800)' }}>{detailsHospital.facilities || 'Standard Care'}</span>
+              <span style={{ color: 'var(--slate-800)' }}>{Array.isArray(detailsHospital.facilities) ? detailsHospital.facilities.join(', ') : (detailsHospital.facilities || 'Standard Care')}</span>
             </div>
 
             <Button

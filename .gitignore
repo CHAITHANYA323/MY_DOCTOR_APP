@@ -51,7 +51,8 @@ venv.bak/
 .venv/
 backend/.venv/
 
-# SQLite Database (allow seed script to create fresh db in deployment)
+# Databases & Backups (allow seed script to create fresh db in deployment)
+*.db
 *.sqlite
 *.sqlite3
 *.db-journal
@@ -59,6 +60,8 @@ backend/.venv/
 *.db-shm
 doctor_hospital.db
 backend/doctor_hospital.db
+backend/backups/
+backups/
 
 # IDEs & System Files
 .DS_Store
