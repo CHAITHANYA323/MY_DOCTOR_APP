@@ -1114,6 +1114,104 @@ class TestPhase7StaffInvitations(unittest.TestCase):
         self.assertIn('Retry-After', r_locked.headers)
         self.assertIn("Too many failed password attempts", r_locked.get_json()['message'])
 
+    def test_33_resend_invitation_success_and_old_token_invalidation(self):
+        """Super Admin can resend invitation: new token generated, old token invalidated."""
+        res = self.client.post('/api/hospital/invitations', headers={
+            'Authorization': f'Bearer {self.admin_a_token}'
+        }, json={
+            'email': 'resend_test@hospitala.com',
+            'role': 'RECEPTIONIST'
+        })
+        self.assertEqual(res.status_code, 201)
+        inv_id = res.get_json()['invitation']['id']
+        old_token = res.get_json()['invitation']['token']
+
+        # Resend invitation
+        resend_res = self.client.post(f'/api/hospital/invitations/{inv_id}/resend', headers={
+            'Authorization': f'Bearer {self.admin_a_token}'
+        })
+        self.assertEqual(resend_res.status_code, 200)
+        new_token = resend_res.get_json()['invitation']['token']
+        self.assertNotEqual(old_token, new_token)
+
+        # Old token is rejected
+        old_verify = self.client.get(f'/api/invitations/verify/{old_token}')
+        self.assertEqual(old_verify.status_code, 400)
+
+        # New token verifies and accepts successfully
+        new_verify = self.client.get(f'/api/invitations/verify/{new_token}')
+        self.assertEqual(new_verify.status_code, 200)
+
+        accept_res = self.client.post('/api/invitations/accept', json={
+            'token': new_token,
+            'name': 'Resent Receptionist',
+            'password': 'Password123!',
+            'confirm_password': 'Password123!'
+        })
+        self.assertEqual(accept_res.status_code, 201)
+
+    def test_34_cross_hospital_resend_blocked(self):
+        """Hospital Admin B cannot resend Hospital Admin A's invitations."""
+        res = self.client.post('/api/hospital/invitations', headers={
+            'Authorization': f'Bearer {self.admin_a_token}'
+        }, json={
+            'email': 'cross_resend@hospitala.com',
+            'role': 'RECEPTIONIST'
+        })
+        self.assertEqual(res.status_code, 201)
+        inv_id = res.get_json()['invitation']['id']
+
+        # Admin B tries to resend Admin A's invite -> 403
+        r = self.client.post(f'/api/hospital/invitations/{inv_id}/resend', headers={
+            'Authorization': f'Bearer {self.admin_b_token}'
+        })
+        self.assertEqual(r.status_code, 403)
+        self.assertIn("belonging to another hospital", r.get_json()['message'])
+
+    def test_35_cannot_resend_accepted_invitation(self):
+        """Resending an already accepted invitation is rejected with 400."""
+        res = self.client.post('/api/hospital/invitations', headers={
+            'Authorization': f'Bearer {self.admin_a_token}'
+        }, json={
+            'email': 'accepted_resend@hospitala.com',
+            'role': 'RECEPTIONIST'
+        })
+        inv_id = res.get_json()['invitation']['id']
+        token = res.get_json()['invitation']['token']
+
+        # Accept
+        self.client.post('/api/invitations/accept', json={
+            'token': token,
+            'name': 'Accepted User',
+            'password': 'Password123!',
+            'confirm_password': 'Password123!'
+        })
+
+        # Try to resend -> 400
+        r = self.client.post(f'/api/hospital/invitations/{inv_id}/resend', headers={
+            'Authorization': f'Bearer {self.admin_a_token}'
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("already been accepted", r.get_json()['message'])
+
+    def test_36_platform_owner_can_resend_super_admin_invitation(self):
+        """Platform Owner can resend Hospital Super Admin invitation."""
+        res = self.client.post('/api/platform/invitations', headers={
+            'Authorization': f'Bearer {self.owner_token}'
+        }, json={
+            'email': 'owner_resend_admin@hospitala.com',
+            'role': 'HOSPITAL_SUPER_ADMIN',
+            'hospital_id': self.hosp1.id
+        })
+        self.assertEqual(res.status_code, 201)
+        inv_id = res.get_json()['invitation']['id']
+
+        resend_res = self.client.post(f'/api/hospital/invitations/{inv_id}/resend', headers={
+            'Authorization': f'Bearer {self.owner_token}'
+        })
+        self.assertEqual(resend_res.status_code, 200)
+        self.assertTrue(resend_res.get_json()['success'])
+
 
 
 if __name__ == '__main__':

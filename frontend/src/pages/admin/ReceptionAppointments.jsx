@@ -57,6 +57,7 @@ export const ReceptionAppointments = () => {
         patient_id: p.id
       }));
       setIsBookModalOpen(true);
+      loadBookingPrerequisites();
     }
   }, [location.state]);
 

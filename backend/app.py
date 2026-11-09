@@ -104,6 +104,10 @@ def create_app():
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Idempotency-Key, idempotency-key'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
             response.headers['Vary'] = 'Origin'
+        # Security hardening headers (OWASP compliance)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
         return response
 
     # Reverse proxy middleware: wrap with ProxyFix if TRUST_PROXY_HEADERS is enabled (BLK-04)

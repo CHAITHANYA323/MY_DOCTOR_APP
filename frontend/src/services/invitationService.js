@@ -60,6 +60,15 @@ export const invitationService = {
   },
 
   /**
+   * Super Admin / Platform Owner: Resends an invitation with a fresh cryptographic token.
+   * Endpoint: POST /api/hospital/invitations/<id>/resend
+   */
+  resendInvitation: async (invitationId) => {
+    const response = await api.post(`/api/hospital/invitations/${invitationId}/resend`);
+    return response.data;
+  },
+
+  /**
    * Platform Owner: Retrieves platform audit event logs.
    * Endpoint: GET /api/platform/audit-logs
    */

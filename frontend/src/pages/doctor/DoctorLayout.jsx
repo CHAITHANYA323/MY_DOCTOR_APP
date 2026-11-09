@@ -85,7 +85,7 @@ export const DoctorLayout = () => {
         height: '100vh',
         boxShadow: '4px 0 10px rgba(0, 0, 0, 0.05)',
         zIndex: 40
-      }} className="hidden md:flex">
+      }} className="portal-desktop-sidebar hidden md:flex">
         {/* Brand Header */}
         <div style={{
           padding: '1.25rem 1.5rem',
@@ -241,7 +241,7 @@ export const DoctorLayout = () => {
           position: 'sticky',
           top: 0,
           zIndex: 30
-        }} className="md:hidden">
+        }} className="portal-mobile-header md:hidden">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <div style={{
               width: '32px',
@@ -288,7 +288,7 @@ export const DoctorLayout = () => {
             display: 'flex',
             flexDirection: 'column',
             gap: '0.5rem'
-          }} className="md:hidden">
+          }} className="portal-mobile-drawer md:hidden">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}

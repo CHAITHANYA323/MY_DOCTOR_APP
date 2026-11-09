@@ -84,7 +84,7 @@ export const Register = () => {
         setPassword('');
         setConfirmPassword('');
         setTimeout(() => {
-          navigate('/login', { state: { message: successMessage } });
+          navigate('/login', { state: { message: successMessage, suggestedRole: 'PATIENT' } });
         }, 1500);
       } else {
         setSuccess('');
@@ -265,8 +265,8 @@ export const Register = () => {
 
         <p style={{ textAlign: 'center', fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '1.75rem' }}>
           Already registered?{' '}
-          <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 700 }}>
-            Sign In Here
+          <Link to="/login" state={{ suggestedRole: 'PATIENT' }} style={{ color: 'var(--primary)', fontWeight: 700 }}>
+            Login as Patient
           </Link>
         </p>
       </div>

@@ -434,6 +434,57 @@ def revoke_invitation(inv_id):
 
 
 # -------------------------------------------------------------------------
+# 5b. Resend / Regenerate Invitation
+# -------------------------------------------------------------------------
+@invitations_bp.route('/hospital/invitations/<int:inv_id>/resend', methods=['POST'])
+@roles_required('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN')
+def resend_invitation(inv_id):
+    user = g.current_user
+    invitation = db.session.get(Invitation, inv_id)
+    if not invitation:
+        return jsonify({'success': False, 'message': 'Invitation not found.'}), 404
+
+    # Hospital scoping guard
+    if user.role != 'PLATFORM_OWNER' and invitation.hospital_id != user.hospital_id:
+        return jsonify({'success': False, 'message': 'Access denied. Cannot resend an invitation belonging to another hospital.'}), 403
+
+    if invitation.used_at is not None:
+        return jsonify({'success': False, 'message': 'Cannot resend an invitation that has already been accepted.'}), 400
+
+    raw_token, token_hash = _generate_crypto_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+
+    invitation.token_hash = token_hash
+    invitation.expires_at = expires_at
+    invitation.revoked_at = None  # Clear revoked state if previously revoked
+
+    record_audit(
+        user_id=user.id,
+        action='INVITATION_RESEND',
+        resource_type='INVITATION',
+        resource_id=invitation.id,
+        hospital_id=invitation.hospital_id,
+        details={'email': invitation.email, 'role': invitation.role, 'expires_at': expires_at.isoformat()}
+    )
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Invitation resent successfully with new activation link.',
+        'invitation': {
+            'id': invitation.id,
+            'email': invitation.email,
+            'role': invitation.role,
+            'hospital_id': invitation.hospital_id,
+            'doctor_profile_id': invitation.doctor_profile_id,
+            'expires_at': invitation.expires_at.isoformat(),
+            'token': raw_token,
+            'invite_link': f"/invite/accept/{raw_token}"
+        }
+    }), 200
+
+
+# -------------------------------------------------------------------------
 # 6. Public Invitation Verification (SEC-06: Rate Limited & Minimal Safe Metadata)
 # -------------------------------------------------------------------------
 @invitations_bp.route('/invitations/verify/<token>', methods=['GET'])

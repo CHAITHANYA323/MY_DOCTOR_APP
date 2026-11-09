@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   FaNotesMedical,
   FaSearch,
-  FaUserMd,
-  FaHospital,
   FaClock,
   FaShieldAlt,
   FaCheckCircle,

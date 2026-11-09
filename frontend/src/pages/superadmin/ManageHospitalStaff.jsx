@@ -28,8 +28,9 @@ export const ManageHospitalStaff = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  // Revoke state
+  // Revoke & Resend state
   const [revokingId, setRevokingId] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
   const [actionError, setActionError] = useState('');
 
   // Modal State
@@ -140,6 +141,25 @@ export const ManageHospitalStaff = () => {
       setActionError(getApiErrorMessage(err, 'Failed to revoke invitation.'));
     } finally {
       setRevokingId(null);
+    }
+  };
+
+  const handleResend = async (id) => {
+    setResendingId(id);
+    setActionError('');
+    try {
+      const res = await invitationService.resendInvitation(id);
+      if (res.success && res.invitation) {
+        setCreatedInvite(res.invitation);
+        setIsInviteModalOpen(true);
+        fetchStaffData();
+      } else {
+        setActionError(res.message || 'Resend failed.');
+      }
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, 'Failed to resend invitation.'));
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -442,19 +462,33 @@ export const ManageHospitalStaff = () => {
                       {inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                      {inv.status === 'Pending' ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRevoke(inv.id)}
-                          loading={revokingId === inv.id}
-                          style={{ color: 'var(--emergency)', borderColor: '#fecaca', fontSize: '0.74rem', padding: '0.25rem 0.6rem' }}
-                        >
-                          Revoke
-                        </Button>
+                      {inv.status === 'Accepted' ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>Accepted</span>
                       ) : (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>Locked</span>
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleResend(inv.id)}
+                            loading={resendingId === inv.id}
+                            style={{ fontSize: '0.74rem', padding: '0.25rem 0.55rem' }}
+                          >
+                            Resend
+                          </Button>
+                          {inv.status === 'Pending' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRevoke(inv.id)}
+                              loading={revokingId === inv.id}
+                              style={{ color: 'var(--emergency)', borderColor: '#fecaca', fontSize: '0.74rem', padding: '0.25rem 0.55rem' }}
+                            >
+                              Revoke
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

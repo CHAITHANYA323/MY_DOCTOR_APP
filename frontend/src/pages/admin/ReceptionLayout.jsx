@@ -9,10 +9,8 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
-  FaBell,
   FaIdCard,
-  FaClipboardList,
-  FaHeartbeat
+  FaClipboardList
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 
@@ -69,7 +67,7 @@ export const ReceptionLayout = () => {
         height: '100vh',
         boxShadow: '4px 0 10px rgba(0, 0, 0, 0.05)',
         zIndex: 40
-      }} className="hidden md:flex">
+      }} className="portal-desktop-sidebar hidden md:flex">
         {/* Brand Header */}
         <div style={{
           padding: '1.25rem 1.5rem',
@@ -82,20 +80,20 @@ export const ReceptionLayout = () => {
             width: '36px',
             height: '36px',
             borderRadius: '8px',
-            background: 'linear-gradient(135deg, #0d9488, #14b8a6)',
+            background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#ffffff',
-            boxShadow: '0 4px 6px -1px rgba(13, 148, 136, 0.3)'
+            boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.3)'
           }}>
-            <FaHeartbeat size={20} />
+            <FaClipboardList size={20} />
           </div>
           <div>
             <div style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
               MEDICONNECT
             </div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#14b8a6', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Hospital Front Desk
             </div>
           </div>
@@ -148,7 +146,7 @@ export const ReceptionLayout = () => {
                 fontSize: '0.875rem',
                 fontWeight: isActive ? 700 : 500,
                 color: isActive ? '#ffffff' : '#94a3b8',
-                background: isActive ? '#0d9488' : 'transparent',
+                background: isActive ? '#7c3aed' : 'transparent',
                 transition: 'all 0.15s ease',
                 textDecoration: 'none'
               })}
@@ -186,7 +184,7 @@ export const ReceptionLayout = () => {
                 <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {user?.name || 'Reception Staff'}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: '#14b8a6', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <div style={{ fontSize: '0.7rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                   <FaIdCard size={10} /> Receptionist
                 </div>
               </div>
@@ -252,7 +250,7 @@ export const ReceptionLayout = () => {
             </button>
 
             <div className="flex md:hidden items-center gap-2">
-              <FaHeartbeat size={20} style={{ color: '#0d9488' }} />
+              <FaClipboardList size={20} style={{ color: '#7c3aed' }} />
               <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>MEDICONNECT</span>
             </div>
 
@@ -260,7 +258,7 @@ export const ReceptionLayout = () => {
             <div className="hidden md:flex items-center gap-2 text-sm text-slate-500">
               <span style={{ fontWeight: 600, color: '#0f172a' }}>Front Desk Operations</span>
               <span>•</span>
-              <span style={{ color: '#0d9488', fontWeight: 600 }}>{hospitalName || 'Assigned Hospital'}</span>
+              <span style={{ color: '#7c3aed', fontWeight: 600 }}>{hospitalName || 'Assigned Hospital'}</span>
             </div>
           </div>
 
@@ -274,10 +272,10 @@ export const ReceptionLayout = () => {
               borderRadius: '9999px',
               fontSize: '0.75rem',
               fontWeight: 700,
-              background: '#ccfbf1',
-              color: '#0f766e'
+              background: '#f3e8ff',
+              color: '#6d28d9'
             }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d9488' }}></span>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed' }}></span>
               Reception Desk Active
             </span>
 
@@ -292,7 +290,7 @@ export const ReceptionLayout = () => {
                 width: '34px',
                 height: '34px',
                 borderRadius: '50%',
-                background: '#0d9488',
+                background: '#7c3aed',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
@@ -340,7 +338,7 @@ export const ReceptionLayout = () => {
                 justifyContent: 'space-between'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <FaHeartbeat size={20} style={{ color: '#14b8a6' }} />
+                  <FaClipboardList size={20} style={{ color: '#a78bfa' }} />
                   <span style={{ fontWeight: 800 }}>MEDICONNECT</span>
                 </div>
                 <button
@@ -368,7 +366,7 @@ export const ReceptionLayout = () => {
                       fontSize: '0.875rem',
                       fontWeight: isActive ? 700 : 500,
                       color: isActive ? '#ffffff' : '#94a3b8',
-                      background: isActive ? '#0d9488' : 'transparent',
+                      background: isActive ? '#7c3aed' : 'transparent',
                       textDecoration: 'none'
                     })}
                   >

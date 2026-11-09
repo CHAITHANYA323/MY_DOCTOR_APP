@@ -114,6 +114,8 @@ export const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/invite/accept/:token" element={<AcceptInvitation />} />
+          <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+          <Route path="/invite/:token" element={<AcceptInvitation />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/ambulance" element={<Ambulance />} />
@@ -207,6 +209,7 @@ export const App = () => {
             <Route index element={<PatientDashboard />} />
             <Route path="appointments" element={<PatientAppointments />} />
             <Route path="records" element={<PatientMedicalRecords />} />
+            <Route path="medical-records" element={<Navigate to="/patient/records" replace />} />
             <Route path="doctors" element={<SearchDoctors />} />
             <Route path="hospitals" element={<SearchHospitals />} />
             <Route path="emergency" element={<Emergency />} />
