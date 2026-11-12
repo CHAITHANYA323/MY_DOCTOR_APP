@@ -21,21 +21,33 @@ FONT_NORMAL = 'Helvetica'
 FONT_BOLD = 'Helvetica-Bold'
 
 try:
-    # Try registering TrueType Unicode fonts for multi-language & Telugu support
-    font_paths = [
-        ("SegoeUI", "C:\\Windows\\Fonts\\segoeui.ttf", "SegoeUI-Bold", "C:\\Windows\\Fonts\\segoeuib.ttf"),
-        ("Arial", "C:\\Windows\\Fonts\\arial.ttf", "Arial-Bold", "C:\\Windows\\Fonts\\arialbd.ttf")
-    ]
-    for normal_name, normal_path, bold_name, bold_path in font_paths:
-        if os.path.exists(normal_path) and os.path.exists(bold_path):
-            try:
-                pdfmetrics.registerFont(TTFont(normal_name, normal_path))
-                pdfmetrics.registerFont(TTFont(bold_name, bold_path))
-                FONT_NORMAL = normal_name
-                FONT_BOLD = bold_name
-                break
-            except Exception:
-                continue
+    # 1. Try Nirmala UI (Windows native Unicode font designed for Indian languages / Telugu)
+    nirmala_path = "C:\\Windows\\Fonts\\Nirmala.ttc"
+    if os.path.exists(nirmala_path):
+        try:
+            pdfmetrics.registerFont(TTFont("NirmalaUI", nirmala_path, subfontIndex=0))
+            pdfmetrics.registerFont(TTFont("NirmalaUI-Bold", nirmala_path, subfontIndex=1))
+            FONT_NORMAL = "NirmalaUI"
+            FONT_BOLD = "NirmalaUI-Bold"
+        except Exception:
+            pass
+
+    # 2. Fallbacks if Nirmala not loaded
+    if FONT_NORMAL == 'Helvetica':
+        font_paths = [
+            ("SegoeUI", "C:\\Windows\\Fonts\\segoeui.ttf", "SegoeUI-Bold", "C:\\Windows\\Fonts\\segoeuib.ttf"),
+            ("Arial", "C:\\Windows\\Fonts\\arial.ttf", "Arial-Bold", "C:\\Windows\\Fonts\\arialbd.ttf")
+        ]
+        for normal_name, normal_path, bold_name, bold_path in font_paths:
+            if os.path.exists(normal_path) and os.path.exists(bold_path):
+                try:
+                    pdfmetrics.registerFont(TTFont(normal_name, normal_path))
+                    pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+                    FONT_NORMAL = normal_name
+                    FONT_BOLD = bold_name
+                    break
+                except Exception:
+                    continue
 except Exception:
     pass
 

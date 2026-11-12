@@ -770,6 +770,30 @@ export const DoctorDashboard = () => {
                   {getLabel('doctorPortal.editProfile', 'Edit Profile')}
                 </span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => handleOpenRxModal({})}
+                style={{
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(91, 33, 182, 0.1)', color: '#5B21B6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FaPrescriptionBottleAlt size={18} />
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0C2328' }}>
+                  {getLabel('doctorPortal.newPrescription', 'Issue Rx')}
+                </span>
+              </button>
             </div>
           </div>
 

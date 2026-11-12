@@ -8,7 +8,8 @@ import {
   FaCalendarAlt,
   FaPrescriptionBottleAlt,
   FaShieldAlt,
-  FaCheckCircle
+  FaCheckCircle,
+  FaExternalLinkAlt
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { prescriptionService } from '../../services/prescriptionService';
@@ -31,6 +32,18 @@ export const PrescriptionViewerModal = ({ isOpen, onClose, prescription }) => {
     } catch (err) {
       console.error(err);
       toast.error('Failed to download PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleOpenInNewTab = async () => {
+    try {
+      setDownloading(true);
+      await prescriptionService.openPrescriptionPdfInNewTab(prescription.id);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to open PDF in new browser tab.');
     } finally {
       setDownloading(false);
     }
@@ -132,6 +145,28 @@ export const PrescriptionViewerModal = ({ isOpen, onClose, prescription }) => {
             >
               <FaFilePdf size={12} />
               {downloading ? 'Downloading...' : 'Download PDF'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenInNewTab}
+              disabled={downloading}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                color: '#FFFFFF',
+                border: 'none',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}
+            >
+              <FaExternalLinkAlt size={11} />
+              Open PDF
             </button>
 
             <button

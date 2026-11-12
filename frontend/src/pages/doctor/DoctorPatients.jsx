@@ -7,11 +7,14 @@ import {
   FaTimes,
   FaHistory,
   FaSync,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaPrescriptionBottleAlt,
+  FaFilePdf
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
+import { DigitalPrescriptionModal } from '../../components/prescriptions/DigitalPrescriptionModal';
 
 export const DoctorPatients = () => {
   const { t } = useLanguage();
@@ -22,7 +25,12 @@ export const DoctorPatients = () => {
   // History Modal states
   const [selectedPatientId, setSelectedPatientId] = useState(null);
   const [patientDetails, setPatientDetails] = useState(null);
+  const [patientPrescriptions, setPatientPrescriptions] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Digital Prescription Modal
+  const [rxModalOpen, setRxModalOpen] = useState(false);
+  const [rxInitialData, setRxInitialData] = useState({});
 
   const getLabel = useCallback((key, fallback) => {
     const val = t(key);
@@ -58,9 +66,13 @@ export const DoctorPatients = () => {
     try {
       setSelectedPatientId(patientId);
       setLoadingDetails(true);
-      const res = await doctorService.getDoctorPatientDetails(patientId);
+      const [res, rxRes] = await Promise.all([
+        doctorService.getDoctorPatientDetails(patientId),
+        doctorService.getDoctorPrescriptions({ patient_id: patientId }).catch(() => ({ prescriptions: [] }))
+      ]);
       if (res.success) {
         setPatientDetails(res);
+        setPatientPrescriptions(rxRes.prescriptions || []);
       } else {
         toast.error(res.message || 'Failed to load patient consultation history.');
         setSelectedPatientId(null);
@@ -321,30 +333,63 @@ export const DoctorPatients = () => {
                   )}
                 </div>
 
-                {/* View History Button */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenPatientHistory(patient.id)}
-                  style={{
-                    width: '100%',
-                    padding: '0.6rem',
-                    background: '#0D9488',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.45rem',
-                    boxShadow: '0 2px 6px rgba(13, 148, 136, 0.25)'
-                  }}
-                >
-                  <FaHistory size={12} />
-                  {getLabel('doctorPortal.viewClinicalHistory', 'View Clinical History')}
-                </button>
+                {/* Patient Action Buttons: History and Issue Rx */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPatientHistory(patient.id)}
+                    style={{
+                      padding: '0.55rem',
+                      background: '#0D9488',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 4px rgba(13, 148, 136, 0.2)'
+                    }}
+                  >
+                    <FaHistory size={11} />
+                    {getLabel('doctorPortal.viewClinicalHistory', 'History')}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRxInitialData({
+                        patient_id: patient.id,
+                        patient_name: patient.name,
+                        patient_phone: patient.phone,
+                        patient_age: patient.age ? `${patient.age} Yrs` : '35 Yrs',
+                        patient_gender: patient.gender || 'Male'
+                      });
+                      setRxModalOpen(true);
+                    }}
+                    style={{
+                      padding: '0.55rem',
+                      background: '#5B21B6',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 4px rgba(91, 33, 182, 0.2)'
+                    }}
+                  >
+                    <FaPrescriptionBottleAlt size={11} />
+                    {getLabel('doctorPortal.issueRx', 'Issue Rx')}
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -526,6 +571,115 @@ export const DoctorPatients = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Digital Prescriptions Section */}
+                <div style={{ marginTop: '1.5rem', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0C2328', margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <FaPrescriptionBottleAlt style={{ color: '#5B21B6' }} />
+                      {getLabel('doctorPortal.prescriptionsIssued', 'Digital Prescriptions Issued')}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRxInitialData({
+                          patient_id: patientDetails?.patient?.id || selectedPatientId,
+                          patient_name: patientDetails?.patient?.name,
+                          patient_phone: patientDetails?.patient?.phone,
+                          patient_age: patientDetails?.patient?.age ? `${patientDetails?.patient?.age} Yrs` : '35 Yrs',
+                          patient_gender: patientDetails?.patient?.gender || 'Male'
+                        });
+                        setRxModalOpen(true);
+                      }}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        background: '#5B21B6',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <FaPrescriptionBottleAlt size={10} />
+                      {getLabel('doctorPortal.issueRx', 'Issue New Rx')}
+                    </button>
+                  </div>
+
+                  {patientPrescriptions.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: '#64748B', backgroundColor: '#F8FAFC', borderRadius: '10px' }}>
+                      No digital prescriptions issued yet for this patient.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {patientPrescriptions.map((rx) => (
+                        <div
+                          key={rx.id}
+                          style={{
+                            padding: '0.85rem 1rem',
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '0.75rem'
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F766E' }}>
+                                {rx.prescription_number}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                • {new Date(rx.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: '#334155', marginTop: '0.2rem' }}>
+                              <strong>Diagnosis:</strong> {rx.diagnosis}
+                            </div>
+                            <div style={{ fontSize: '0.76rem', color: '#64748B', marginTop: '0.15rem' }}>
+                              {rx.medicines_count || (rx.medicines && rx.medicines.length) || 0} medications prescribed
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await doctorService.downloadPrescriptionPdf(rx.id, `${rx.prescription_number}.pdf`);
+                                toast.success('Prescription PDF downloaded.');
+                              } catch (err) {
+                                toast.error('Failed to download PDF.');
+                              }
+                            }}
+                            style={{
+                              padding: '0.4rem 0.8rem',
+                              backgroundColor: '#F0FDF4',
+                              color: '#166534',
+                              border: '1px solid #BBF7D0',
+                              borderRadius: '6px',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem'
+                            }}
+                          >
+                            <FaFilePdf size={11} />
+                            Download PDF
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : null}
 
@@ -551,6 +705,20 @@ export const DoctorPatients = () => {
           </div>
         </div>
       )}
+
+      {/* Digital Prescription Modal */}
+      <DigitalPrescriptionModal
+        isOpen={rxModalOpen}
+        onClose={() => setRxModalOpen(false)}
+        initialData={rxInitialData}
+        onSuccess={() => {
+          setRxModalOpen(false);
+          if (selectedPatientId) {
+            handleOpenPatientHistory(selectedPatientId);
+          }
+          toast.success(getLabel('doctorPortal.pdfSuccess', 'Prescription issued successfully.'));
+        }}
+      />
     </div>
   );
 };

@@ -69,6 +69,23 @@ export const prescriptionService = {
   },
 
   /**
+   * Open prescription PDF in new browser tab
+   */
+  openPrescriptionPdfInNewTab: async (id) => {
+    const response = await api.get(`/api/prescriptions/${id}/pdf`, {
+      responseType: 'blob',
+      headers: {
+        Accept: 'application/pdf'
+      }
+    });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    return true;
+  },
+
+  /**
    * Verify prescription authenticity
    */
   verifyPrescription: async (prescriptionNumber) => {

@@ -474,7 +474,7 @@ export const DoctorLayout = () => {
               </div>
               <div className="hidden xl:block text-left">
                 <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0C2328', lineHeight: 1.1 }}>
-                  {doctorProfile?.name || user?.name || 'Dr. Physician'}
+                  {formattedDoctorName}
                 </div>
                 <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 600 }}>
                   {doctorProfile?.specialization || 'Cardiology'}
@@ -520,7 +520,7 @@ export const DoctorLayout = () => {
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#FFFFFF' }}>
-                  {doctorProfile?.name || user?.name}
+                  {formattedDoctorName}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: '#34D399' }}>
                   {doctorProfile?.specialization || 'Physician'}

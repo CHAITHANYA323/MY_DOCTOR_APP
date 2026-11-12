@@ -7,10 +7,7 @@ import {
   FaHospital,
   FaUserMd,
   FaCalendarAlt,
-  FaCheckCircle,
-  FaStethoscope,
   FaPills,
-  FaClock,
   FaSync
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -19,7 +16,7 @@ import { PrescriptionViewerModal } from '../../components/prescriptions/Prescrip
 import { useLanguage } from '../../context/LanguageContext';
 
 export const PatientPrescriptions = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [prescriptions, setPrescriptions] = useState([]);
   const [search, setSearch] = useState('');

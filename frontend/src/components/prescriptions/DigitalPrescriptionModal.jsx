@@ -47,6 +47,11 @@ export const DigitalPrescriptionModal = ({
   const [appointmentId, setAppointmentId] = useState(null);
   const [markComplete, setMarkComplete] = useState(true);
 
+  // Available patients from clinical registry for selection
+  const [availablePatients, setAvailablePatients] = useState([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [isSelectingPatient, setIsSelectingPatient] = useState(false);
+
   const [diagnosis, setDiagnosis] = useState('');
   const [symptoms, setSymptoms] = useState('');
   const [additionalAdvice, setAdditionalAdvice] = useState('');
@@ -69,7 +74,8 @@ export const DigitalPrescriptionModal = ({
     if (isOpen) {
       setMode('edit');
       setCreatedRx(null);
-      setPatientId(initialData.patient_id || initialData.user_id || '');
+      const initialPid = initialData.patient_id || initialData.user_id || '';
+      setPatientId(initialPid);
       setPatientName(initialData.patient_name || initialData.patientName || '');
       setPatientAge(initialData.patient_age || initialData.age || '35 Yrs');
       setPatientGender(initialData.patient_gender || initialData.gender || 'Male');
@@ -79,6 +85,7 @@ export const DigitalPrescriptionModal = ({
       setSymptoms(initialData.notes || initialData.symptoms || '');
       setAdditionalAdvice('Drink adequate fluids, maintain light low-sodium diet, and rest.');
       setNotes('');
+      setIsSelectingPatient(!initialPid);
       setMedicines([
         {
           name: '',
@@ -89,6 +96,22 @@ export const DigitalPrescriptionModal = ({
           instructions: ''
         }
       ]);
+
+      // Load doctor's patient directory for selection
+      const fetchPatientsList = async () => {
+        try {
+          setLoadingPatients(true);
+          const res = await doctorService.getDoctorPatients({ limit: 100 });
+          if (res.success && res.patients) {
+            setAvailablePatients(res.patients);
+          }
+        } catch (err) {
+          console.error('Failed to load doctor patients:', err);
+        } finally {
+          setLoadingPatients(false);
+        }
+      };
+      fetchPatientsList();
     }
   }, [isOpen, initialData]);
 
@@ -125,6 +148,12 @@ export const DigitalPrescriptionModal = ({
   };
 
   const handleSavePrescription = async () => {
+    if (!patientId) {
+      toast.warning('Please select an existing patient for this prescription.');
+      setIsSelectingPatient(true);
+      return;
+    }
+
     if (!diagnosis.trim()) {
       toast.warning('Please enter a clinical diagnosis.');
       return;
@@ -358,54 +387,136 @@ export const DigitalPrescriptionModal = ({
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', backgroundColor: '#F8FAFC' }}>
           {mode === 'edit' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {/* Patient Banner */}
-              <div
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '12px',
-                  padding: '1.15rem 1.35rem',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '1.5rem',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div>
-                  <span
+              {/* Patient Selection Box (when selecting or unassigned) */}
+              {(!patientId || isSelectingPatient) ? (
+                <div
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.35rem',
+                    border: '1.5px solid #0D9488',
+                    boxShadow: '0 2px 6px rgba(13, 148, 136, 0.08)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0C2328' }}>
+                      Select Patient from Clinical Registry <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    {patientId && (
+                      <button
+                        type="button"
+                        onClick={() => setIsSelectingPatient(false)}
+                        style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        Keep current patient
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={patientId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      setPatientId(selectedId);
+                      const p = availablePatients.find((item) => String(item.id) === String(selectedId));
+                      if (p) {
+                        setPatientName(p.name || '');
+                        setPatientPhone(p.phone || '');
+                        setPatientAge(p.age ? `${p.age} Yrs` : '35 Yrs');
+                        setPatientGender(p.gender || 'Male');
+                        setIsSelectingPatient(false);
+                      }
+                    }}
                     style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: '#0D9488',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
+                      width: '100%',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '0.88rem',
+                      backgroundColor: '#FFFFFF',
+                      color: '#0F172A',
+                      outline: 'none'
                     }}
                   >
-                    Patient Profile
-                  </span>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A' }}>
-                    {patientName || 'Patient'}
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748B' }}>
-                    ID: PID-{patientId} • Age: {patientAge} • Sex: {patientGender}
-                  </div>
+                    <option value="">-- Choose patient to prescribe medications --</option>
+                    {availablePatients.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (PID-{p.id}) {p.phone ? `• ${p.phone}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingPatients && (
+                    <div style={{ fontSize: '0.75rem', color: '#0D9488', marginTop: '0.35rem' }}>
+                      Loading patient directory...
+                    </div>
+                  )}
                 </div>
+              ) : (
+                /* Patient Banner (when patient is confirmed) */
+                <div
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    padding: '1.15rem 1.35rem',
+                    border: '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '1.5rem',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: '#0D9488',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}
+                    >
+                      Patient Profile
+                    </span>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A' }}>
+                      {patientName || 'Patient'}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: '#64748B' }}>
+                      ID: PID-{patientId} • Age: {patientAge} • Sex: {patientGender}
+                    </div>
+                  </div>
 
-                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
-                  {patientPhone && (
-                    <div>
-                      <strong style={{ color: '#0F172A' }}>Contact:</strong> {patientPhone}
-                    </div>
-                  )}
-                  {appointmentId && (
-                    <div>
-                      <strong style={{ color: '#0F172A' }}>Consultation ID:</strong> #{appointmentId}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                    {patientPhone && (
+                      <div>
+                        <strong style={{ color: '#0F172A' }}>Contact:</strong> {patientPhone}
+                      </div>
+                    )}
+                    {appointmentId ? (
+                      <div>
+                        <strong style={{ color: '#0F172A' }}>Consultation ID:</strong> #{appointmentId}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsSelectingPatient(true)}
+                        style={{
+                          background: '#F1F5F9',
+                          border: '1px solid #CBD5E1',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.65rem',
+                          fontSize: '0.76rem',
+                          fontWeight: 600,
+                          color: '#475569',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Change Patient
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Clinical Assessment Section */}
               <div
