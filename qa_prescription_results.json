@@ -1,0 +1,45 @@
+{
+  "feature1_doctor_name_dedup": {
+    "status": "PASS",
+    "evidence": [
+      "API Doctor Name: \"Dr. Rajesh Kumar\" (Double Dr. check: true)"
+    ]
+  },
+  "feature2_doctor_issue_prescription": {
+    "status": "PASS",
+    "evidence": [
+      "Prescription RX-20261112-1104D6 issued by Doctor ID #4 to Patient #10"
+    ]
+  },
+  "feature3_patient_view_prescriptions": {
+    "status": "PASS",
+    "evidence": [
+      "Patient A retrieved 6 prescriptions. Newly issued prescription RX-20261112-1104D6 verified."
+    ]
+  },
+  "feature4_prescription_pdf_generation": {
+    "status": "PASS",
+    "evidence": [
+      "Valid A4 PDF received: 49284 bytes, format %PDF-, filename: RX-20261112-1104D6.pdf"
+    ]
+  },
+  "feature5_idor_security_enforcement": {
+    "status": "FAIL",
+    "evidence": [
+      "Detail endpoint IDOR defense: HTTP 401 Forbidden",
+      "PDF endpoint IDOR defense: HTTP 401 Forbidden"
+    ]
+  },
+  "feature6_public_pharmacy_verification": {
+    "status": "PASS",
+    "evidence": [
+      "Public verification endpoint confirmed active prescription for RX-20261112-1104D6"
+    ]
+  },
+  "feature7_browser_ui_and_responsive": {
+    "status": "PASS",
+    "evidence": [
+      "All 9 visual and responsive screenshots captured successfully across desktop, tablet, and mobile."
+    ]
+  }
+}
