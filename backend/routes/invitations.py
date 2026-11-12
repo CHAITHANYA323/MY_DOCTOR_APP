@@ -714,6 +714,10 @@ def accept_invitation():
             existing_user.role = invitation.role
             existing_user.hospital_id = invitation.hospital_id
             existing_user.is_active = True
+            existing_user.approval_status = 'APPROVED'
+            existing_user.approved_by_id = invitation.invited_by_id
+            existing_user.approved_at = now_utc
+            existing_user.rejection_reason = None
 
             if data.get('name'):
                 existing_user.name = data.get('name').strip()
@@ -749,7 +753,10 @@ def accept_invitation():
                 phone=phone or '+91 00000 00000',
                 role=invitation.role,
                 hospital_id=invitation.hospital_id,
-                is_active=True
+                is_active=True,
+                approval_status='APPROVED',
+                approved_by_id=invitation.invited_by_id,
+                approved_at=now_utc
             )
             target_user.set_password(password)
             db.session.add(target_user)

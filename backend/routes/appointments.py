@@ -123,7 +123,7 @@ def get_appointments():
     elif user.role == 'PLATFORM_OWNER':
         if hospital_id_param and hospital_id_param.isdigit():
             query = query.filter_by(hospital_id=int(hospital_id_param))
-    elif user.role in ('HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST'):
+    elif user.role in ('HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST', 'ADMIN'):
         if not user.hospital_id:
             return jsonify({'success': False, 'message': 'Staff user has no hospital assigned.'}), 403
         query = query.filter_by(hospital_id=user.hospital_id)
@@ -168,7 +168,7 @@ def get_appointment(appointment_id):
         authorized = True
     elif user.role == 'PLATFORM_OWNER':
         authorized = True
-    elif user.role in ('HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST'):
+    elif user.role in ('HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST', 'ADMIN'):
         authorized = (user.hospital_id is not None and appointment.hospital_id == user.hospital_id)
     elif user.role == 'DOCTOR':
         authorized = (user.doctor_profile is not None and appointment.doctor_id == user.doctor_profile.id)
@@ -206,7 +206,7 @@ def create_appointment():
     user = g.current_user
     booking_user_id = current_user_id
 
-    if user.role == 'RECEPTIONIST':
+    if user.role in ('RECEPTIONIST', 'ADMIN'):
         if not user.hospital_id:
             return jsonify({'success': False, 'message': 'Staff user has no hospital assigned.'}), 403
         if doctor.hospital_id != user.hospital_id:
@@ -335,7 +335,7 @@ def update_appointment(appointment_id):
 
     is_platform_owner = (role == 'PLATFORM_OWNER')
     is_hospital_admin = (role == 'HOSPITAL_SUPER_ADMIN')
-    is_receptionist = (role == 'RECEPTIONIST')
+    is_receptionist = (role in ('RECEPTIONIST', 'ADMIN'))
     is_doctor = (role == 'DOCTOR')
     is_patient = (role in ('PATIENT', 'USER'))
     is_staff = (is_platform_owner or is_hospital_admin or is_receptionist)

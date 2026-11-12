@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   FaHospital,
@@ -13,9 +13,12 @@ import {
   FaClipboardList
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageToggle } from '../../components/common/LanguageToggle';
 
 export const ReceptionLayout = () => {
   const { user, hospitalName, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -24,34 +27,34 @@ export const ReceptionLayout = () => {
     navigate('/login');
   };
 
-  const navItems = [
+  const navItems = useMemo(() => [
     {
       to: '/admin',
-      label: 'Reception Desk',
+      label: t('portalNav.receptionDesk'),
       icon: <FaClipboardList size={16} />,
       end: true
     },
     {
       to: '/admin/check-in',
-      label: 'Patient Check-In',
+      label: t('portalNav.checkIn'),
       icon: <FaUserCheck size={16} />
     },
     {
       to: '/admin/appointments',
-      label: 'Appointments',
+      label: t('portalNav.appointments'),
       icon: <FaCalendarAlt size={16} />
     },
     {
       to: '/admin/register-patient',
-      label: 'Register Patient',
+      label: t('portalNav.registerPatient'),
       icon: <FaUserPlus size={16} />
     },
     {
       to: '/admin/patients',
-      label: 'Patient Directory',
+      label: t('portalNav.patientDirectory'),
       icon: <FaUsers size={16} />
     },
-  ];
+  ], [t]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
@@ -193,7 +196,7 @@ export const ReceptionLayout = () => {
             <button
               type="button"
               onClick={handleLogout}
-              title="Sign Out"
+              title={t('portalNav.signOut')}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -263,7 +266,8 @@ export const ReceptionLayout = () => {
           </div>
 
           {/* Quick status badge & User avatar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <LanguageToggle size="sm" showIcon={false} />
             <span style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -395,7 +399,7 @@ export const ReceptionLayout = () => {
                     gap: '0.5rem'
                   }}
                 >
-                  <FaSignOutAlt /> Sign Out
+                  <FaSignOutAlt /> {t('portalNav.signOut')}
                 </button>
               </div>
             </div>

@@ -30,7 +30,10 @@ export const DoctorForm = ({ isEdit = false }) => {
     languages: 'English, Hindi',
     about: '',
     consultation_type: 'In-Person & Video',
-    status: 'Active'
+    status: 'Active',
+    profile_url: '',
+    source_url: '',
+    is_verified: true
   });
 
   const [specializations, setSpecializations] = useState([]);
@@ -89,7 +92,10 @@ export const DoctorForm = ({ isEdit = false }) => {
               languages: doc.languages || 'English, Hindi',
               about: doc.about || '',
               consultation_type: doc.consultation_type || 'In-Person & Video',
-              status: doc.status || 'Active'
+              status: doc.status || 'Active',
+              profile_url: doc.profile_url || '',
+              source_url: doc.source_url || '',
+              is_verified: doc.is_verified ?? true
             });
           }
         } catch (err) {
@@ -469,6 +475,59 @@ export const DoctorForm = ({ isEdit = false }) => {
                 <option value="Active">Active (Visible to Patients)</option>
                 <option value="Inactive">Inactive (Hidden)</option>
               </select>
+            </div>
+          </div>
+
+          {/* Official Verification & Online Directory (AP & Telangana Integration) */}
+          <div style={{
+            marginTop: '1.25rem',
+            padding: '1.25rem',
+            backgroundColor: 'var(--slate-50)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--slate-200)'
+          }}>
+            <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.75rem' }}>
+              Online Directory & Clinician Verification
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Official Hospital Profile URL</label>
+                <input 
+                  type="url" 
+                  name="profile_url"
+                  placeholder="https://hospital.com/doctors/dr-name"
+                  value={formData.profile_url}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>Direct link to doctor's official profile on hospital website</span>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Hospital Source Portal URL</label>
+                <input 
+                  type="url" 
+                  name="source_url"
+                  placeholder="https://hospital.com"
+                  value={formData.source_url}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>Main institution website URL</span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <input 
+                type="checkbox" 
+                id="is_verified"
+                name="is_verified"
+                checked={Boolean(formData.is_verified)}
+                onChange={(e) => setFormData((prev) => ({ ...prev, is_verified: e.target.checked }))}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="is_verified" style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--slate-700)', cursor: 'pointer' }}>
+                Clinically Verified Practitioner (Displays "Verified Clinician" badge to patients)
+              </label>
             </div>
           </div>
 

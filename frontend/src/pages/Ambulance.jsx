@@ -17,9 +17,11 @@ import { toast } from 'react-toastify';
 import { ambulanceService, generateUUID } from '../services/ambulanceService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Ambulance = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [ambulances, setAmbulances] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -211,10 +213,10 @@ export const Ambulance = () => {
             </div>
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#991b1b', marginBottom: '0.25rem' }}>
-                For Life-Threatening Emergencies, Call 108
+                {t('ambulance.alertTitle')}
               </h2>
               <p style={{ color: '#7f1d1d', fontSize: '0.95rem', margin: 0 }}>
-                Instant toll-free national emergency response. Immediate vehicle dispatch within 8–12 minutes.
+                {t('ambulance.alertDesc')}
               </p>
             </div>
           </div>
@@ -231,7 +233,7 @@ export const Ambulance = () => {
               boxShadow: '0 4px 15px rgba(220, 38, 38, 0.4)'
             }}
           >
-            <FaPhoneAlt /> Dial 108 Free Now
+            <FaPhoneAlt /> {t('ambulance.dial108Btn')}
           </a>
         </div>
 

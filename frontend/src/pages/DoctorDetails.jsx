@@ -20,12 +20,15 @@ import {
   FaTrash,
   FaExclamationCircle,
   FaSpinner,
-  FaTimes
+  FaTimes,
+  FaInfoCircle,
+  FaExternalLinkAlt
 } from 'react-icons/fa';
 import { doctorService } from '../services/doctorService';
 import { appointmentService } from '../services/appointmentService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
 import { notify } from '../utils/toast';
 
@@ -33,6 +36,7 @@ export const DoctorDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin } = useAuth();
+  const { t, isTelugu } = useLanguage();
 
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -423,25 +427,47 @@ export const DoctorDetails = () => {
                   boxShadow: 'var(--shadow-md)'
                 }} 
               />
-              <div style={{
-                position: 'absolute',
-                bottom: '-8px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'var(--success)',
-                color: 'white',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                padding: '0.2rem 0.65rem',
-                borderRadius: 'var(--radius-full)',
-                whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}>
-                <FaCheckCircle size={10} /> Verified Doctor
-              </div>
+              {doctor.is_verified ? (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-8px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'var(--success)',
+                  color: 'white',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: 'var(--radius-full)',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  <FaCheckCircle size={10} /> {isTelugu ? 'ధృవీకరించబడిన వైద్యుడు' : 'Verified Clinician'}
+                </div>
+              ) : (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-8px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: '#475569',
+                  color: '#f8fafc',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: 'var(--radius-full)',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  <FaInfoCircle size={10} color="#cbd5e1" /> {isTelugu ? 'డెమో ప్రొఫైల్ (ధృవీకరించబడలేదు)' : 'Demo Profile (Unverified)'}
+                </div>
+              )}
             </div>
 
             {/* Doctor Core Info */}
@@ -653,6 +679,33 @@ export const DoctorDetails = () => {
                     <FaCheckCircle color="var(--success)" size={14} />
                     <strong>Clinical Experience:</strong> <span>{doctor.experience} Years Active Hospital Practice</span>
                   </div>
+                  {doctor.registration_number && (
+                    <div className="flex items-center gap-2" style={{ fontSize: '0.92rem', color: 'var(--slate-700)', flexWrap: 'wrap' }}>
+                      <FaCheckCircle color={doctor.is_verified ? "var(--success)" : "var(--slate-400)"} size={14} />
+                      <strong>Medical Registration:</strong>
+                      <span>{doctor.registration_number} ({doctor.council_name || 'State Medical Council'})</span>
+                      {doctor.is_demo && (
+                        <span style={{ fontSize: '0.74rem', color: '#b45309', backgroundColor: '#fef3c7', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          Fictional Demo Record
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {doctor.profile_url && (
+                    <div className="flex items-center gap-2" style={{ fontSize: '0.92rem', color: 'var(--slate-700)', flexWrap: 'wrap' }}>
+                      <FaExternalLinkAlt color="var(--primary)" size={13} />
+                      <strong>{isTelugu ? 'అధికారిక క్లినికల్ ప్రొఫైల్:' : 'Official Clinical Directory:'}</strong>
+                      <a href={doctor.profile_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline', fontWeight: 600 }}>
+                        {isTelugu ? 'ఆసుపత్రి అధికారిక పోర్టల్ చూడండి ↗' : 'View Verified Hospital Listing ↗'}
+                      </a>
+                    </div>
+                  )}
+                  {doctor.is_demo && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.6rem 0.85rem', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--slate-600)', lineHeight: 1.45 }}>
+                      <FaInfoCircle color="#64748b" style={{ marginRight: '0.4rem', verticalAlign: '-1px' }} />
+                      <strong>Demo Notice:</strong> This profile represents a fictional physician configured for system demonstration. Qualifications and registration credentials are not verified government medical records.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

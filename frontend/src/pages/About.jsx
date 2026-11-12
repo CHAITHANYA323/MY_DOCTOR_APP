@@ -12,13 +12,15 @@ import {
   FaPhoneAlt,
   FaArrowRight
 } from 'react-icons/fa';
+import { useLanguage } from '../context/LanguageContext';
 
 export const About = () => {
+  const { t, isTelugu } = useLanguage();
   const stats = [
-    { number: '50,000+', label: 'Patients Treated Successfully' },
-    { number: '150+', label: 'Verified Specialist Doctors' },
-    { number: '45+', label: 'Accredited Hospitals Partnered' },
-    { number: '99.8%', label: 'Positive Patient Satisfaction' }
+    { number: '50,000+', label: isTelugu ? 'చికిత్స పొందిన రోగులు' : 'Patients Treated Successfully' },
+    { number: '150+', label: isTelugu ? 'ధృవీకరించబడిన వైద్యులు' : 'Verified Specialist Doctors' },
+    { number: '45+', label: isTelugu ? 'భాగస్వామ్య ఆసుపత్రులు' : 'Accredited Hospitals Partnered' },
+    { number: '99.8%', label: isTelugu ? 'రోగుల సంతృప్తి రేటు' : 'Positive Patient Satisfaction' }
   ];
 
   const coreValues = [
@@ -79,20 +81,20 @@ export const About = () => {
         <div className="container">
           <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
             <div className="section-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-              <FaHospitalSymbol /> Transforming Healthcare Access
+              <FaHospitalSymbol /> {t('about.tag')}
             </div>
             <h1 style={{ fontSize: 'clamp(2.2rem, 4vw, 3.2rem)', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '1.25rem', lineHeight: 1.2 }}>
-              Dedicated to Compassionate, World-Class <span style={{ color: 'var(--primary)' }}>Medical Care</span>
+              {t('about.heroTitle')}
             </h1>
             <p style={{ fontSize: '1.15rem', color: 'var(--slate-600)', lineHeight: 1.7, marginBottom: '2rem' }}>
-              MediConnect bridges the gap between patients, verified medical specialists, leading hospitals, and emergency dispatch services. We believe quality healthcare must be transparent, immediate, and accessible to all.
+              {t('about.heroSubtitle')}
             </p>
             <div className="flex items-center justify-center gap-3" style={{ flexWrap: 'wrap' }}>
               <Link to="/doctors" className="btn btn-primary btn-lg">
-                <FaUserMd /> Meet Our Doctors
+                <FaUserMd /> {t('about.meetDoctors')}
               </Link>
               <Link to="/contact" className="btn btn-secondary btn-lg">
-                <FaPhoneAlt /> Contact Our Team
+                <FaPhoneAlt /> {t('about.contactTeam')}
               </Link>
             </div>
           </div>

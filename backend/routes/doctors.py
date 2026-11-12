@@ -100,7 +100,7 @@ def get_doctors():
     if needs_hosp_join:
         query = query.join(Doctor.hospital)
 
-    # Global text search filter (OR logic across doctor name, location, specialization, hospital, qualification)
+    # Global text search filter (OR logic across doctor name, location, specialization, hospital, city, state, qualification)
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
@@ -108,6 +108,8 @@ def get_doctors():
             (Doctor.location.ilike(search_pattern)) |
             (Specialization.name.ilike(search_pattern)) |
             (Hospital.name.ilike(search_pattern)) |
+            (Hospital.city.ilike(search_pattern)) |
+            (Hospital.state.ilike(search_pattern)) |
             (Doctor.qualification.ilike(search_pattern))
         )
 
@@ -289,7 +291,12 @@ def create_doctor():
         consultation_type=data.get('consultation_type', 'In-Person & Video'),
         status=data.get('status', 'Active'),
         rating=float(data.get('rating', 4.9)),
-        total_reviews=int(data.get('total_reviews', 0))
+        total_reviews=int(data.get('total_reviews', 0)),
+        profile_url=(data.get('profile_url') or '').strip() or None,
+        source_url=(data.get('source_url') or '').strip() or None,
+        is_verified=bool(data.get('is_verified', True)),
+        is_demo=bool(data.get('is_demo', False)),
+        verification_status=(data.get('verification_status') or ('Verified Clinician' if data.get('is_verified', True) else 'Demo Profile (Unverified)'))
     )
 
     db.session.add(doctor)
@@ -390,6 +397,20 @@ def update_doctor(doctor_id):
             doctor.consultation_type = data['consultation_type']
         if 'status' in data:
             doctor.status = data['status']
+        if 'profile_url' in data:
+            doctor.profile_url = data['profile_url'].strip() or None
+        if 'source_url' in data:
+            doctor.source_url = data['source_url'].strip() or None
+        if 'is_verified' in data and user.role in ('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN'):
+            doctor.is_verified = bool(data['is_verified'])
+            if doctor.is_verified:
+                doctor.is_demo = False
+                doctor.verification_status = 'Verified Clinician'
+            else:
+                doctor.is_demo = True
+                doctor.verification_status = 'Demo Profile (Unverified)'
+        if 'verification_status' in data and user.role in ('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN'):
+            doctor.verification_status = data['verification_status']
 
     db.session.commit()
 

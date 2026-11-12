@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { 
   FaChartPie, 
@@ -16,8 +16,10 @@ import {
   FaHome
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
+import { LanguageToggle } from '../../components/common/LanguageToggle';
 
 /**
  * Universal responsive Administrative Layout Shell.
@@ -26,6 +28,7 @@ import { Badge } from '../../components/common/Badge';
  */
 export const AdminLayout = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -47,16 +50,16 @@ export const AdminLayout = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [sidebarOpen]);
 
-  const navItems = [
-    { label: 'Dashboard', to: '/admin', icon: <FaChartPie aria-hidden="true" />, end: true },
-    { label: 'Manage Doctors', to: '/admin/doctors', icon: <FaUserMd aria-hidden="true" /> },
-    { label: 'Add New Doctor', to: '/admin/doctors/add', icon: <FaUserPlus aria-hidden="true" /> },
-    { label: 'Hospitals', to: '/admin/hospitals', icon: <FaHospital aria-hidden="true" /> },
-    { label: 'Appointments', to: '/admin/appointments', icon: <FaCalendarCheck aria-hidden="true" /> },
-    { label: 'Ambulances', to: '/admin/ambulances', icon: <FaAmbulance aria-hidden="true" /> },
-    { label: 'Specializations', to: '/admin/specializations', icon: <FaStethoscope aria-hidden="true" /> },
-    { label: 'Registered Users', to: '/admin/users', icon: <FaUsers aria-hidden="true" /> },
-  ];
+  const navItems = useMemo(() => [
+    { label: t('portalNav.dashboard'), to: '/admin', icon: <FaChartPie aria-hidden="true" />, end: true },
+    { label: t('portalNav.doctorsList'), to: '/admin/doctors', icon: <FaUserMd aria-hidden="true" /> },
+    { label: t('portalNav.addNewDoctor'), to: '/admin/doctors/add', icon: <FaUserPlus aria-hidden="true" /> },
+    { label: t('portalNav.hospitals'), to: '/admin/hospitals', icon: <FaHospital aria-hidden="true" /> },
+    { label: t('portalNav.appointments'), to: '/admin/appointments', icon: <FaCalendarCheck aria-hidden="true" /> },
+    { label: t('portalNav.ambulances'), to: '/admin/ambulances', icon: <FaAmbulance aria-hidden="true" /> },
+    { label: t('portalNav.departments'), to: '/admin/specializations', icon: <FaStethoscope aria-hidden="true" /> },
+    { label: t('portalNav.users'), to: '/admin/users', icon: <FaUsers aria-hidden="true" /> },
+  ], [t]);
 
   return (
     <div className="admin-layout">
@@ -211,7 +214,7 @@ export const AdminLayout = () => {
               }}
               icon={<FaSignOutAlt size={11} aria-hidden="true" />}
             >
-              Exit
+              {t('portalNav.signOut')}
             </Button>
           </div>
         </div>
@@ -246,6 +249,7 @@ export const AdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <LanguageToggle size="sm" showIcon={false} />
             <Button
               variant="outline"
               size="sm"

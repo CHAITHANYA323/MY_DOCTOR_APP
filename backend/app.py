@@ -20,6 +20,8 @@ from routes.invitations import invitations_bp
 from routes.reception import reception_bp
 from routes.doctor_portal import doctor_portal_bp
 from routes.patient_portal import patient_portal_bp
+from routes.approvals import approvals_bp
+from routes.prescriptions import prescriptions_bp
 
 def create_app():
     # Enforce production security policies at startup
@@ -137,6 +139,8 @@ def create_app():
     app.register_blueprint(reception_bp)
     app.register_blueprint(doctor_portal_bp)
     app.register_blueprint(patient_portal_bp)
+    app.register_blueprint(approvals_bp)
+    app.register_blueprint(prescriptions_bp)
 
     # Register root aliases for blueprints so requests without /api prefix also resolve cleanly
     app.register_blueprint(auth_bp, name='auth_alt', url_prefix='/auth')
@@ -151,6 +155,7 @@ def create_app():
     app.register_blueprint(reception_bp, name='reception_alt', url_prefix='/reception')
     app.register_blueprint(doctor_portal_bp, name='doctor_portal_alt', url_prefix='/doctor')
     app.register_blueprint(patient_portal_bp, name='patient_portal_alt', url_prefix='/patient')
+    app.register_blueprint(approvals_bp, name='approvals_alt', url_prefix='')
 
     # Root and API status endpoints
     @app.route('/', methods=['GET', 'OPTIONS'])

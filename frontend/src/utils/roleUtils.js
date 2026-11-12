@@ -26,7 +26,7 @@ export const ROLE_LABELS = Object.freeze({
   [ROLES.DOCTOR]: 'Doctor',
   [ROLES.PATIENT]: 'Patient / User',
   [ROLES.USER]: 'Patient / User',
-  [ROLES.ADMIN]: 'Legacy Administrator',
+  [ROLES.ADMIN]: 'Hospital Administrator',
 });
 
 export const ROLE_DASHBOARD_ROUTES = Object.freeze({

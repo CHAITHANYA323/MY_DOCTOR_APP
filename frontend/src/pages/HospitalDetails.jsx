@@ -10,14 +10,17 @@ import {
   FaCheckCircle, 
   FaUserMd, 
   FaStar,
-  FaShieldAlt
+  FaShieldAlt,
+  FaExternalLinkAlt
 } from 'react-icons/fa';
 import { hospitalService } from '../services/hospitalService';
 import { DoctorCard } from '../components/DoctorCard';
 import { SkeletonGrid } from '../components/SkeletonLoader';
+import { useLanguage } from '../context/LanguageContext';
 
 export const HospitalDetails = () => {
   const { id } = useParams();
+  const { isTelugu } = useLanguage();
   const [hospital, setHospital] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -90,7 +93,7 @@ export const HospitalDetails = () => {
               padding: '2rem',
               color: 'white'
             }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: '0.5rem' }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{
                   backgroundColor: '#dc2626',
                   color: 'white',
@@ -102,13 +105,27 @@ export const HospitalDetails = () => {
                   alignItems: 'center',
                   gap: '0.35rem'
                 }}>
-                  <FaAmbulance size={12} /> 24/7 Emergency Ward Active
+                  <FaAmbulance size={12} /> {isTelugu ? '24/7 అత్యవసర విభాగం' : '24/7 Emergency Ward Active'}
                 </span>
+
+                {hospital.hospital_type && (
+                  <span style={{
+                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                    color: '#7dd3fc',
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: 'var(--radius-full)'
+                  }}>
+                    {hospital.hospital_type}
+                  </span>
+                )}
 
                 <div className="flex items-center gap-1" style={{ fontSize: '0.9rem', color: '#f59e0b', fontWeight: 700, marginLeft: '0.5rem' }}>
                   <FaStar size={14} />
                   <span style={{ color: 'white' }}>{hospital.rating}</span>
-                  <span style={{ color: 'var(--slate-300)', fontSize: '0.8rem' }}>({hospital.total_reviews} reviews)</span>
+                  <span style={{ color: 'var(--slate-300)', fontSize: '0.8rem' }}>({hospital.total_reviews} {isTelugu ? 'సమీక్షలు' : 'reviews'})</span>
                 </div>
               </div>
 
@@ -116,9 +133,28 @@ export const HospitalDetails = () => {
                 {hospital.name}
               </h1>
 
-              <div className="flex items-center gap-2" style={{ fontSize: '1rem', color: 'var(--slate-200)' }}>
+              <div className="flex items-center gap-2" style={{ fontSize: '1rem', color: 'var(--slate-200)', flexWrap: 'wrap' }}>
                 <FaMapMarkerAlt color="#38bdf8" />
                 <span>{hospital.address}, {hospital.city}, {hospital.state}</span>
+                {hospital.website && (
+                  <a 
+                    href={hospital.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      marginLeft: '0.75rem',
+                      color: '#38bdf8',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    <FaExternalLinkAlt size={11} /> {isTelugu ? 'అధికారిక వెబ్‌సైట్ ↗' : 'Official Hospital Website ↗'}
+                  </a>
+                )}
               </div>
             </div>
           </div>

@@ -16,9 +16,11 @@ import { toast } from 'react-toastify';
 import { ambulanceService, generateUUID } from '../services/ambulanceService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Emergency = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [patientName, setPatientName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -188,10 +190,10 @@ export const Emergency = () => {
           </div>
           <div>
             <h4 style={{ color: '#b91c1c', fontWeight: 800, fontSize: '1rem', marginBottom: '0.2rem' }}>
-              CRITICAL NOTICE FOR ACUTE LIFE-THREATENING EMERGENCIES
+              {t('ambulance.disclaimerTitle')}
             </h4>
             <p style={{ fontSize: '0.88rem', color: '#7f1d1d', lineHeight: 1.5 }}>
-              This web platform facilitates rapid ambulance dispatch and hospital coordination, but it is <strong>NOT a replacement for primary government emergency services</strong>. If you or someone around you is in immediate danger of death, cardiac arrest, or catastrophic trauma, <strong>immediately dial 108 or 112 on your phone without waiting</strong>.
+              {t('ambulance.disclaimerDesc')}
             </p>
           </div>
         </div>
@@ -199,13 +201,13 @@ export const Emergency = () => {
         {/* Emergency Assistance Heading */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <div className="section-tag emergency">
-            <FaHeartbeat /> 24x7 High-Priority Triage
+            <FaHeartbeat /> {t('ambulance.triageTag')}
           </div>
           <h1 style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.75rem' }}>
-            Emergency Medical Assistance
+            {t('ambulance.emergencyAssistanceTitle')}
           </h1>
           <p style={{ color: 'var(--slate-600)', fontSize: '1.1rem', maxWidth: '650px', margin: '0 auto' }}>
-            Request an oxygen-equipped emergency ambulance or reach hospital trauma centers with direct priority connection.
+            {t('ambulance.emergencyAssistanceSubtitle')}
           </p>
         </div>
 
@@ -237,10 +239,10 @@ export const Emergency = () => {
             }}>
               <FaPhoneAlt size={22} />
             </div>
-            <h3 style={{ color: 'white', fontSize: '1.3rem', marginBottom: '0.35rem' }}>National Ambulance</h3>
-            <p style={{ fontSize: '0.85rem', color: '#fee2e2', marginBottom: '1.25rem' }}>Toll-free 24/7 instant response</p>
+            <h3 style={{ color: 'white', fontSize: '1.3rem', marginBottom: '0.35rem' }}>{t('ambulance.nationalAmbulance')}</h3>
+            <p style={{ fontSize: '0.85rem', color: '#fee2e2', marginBottom: '1.25rem' }}>{t('ambulance.nationalAmbulanceDesc')}</p>
             <a href="tel:108" className="btn" style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, width: '100%' }}>
-              Call 108 Now
+              {t('ambulance.dial108Btn')}
             </a>
           </div>
 
@@ -263,8 +265,8 @@ export const Emergency = () => {
             }}>
               <FaUserShield size={22} />
             </div>
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>National Helpline</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>All-in-one police & medical</p>
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>{t('ambulance.nationalHelpline')}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>{t('ambulance.nationalHelplineDesc')}</p>
             <a href="tel:112" className="btn btn-secondary" style={{ width: '100%', fontWeight: 700 }}>
               Call 112 (Universal)
             </a>
@@ -289,10 +291,10 @@ export const Emergency = () => {
             }}>
               <FaHospital size={22} />
             </div>
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>Emergency Hospitals</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>Find nearest 24/7 trauma care</p>
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>{t('ambulance.emergencyHospitals')}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>{t('ambulance.emergencyHospitalsDesc')}</p>
             <Link to="/hospitals" className="btn btn-outline" style={{ width: '100%' }}>
-              Locate Hospitals
+              {t('ambulance.locateHospitalsBtn')}
             </Link>
           </div>
 
@@ -315,10 +317,10 @@ export const Emergency = () => {
             }}>
               <FaPhoneAlt size={22} />
             </div>
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>Apollo Emergency</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>Direct cardiac triage line</p>
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>{t('ambulance.apolloEmergency')}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginBottom: '1.25rem' }}>{t('ambulance.apolloEmergencyDesc')}</p>
             <a href="tel:1066" className="btn btn-secondary" style={{ width: '100%', fontWeight: 700 }}>
-              Call 1066
+              {t('ambulance.call1066Btn')}
             </a>
           </div>
         </div>
@@ -348,10 +350,10 @@ export const Emergency = () => {
               </div>
               <div>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--slate-900)' }}>
-                  Request Emergency Ambulance
+                  {t('ambulance.requestHeading')}
                 </h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)' }}>
-                  Submit details below for instant dispatch coordination
+                  {t('ambulance.requestSubheading')}
                 </p>
               </div>
             </div>

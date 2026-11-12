@@ -128,10 +128,20 @@ export const OwnerDashboard = () => {
     );
   }
 
+  const DUMMY_HOSPITAL_PATTERNS = [
+    'reliability general hospital',
+    'rate limit hospital',
+    'hospital alpha',
+    'hospital beta'
+  ];
+
   const metrics = stats?.metrics || {};
   const pendingInvitations = invitations.filter((i) => i.status === 'Pending').length;
   const recentAppointments = stats?.recent_appointments || [];
-  const hospitalStats = stats?.hospital_stats || [];
+  const rawHospitalStats = stats?.hospital_stats || [];
+  const hospitalStats = rawHospitalStats.filter(
+    (h) => !DUMMY_HOSPITAL_PATTERNS.some((p) => h.name?.toLowerCase().includes(p))
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import {
   FaChartPie,
@@ -12,10 +12,12 @@ import {
   FaArrowLeft
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import { Button } from '../../components/common/Button';
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageToggle } from '../../components/common/LanguageToggle';
 
 export const OwnerLayout = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -37,12 +39,12 @@ export const OwnerLayout = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [sidebarOpen]);
 
-  const navItems = [
-    { label: 'Overview', to: '/owner', icon: <FaChartPie aria-hidden="true" />, end: true },
-    { label: 'Hospitals', to: '/owner/hospitals', icon: <FaHospital aria-hidden="true" /> },
-    { label: 'Super Admin Invitations', to: '/owner/invitations', icon: <FaEnvelopeOpenText aria-hidden="true" /> },
-    { label: 'Platform Audit Logs', to: '/owner/audit-logs', icon: <FaHistory aria-hidden="true" /> },
-  ];
+  const navItems = useMemo(() => [
+    { label: t('portalNav.dashboard'), to: '/owner', icon: <FaChartPie aria-hidden="true" />, end: true },
+    { label: t('portalNav.hospitalsOnboarding'), to: '/owner/hospitals', icon: <FaHospital aria-hidden="true" /> },
+    { label: t('portalNav.superAdminInvitations'), to: '/owner/invitations', icon: <FaEnvelopeOpenText aria-hidden="true" /> },
+    { label: t('portalNav.auditLogs'), to: '/owner/audit-logs', icon: <FaHistory aria-hidden="true" /> },
+  ], [t]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--slate-50)' }}>
@@ -235,7 +237,7 @@ export const OwnerLayout = () => {
                 cursor: 'pointer'
               }}
             >
-              <FaSignOutAlt size={11} /> Logout
+              <FaSignOutAlt size={11} /> {t('portalNav.signOut')}
             </button>
           </div>
         </div>
@@ -292,20 +294,11 @@ export const OwnerLayout = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <LanguageToggle size="sm" showIcon={false} />
             <span style={{ fontSize: '0.85rem', color: 'var(--slate-600)', display: 'none' }} className="owner-welcome">
               Logged in as <strong>{user?.name}</strong>
             </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              icon={<FaSignOutAlt aria-hidden="true" />}
-              style={{ fontSize: '0.78rem' }}
-            >
-              Sign Out
-            </Button>
           </div>
         </header>
 

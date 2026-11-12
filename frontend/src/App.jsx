@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRoute } from './components/RoleRoute';
 
 // Public Pages
+import { Welcome } from './pages/Welcome';
 import { Home } from './pages/Home';
 import { Doctors } from './pages/Doctors';
 import { DoctorDetails } from './pages/DoctorDetails';
@@ -67,6 +68,8 @@ const PatientAppointments = React.lazy(() => import('./pages/patient/PatientAppo
 const SearchDoctors = React.lazy(() => import('./pages/patient/SearchDoctors').then(m => ({ default: m.SearchDoctors })));
 const SearchHospitals = React.lazy(() => import('./pages/patient/SearchHospitals').then(m => ({ default: m.SearchHospitals })));
 const PatientMedicalRecords = React.lazy(() => import('./pages/patient/PatientMedicalRecords').then(m => ({ default: m.PatientMedicalRecords })));
+const PatientPrescriptions = React.lazy(() => import('./pages/patient/PatientPrescriptions').then(m => ({ default: m.PatientPrescriptions })));
+const PatientEmergency = React.lazy(() => import('./pages/patient/PatientEmergency').then(m => ({ default: m.PatientEmergency })));
 const PatientProfile = React.lazy(() => import('./pages/patient/PatientProfile').then(m => ({ default: m.PatientProfile })));
 
 const PortalLoadingFallback = () => (
@@ -98,19 +101,22 @@ export const App = () => {
                        location.pathname.startsWith('/owner') ||
                        location.pathname.startsWith('/doctor') ||
                        location.pathname.startsWith('/patient');
+  const isWelcomeRoute = location.pathname === '/' || location.pathname === '/welcome';
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover />
 
-      {/* Hide public Navbar & Footer on staff & admin portals for clean professional dashboard view */}
-      {!isAdminRoute && <Navbar />}
+      {/* Hide public Navbar & Footer on staff/admin portals and dedicated Welcome landing page */}
+      {!isAdminRoute && !isWelcomeRoute && <Navbar />}
 
       <div style={{ flexGrow: 1 }}>
         <Suspense fallback={<PortalLoadingFallback />}>
           <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Welcome />} />
+          <Route path="/welcome" element={<Welcome />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/invite/accept/:token" element={<AcceptInvitation />} />
@@ -210,9 +216,10 @@ export const App = () => {
             <Route path="appointments" element={<PatientAppointments />} />
             <Route path="records" element={<PatientMedicalRecords />} />
             <Route path="medical-records" element={<Navigate to="/patient/records" replace />} />
+            <Route path="prescriptions" element={<PatientPrescriptions />} />
             <Route path="doctors" element={<SearchDoctors />} />
             <Route path="hospitals" element={<SearchHospitals />} />
-            <Route path="emergency" element={<Emergency />} />
+            <Route path="emergency" element={<PatientEmergency />} />
             <Route path="profile" element={<PatientProfile />} />
           </Route>
 
@@ -294,7 +301,7 @@ export const App = () => {
       </Suspense>
       </div>
 
-      {!isAdminRoute && <Footer />}
+      {!isAdminRoute && !isWelcomeRoute && <Footer />}
     </div>
   );
 };

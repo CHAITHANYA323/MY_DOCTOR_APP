@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
       if (expectedRole) {
         const normalizedExpected = normalizeRole(expectedRole);
 
-        // Explicit handling for legacy ADMIN accounts:
+        // Explicit handling for ADMIN accounts:
         // Do NOT automatically convert ADMIN to PLATFORM_OWNER, HOSPITAL_SUPER_ADMIN, or RECEPTIONIST
         if (rawUserRole === ROLES.ADMIN) {
           if (expectedRole !== ROLES.ADMIN) {
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
               roleMismatch: true,
               authenticatedRole: ROLES.ADMIN,
               rawRole: rawUserRole,
-              message: `Legacy Administrator account detected. This account has not yet been assigned to a hospital role and cannot access the ${ROLE_LABELS[normalizedExpected] || expectedRole} portal. Please sign in as Legacy Admin or contact the Platform Owner.`,
+              message: `Hospital Administrator account detected. This account cannot access the ${ROLE_LABELS[normalizedExpected] || expectedRole} portal. Please switch to the Hospital Admin portal to sign in.`,
             };
           }
         } else if (normalizedUserRole !== normalizedExpected) {

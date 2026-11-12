@@ -13,6 +13,7 @@ def generate_token(user, is_restricted=None):
         'email': user.email,
         'role': user.role,
         'hospital_id': getattr(user, 'hospital_id', None),
+        'approval_status': getattr(user, 'approval_status', 'APPROVED'),
         'must_change_password': must_change,
         'scope': 'password_change' if must_change else 'full',
         'exp': datetime.now(timezone.utc) + timedelta(hours=Config.JWT_EXPIRATION_HOURS),
@@ -79,6 +80,23 @@ def jwt_required(f):
         if not user:
             return jsonify({'success': False, 'message': 'User associated with this token not found.'}), 401
 
+        # Pending / Rejected registration security guard
+        approval_st = getattr(user, 'approval_status', 'APPROVED')
+        if approval_st == 'PENDING_APPROVAL':
+            return jsonify({
+                'success': False,
+                'code': 'ACCOUNT_PENDING_APPROVAL',
+                'error_code': 'ACCOUNT_PENDING_APPROVAL',
+                'message': 'Your account registration is currently pending administrative review. Access to platform features is restricted.'
+            }), 403
+        if approval_st == 'REJECTED':
+            return jsonify({
+                'success': False,
+                'code': 'ACCOUNT_REJECTED',
+                'error_code': 'ACCOUNT_REJECTED',
+                'message': 'Your account registration request was not approved.'
+            }), 403
+
         # Deactivated user security guard
         if getattr(user, 'is_active', True) is False:
             return jsonify({'success': False, 'message': 'Your account has been deactivated. Please contact support.'}), 403
@@ -126,6 +144,21 @@ def roles_required(*allowed_roles, custom_message=None):
 
             if getattr(user, 'is_active', True) is False:
                 return jsonify({'success': False, 'message': 'Your account has been deactivated. Please contact support.'}), 403
+
+            # Pending / Rejected registration security guard
+            approval_st = getattr(user, 'approval_status', 'APPROVED')
+            if approval_st == 'PENDING_APPROVAL':
+                return jsonify({
+                    'success': False,
+                    'code': 'ACCOUNT_PENDING_APPROVAL',
+                    'message': 'Your account registration is currently pending administrative review. Access to platform features is restricted.'
+                }), 403
+            if approval_st == 'REJECTED':
+                return jsonify({
+                    'success': False,
+                    'code': 'ACCOUNT_REJECTED',
+                    'message': 'Your account registration request was not approved.'
+                }), 403
 
             # Mandatory password change restriction
             if (getattr(user, 'must_change_password', False) or payload.get('must_change_password')) and is_restricted_endpoint(request.path, request.endpoint):
@@ -192,7 +225,7 @@ def optional_jwt(f):
             payload = decode_token(token)
             if payload:
                 user = db.session.get(User, payload.get('user_id'))
-                if user and getattr(user, 'is_active', True) is not False:
+                if user and getattr(user, 'is_active', True) is not False and getattr(user, 'approval_status', 'APPROVED') == 'APPROVED':
                     g.current_user = user
         return f(*args, **kwargs)
     return decorated_function

@@ -69,6 +69,10 @@
   /* Transitions */
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Bilingual Typography Stacks */
+  --font-telugu: 'Noto Sans Telugu', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-english: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Base Resets */
@@ -83,14 +87,33 @@ html {
   font-size: 16px;
 }
 
+/* Default font stack prioritizing Telugu glyphs with clean Latin fallback */
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-telugu);
   background-color: var(--bg-main);
   color: var(--slate-800);
-  line-height: 1.6;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+}
+
+/* Language-specific root overrides */
+html[lang="te"], body.lang-te {
+  font-family: var(--font-telugu);
+  line-height: 1.65;
+}
+
+html[lang="en"], body.lang-en {
+  font-family: var(--font-english);
+  line-height: 1.6;
+}
+
+/* Telugu typography helper to prevent vertical clipping of matras and conjuncts */
+.telugu-text {
+  font-family: var(--font-telugu);
+  line-height: 1.65;
+  word-break: keep-all;
 }
 
 a {
@@ -733,27 +756,93 @@ button, input, select, textarea {
 }
 
 .navbar-main {
-  height: 74px;
+  height: 100px;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 
 .navbar-link {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   color: var(--slate-700);
-  padding: 0.4rem 0.2rem;
-  border-bottom: 2px solid transparent;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border-bottom: 2.5px solid transparent;
   transition: var(--transition);
   display: inline-flex;
   align-items: center;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+/* ==========================================================
+   SCOPED COMPACT NAVBAR FOR LOGIN PAGE
+   Restores previous 74px height, prevents link wrapping,
+   and keeps all navigation links in a single horizontal row.
+   ========================================================== */
+.navbar-login-compact .navbar-main {
+  height: 74px !important;
+  min-height: 74px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.navbar-login-compact .navbar-link {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  padding: 0.4rem 0.55rem !important;
+  min-height: 40px !important;
+  white-space: nowrap !important;
+}
+
+.navbar-login-compact .desktop-nav {
+  gap: 1.15rem !important;
+  flex-wrap: nowrap !important;
+}
+
+@media (max-width: 1280px) and (min-width: 1024px) {
+  .navbar-login-compact .desktop-nav {
+    gap: 0.85rem !important;
+  }
+  .navbar-login-compact .navbar-link {
+    font-size: 0.92rem !important;
+    padding: 0.35rem 0.45rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-login-compact .navbar-main {
+    height: 68px !important;
+    min-height: 68px !important;
+  }
+  .navbar-login-compact .navbar-main .gap-2\.5 {
+    gap: 0.35rem !important;
+  }
+}
+
+@media (max-width: 1240px) and (min-width: 1024px) {
+  .desktop-nav {
+    gap: 1.15rem !important;
+  }
+  .navbar-link {
+    font-size: 1.05rem !important;
+    padding: 0.5rem 0.65rem !important;
+  }
 }
 
 .navbar-link:hover {
   color: var(--primary-btn, #0369a1);
+  background-color: var(--slate-50);
 }
 
 .navbar-link.active {
   color: var(--primary-btn, #0369a1);
   border-bottom-color: var(--primary-btn, #0369a1);
+  background-color: var(--slate-50);
 }
 
 .navbar-dropdown-menu {
@@ -1064,6 +1153,108 @@ button, input, select, textarea {
     margin: 0.75rem !important;
     max-width: calc(100vw - 1.5rem) !important;
     padding: 1.25rem !important;
+  }
+
+  /* Prevent mobile navbar horizontal overflow and keep vertically centered */
+  .navbar-header .container,
+  .navbar-main.container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .navbar-main {
+    min-height: 90px !important;
+    height: auto !important;
+  }
+
+  .navbar-main .gap-3 {
+    gap: 0.45rem !important;
+  }
+
+  .navbar-main .language-toggle-group button {
+    padding: 0.28rem 0.5rem !important;
+    font-size: 0.76rem !important;
+  }
+
+  .login-page-card {
+    padding: 1.5rem 1.15rem !important;
+  }
+}
+
+/* ==========================================================
+   LOGIN ROLE SELECTOR RESPONSIVE GRID
+   Enforces comfortable, accessible tap targets & responsive wrapping
+   ========================================================== */
+.login-page-card {
+  max-width: 620px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.login-role-tabs-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background-color: var(--slate-100);
+  padding: 0.5rem;
+  border-radius: var(--radius-lg, 14px);
+  box-sizing: border-box;
+}
+
+.login-role-tab-btn {
+  flex: 1 1 calc(20% - 0.5rem);
+  min-width: 95px;
+  min-height: 48px;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.login-form-input {
+  width: 100%;
+  min-height: 52px !important;
+  font-size: 1.02rem !important;
+  border-radius: 10px !important;
+  border: 1.5px solid var(--slate-300) !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.login-form-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+}
+
+@media (max-width: 640px) {
+  .login-role-tabs-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    padding: 0.45rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .login-role-tab-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important; /* WCAG comfortable tap target */
+    padding: 0.65rem 0.5rem !important;
+    font-size: 0.86rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* 5th role tab (Platform Owner) spans across both columns for clean symmetry */
+  .login-role-tab-btn:nth-child(5):last-child {
+    grid-column: span 2 !important;
   }
 }
 

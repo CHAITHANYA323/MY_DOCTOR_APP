@@ -44,5 +44,33 @@ export const patientService = {
   bookAppointment: async (appointmentData) => {
     const response = await api.post('/api/appointments', appointmentData);
     return response.data;
+  },
+
+  // Digital Prescriptions
+  getPrescriptions: async () => {
+    const response = await api.get('/api/patient/prescriptions');
+    return response.data;
+  },
+
+  getPrescriptionDetail: async (id) => {
+    const response = await api.get(`/api/prescriptions/${id}`);
+    return response.data;
+  },
+
+  downloadPrescriptionPdf: async (id, filename = 'Prescription.pdf') => {
+    const response = await api.get(`/api/prescriptions/${id}/pdf?download=true`, {
+      responseType: 'blob',
+      headers: { Accept: 'application/pdf' }
+    });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
   }
 };

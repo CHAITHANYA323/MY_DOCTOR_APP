@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaUserMd,
   FaHospital,
@@ -7,13 +7,17 @@ import {
   FaLanguage,
   FaSave,
   FaInfoCircle,
-  FaCheckCircle,
-  FaAward
+  FaShieldAlt,
+  FaAward,
+  FaStethoscope
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
+import { formatDoctorDisplayName, getDoctorInitials } from '../../utils/doctorNameUtils';
 
 export const DoctorProfile = () => {
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [doctor, setDoctor] = useState(null);
@@ -24,24 +28,32 @@ export const DoctorProfile = () => {
   const [languages, setLanguages] = useState('');
   const [about, setAbout] = useState('');
 
+  const getLabel = useCallback((key, fallback) => {
+    const val = t(key);
+    if (!val || val === key) return fallback;
+    return val;
+  }, [t]);
+
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {
       try {
         setLoading(true);
         const res = await doctorService.getDoctorProfile();
-        if (res.success && isMounted) {
+        if (!isMounted) return;
+        if (res && res.success) {
           const doc = res.doctor;
           setDoctor(doc);
           setPhone(doc.phone || '');
           setEmail(doc.email || doc.account_email || '');
-          setLanguages(doc.languages || 'English, Hindi');
+          setLanguages(doc.languages || 'English, Telugu, Hindi');
           setAbout(doc.about || '');
         } else {
-          toast.error(res.message || 'Failed to fetch doctor profile.');
+          toast.error(res?.message || 'Failed to fetch doctor profile.');
         }
       } catch (err) {
-        console.error(err);
+        if (!isMounted) return;
+        console.error('Error fetching doctor profile:', err);
         toast.error(err.response?.data?.message || 'Error loading doctor profile.');
       } finally {
         if (isMounted) setLoading(false);
@@ -63,7 +75,7 @@ export const DoctorProfile = () => {
       });
 
       if (res.success) {
-        toast.success('Clinical profile updated successfully!');
+        toast.success(getLabel('doctorPortal.profileSaveSuccess', 'Clinical profile updated successfully!'));
         setDoctor(res.doctor);
       } else {
         toast.error(res.message || 'Profile update failed.');
@@ -79,261 +91,307 @@ export const DoctorProfile = () => {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
-        <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTopColor: '#0284c7', borderRadius: '50%' }} />
-        <p style={{ color: '#64748b' }}>Loading doctor profile details...</p>
+        <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid #E2E8F0', borderTopColor: '#0D9488', borderRadius: '50%' }} />
+        <p style={{ color: '#0F766E', fontSize: '0.95rem', fontWeight: 600 }}>
+          {getLabel('doctorPortal.profileSubtitle', 'Loading doctor profile & credentials...')}
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '850px', margin: '0 auto' }}>
-      {/* Header Banner */}
+    <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* Top Header */}
+      <div>
+        <h1 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0C2328', margin: '0 0 0.25rem 0', letterSpacing: '-0.02em' }}>
+          {getLabel('doctorPortal.profileTitle', 'Doctor Profile & Credentials')}
+        </h1>
+        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: 0 }}>
+          {getLabel('doctorPortal.profileSubtitle', 'Manage your verified professional credentials, clinic contact, and biography')}
+        </p>
+      </div>
+
+      {/* Hero Doctor Identity Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, #0C2328 0%, #134E4A 100%)',
         borderRadius: '16px',
         padding: '2rem',
-        color: '#ffffff',
-        marginBottom: '2rem',
-        boxShadow: '0 4px 15px rgba(15, 23, 42, 0.1)',
+        color: '#FFFFFF',
+        boxShadow: '0 8px 24px rgba(12, 35, 40, 0.15)',
+        border: '1px solid rgba(45, 212, 191, 0.2)',
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: '1.5rem'
       }}>
         <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          overflow: 'hidden',
-          background: '#0284c7',
-          border: '3px solid rgba(255, 255, 255, 0.2)',
+          width: '76px',
+          height: '76px',
+          borderRadius: '16px',
+          backgroundColor: '#134E4A',
+          border: '3px solid #2DD4BF',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          color: '#FFFFFF',
+          fontSize: '1.65rem',
+          fontWeight: 800,
+          overflow: 'hidden',
           flexShrink: 0
         }}>
           {doctor?.image ? (
             <img src={doctor.image} alt={doctor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <FaUserMd size={40} style={{ color: '#ffffff' }} />
+            getDoctorInitials(doctor?.name)
           )}
         </div>
 
         <div style={{ flex: 1, minWidth: '240px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.6rem', borderRadius: '999px', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8' }}>
-              {doctor?.specialization_name || 'Specialist'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+            <span style={{
+              background: 'rgba(45, 212, 191, 0.2)',
+              color: '#2DD4BF',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              padding: '0.2rem 0.65rem',
+              borderRadius: '999px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              border: '1px solid rgba(45, 212, 191, 0.35)'
+            }}>
+              <FaShieldAlt size={10} />
+              {getLabel('doctorPortal.licenseVerified', 'Medical Council Certified')}
             </span>
-            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
-              <FaCheckCircle size={10} /> {doctor?.status || 'Active'}
-            </span>
           </div>
-          <h1 style={{ fontSize: '1.65rem', fontWeight: 800, margin: '0 0 0.25rem 0', letterSpacing: '-0.02em' }}>
-            {doctor?.name || 'Doctor'}
-          </h1>
-          <div style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>
-            {doctor?.qualification} • {doctor?.experience} Years Experience
-          </div>
-          <div style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <FaHospital size={12} /> {doctor?.hospital_name || 'Medical Center'} ({doctor?.location})
-          </div>
-        </div>
-      </div>
 
-      {/* Verified Medical Credentials Card (Read-Only) */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #e2e8f0',
-        padding: '1.75rem',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-          <FaAward size={18} style={{ color: '#0284c7' }} />
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-            Verified Hospital Credentials
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 0.35rem 0' }}>
+            {formatDoctorDisplayName(doctor?.name, language, 'Physician')}
           </h2>
-        </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem'
-        }}>
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Assigned Hospital</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.25rem' }}>
-              {doctor?.hospital_name || 'Hospital'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>Hospital ID: #{doctor?.hospital_id}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.85rem', color: '#CCFBF1', fontSize: '0.85rem' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <FaStethoscope size={12} style={{ color: '#2DD4BF' }} />
+              {doctor?.specialization_name || doctor?.specialization || 'Cardiology'}
+            </span>
+            <span>•</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <FaHospital size={12} style={{ color: '#2DD4BF' }} />
+              {doctor?.hospital_name || doctor?.hospital || 'Hospital'}
+            </span>
+            {doctor?.experience_years && (
+              <>
+                <span>•</span>
+                <span>{doctor.experience_years} Years Experience</span>
+              </>
+            )}
           </div>
-
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Specialization</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.25rem' }}>
-              {doctor?.specialization_name || 'General'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>Department Category</div>
-          </div>
-
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Qualifications</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.25rem' }}>
-              {doctor?.qualification || 'MBBS'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>Certified Medical Degree</div>
-          </div>
-
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Experience</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.25rem' }}>
-              {doctor?.experience || 1} Years
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>Clinical Practice</div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.25rem', fontSize: '0.8rem', color: '#64748b' }}>
-          <FaInfoCircle size={14} style={{ color: '#0284c7', flexShrink: 0 }} />
-          <span>Hospital assignment and medical qualifications are verified institutional credentials managed by Hospital Super Administrators.</span>
         </div>
       </div>
 
-      {/* Edit Bio and Contact Form */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #e2e8f0',
-        padding: '2rem',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-      }}>
-        <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1.5rem 0' }}>
-          Self-Service Profile Details
-        </h2>
+      {/* Main Profile Form */}
+      <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Section 1: Verified Credentials (Admin Managed) */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '16px',
+          border: '1px solid #E2E8F0',
+          padding: '1.75rem',
+          boxShadow: '0 2px 6px rgba(15, 23, 42, 0.02)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.75rem' }}>
+            <FaAward size={16} style={{ color: '#0D9488' }} />
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0C2328', margin: 0 }}>
+              {getLabel('doctorPortal.professionalCredentials', 'Professional Credentials')}
+            </h3>
+          </div>
 
-        <form onSubmit={handleSaveProfile}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '1.25rem',
-            marginBottom: '1.5rem'
-          }}>
-            {/* Phone */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-                <FaPhoneAlt size={12} style={{ color: '#0284c7' }} />
-                Doctor Contact Phone
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                {getLabel('doctorPortal.doctorFullName', 'Full Name')}
+              </label>
+              <div style={{ padding: '0.75rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 700, color: '#0C2328', fontSize: '0.88rem' }}>
+                {doctor?.name || 'Dr. Rajesh Kumar'}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                {getLabel('doctorPortal.specialtyLabel', 'Medical Specialty')}
+              </label>
+              <div style={{ padding: '0.75rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 700, color: '#0C2328', fontSize: '0.88rem' }}>
+                {doctor?.specialization_name || doctor?.specialization || 'Cardiology'}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                {getLabel('doctorPortal.hospitalAffiliation', 'Hospital Affiliation')}
+              </label>
+              <div style={{ padding: '0.75rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 700, color: '#0C2328', fontSize: '0.88rem' }}>
+                {doctor?.hospital_name || doctor?.hospital || 'Reliability General Hospital'}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                {getLabel('doctorPortal.medicalRegistrationNumber', 'Medical Council Reg No.')}
+              </label>
+              <div style={{ padding: '0.75rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 700, color: '#0C2328', fontSize: '0.88rem' }}>
+                {doctor?.registration_number || 'MCI-AP-2015-88492'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            padding: '0.85rem 1rem',
+            fontSize: '0.78rem',
+            color: '#64748B',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <FaInfoCircle size={13} style={{ color: '#0D9488', flexShrink: 0 }} />
+            <span>{getLabel('doctorPortal.administrativeNotice', 'Note: Legal credential name, hospital affiliation, and core medical specialty are managed by Hospital Administration.')}</span>
+          </div>
+        </div>
+
+        {/* Section 2: Editable Personal & Contact Info */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '16px',
+          border: '1px solid #E2E8F0',
+          padding: '1.75rem',
+          boxShadow: '0 2px 6px rgba(15, 23, 42, 0.02)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.75rem' }}>
+            <FaUserMd size={16} style={{ color: '#0D9488' }} />
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0C2328', margin: 0 }}>
+              {getLabel('doctorPortal.personalAndContact', 'Personal & Contact Information')}
+            </h3>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+                <FaPhoneAlt size={12} style={{ color: '#0D9488' }} />
+                {getLabel('doctorPortal.primaryPhone', 'Contact Phone')}
               </label>
               <input
-                type="tel"
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98765 43210"
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid #CBD5E1',
                   borderRadius: '8px',
-                  fontSize: '0.9rem',
+                  fontSize: '0.88rem',
                   boxSizing: 'border-box'
                 }}
               />
             </div>
 
-            {/* Email */}
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-                <FaEnvelope size={12} style={{ color: '#0284c7' }} />
-                Public Contact Email
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+                <FaEnvelope size={12} style={{ color: '#0D9488' }} />
+                {getLabel('doctorPortal.primaryEmail', 'Email Address')}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="doctor@hospital.org"
+                placeholder="doctor@example.com"
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid #CBD5E1',
                   borderRadius: '8px',
-                  fontSize: '0.9rem',
+                  fontSize: '0.88rem',
                   boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+                <FaLanguage size={14} style={{ color: '#0D9488' }} />
+                {getLabel('doctorPortal.spokenLanguages', 'Spoken Languages')}
+              </label>
+              <input
+                type="text"
+                value={languages}
+                onChange={(e) => setLanguages(e.target.value)}
+                placeholder={getLabel('doctorPortal.languagesPlaceholder', 'e.g., English, Telugu, Hindi')}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+                {getLabel('doctorPortal.aboutPractice', 'About Doctor & Practice')}
+              </label>
+              <textarea
+                rows={4}
+                value={about}
+                onChange={(e) => setAbout(e.target.value)}
+                placeholder={getLabel('doctorPortal.aboutPlaceholder', 'Write a brief professional summary of your clinical expertise and background...')}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                  resize: 'vertical'
                 }}
               />
             </div>
           </div>
 
-          {/* Languages */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              <FaLanguage size={14} style={{ color: '#0284c7' }} />
-              Languages Spoken
-            </label>
-            <input
-              type="text"
-              value={languages}
-              onChange={(e) => setLanguages(e.target.value)}
-              placeholder="e.g. English, Hindi, Telugu"
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-          {/* About / Bio */}
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              Professional Clinical Bio & Overview
-            </label>
-            <textarea
-              rows={5}
-              value={about}
-              onChange={(e) => setAbout(e.target.value)}
-              placeholder="Write a brief overview of your clinical specialties, treatment approach, research interests, and healthcare philosophy..."
-              style={{
-                width: '100%',
-                padding: '0.875rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                fontFamily: 'inherit',
-                boxSizing: 'border-box',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          {/* Save Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
+          {/* Action Button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
             <button
               type="submit"
               disabled={saving}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                padding: '0.75rem 2rem',
-                background: '#0284c7',
-                color: '#ffffff',
+                padding: '0.8rem 1.75rem',
+                background: '#0D9488',
+                color: '#FFFFFF',
                 border: 'none',
                 borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: saving ? 'not-allowed' : 'pointer'
+                fontSize: '0.9rem',
+                fontWeight: 800,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)'
               }}
             >
               <FaSave size={14} />
-              {saving ? 'Saving...' : 'Save Profile Changes'}
+              {saving
+                ? getLabel('doctorPortal.savingProfile', 'Saving Profile...')
+                : getLabel('doctorPortal.saveProfileBtn', 'Save Profile Information')}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 };

@@ -7,11 +7,16 @@ import {
   FaUserMd, 
   FaAmbulance, 
   FaClock, 
-  FaCheck
+  FaCheck,
+  FaCheckCircle,
+  FaExternalLinkAlt
 } from 'react-icons/fa';
 import { Badge } from './common/Badge';
+import { useLanguage } from '../context/LanguageContext';
 
 export const HospitalCard = ({ hospital }) => {
+  const { isTelugu } = useLanguage();
+
   return (
     <div className="card card-lift" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Top Image */}
@@ -23,12 +28,26 @@ export const HospitalCard = ({ hospital }) => {
           loading="lazy"
         />
 
-        {/* 24/7 Emergency Badge */}
-        <div style={{ position: 'absolute', top: '12px', left: '12px' }}>
+        {/* 24/7 Emergency & Type Badge */}
+        <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <Badge variant="danger" size="sm">
             <FaAmbulance size={11} style={{ marginRight: '0.25rem' }} aria-hidden="true" />
-            24/7 Emergency
+            {isTelugu ? '24/7 అత్యవసరం' : '24/7 Emergency'}
           </Badge>
+          {hospital.hospital_type && (
+            <span style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(4px)',
+              color: '#38bdf8',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '0.2rem 0.55rem',
+              borderRadius: 'var(--radius-full)',
+              border: '1px solid rgba(56, 189, 248, 0.3)'
+            }}>
+              {hospital.hospital_type}
+            </span>
+          )}
         </div>
 
         {/* Rating */}
@@ -57,19 +76,41 @@ export const HospitalCard = ({ hospital }) => {
 
       {/* Body Info */}
       <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--slate-900)', marginBottom: '0.35rem' }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--slate-900)', marginBottom: '0.35rem', lineHeight: 1.35 }}>
           <Link to={`/hospitals/${hospital.id}`} style={{ color: 'inherit' }}>
             {hospital.name}
           </Link>
         </h3>
 
-        {/* Address */}
-        <div className="flex items-center gap-2" style={{ fontSize: '0.85rem', color: 'var(--slate-600)', marginBottom: '0.85rem' }}>
-          <FaMapMarkerAlt size={13} color="var(--primary)" />
+        {/* Address & State */}
+        <div className="flex items-center gap-2" style={{ fontSize: '0.85rem', color: 'var(--slate-600)', marginBottom: '0.5rem' }}>
+          <FaMapMarkerAlt size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {hospital.address}, {hospital.city}
+            {hospital.city}{hospital.state ? `, ${hospital.state}` : ''}
           </span>
         </div>
+
+        {/* Official Portal Link */}
+        {hospital.website && (
+          <div style={{ marginBottom: '0.75rem' }}>
+            <a 
+              href={hospital.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: '0.78rem',
+                color: 'var(--primary)',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                textDecoration: 'none'
+              }}
+            >
+              <FaExternalLinkAlt size={10} /> {isTelugu ? 'అధికారిక పోర్టల్ చూడండి ↗' : 'Official Portal ↗'}
+            </a>
+          </div>
+        )}
 
         {/* Facilities Chips */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
@@ -94,7 +135,7 @@ export const HospitalCard = ({ hospital }) => {
           ))}
           {(hospital.facilities?.length || 0) > 3 && (
             <span style={{ fontSize: '0.72rem', color: 'var(--slate-400)', alignSelf: 'center' }}>
-              +{hospital.facilities.length - 3} more
+              +{hospital.facilities.length - 3} {isTelugu ? 'మరిన్ని' : 'more'}
             </span>
           )}
         </div>
@@ -113,11 +154,11 @@ export const HospitalCard = ({ hospital }) => {
         }}>
           <div className="flex items-center gap-1" style={{ fontWeight: 600, color: 'var(--slate-800)' }}>
             <FaUserMd color="var(--primary)" size={13} />
-            <span>{hospital.doctor_count || 0} Doctors Available</span>
+            <span>{hospital.doctor_count || 0} {isTelugu ? 'వైద్యులు' : 'Doctors Available'}</span>
           </div>
           <div className="flex items-center gap-1" style={{ color: 'var(--slate-500)' }}>
             <FaClock size={11} />
-            <span>{hospital.working_hours || '24x7 Open'}</span>
+            <span>{hospital.working_hours || (isTelugu ? '24x7 తెరిచి ఉంటుంది' : '24x7 Open')}</span>
           </div>
         </div>
 
@@ -133,13 +174,15 @@ export const HospitalCard = ({ hospital }) => {
               fontWeight: 700 
             }}
           >
-            <FaPhoneAlt size={11} /> Emergency
+            <FaPhoneAlt size={11} /> {isTelugu ? 'అత్యవసరం' : 'Emergency'}
           </a>
           <Link to={`/hospitals/${hospital.id}`} className="btn btn-primary btn-sm" style={{ width: '100%' }}>
-            View Hospital
+            {isTelugu ? 'వివరాలు' : 'View Hospital'}
           </Link>
         </div>
       </div>
     </div>
   );
 };
+
+export default HospitalCard;

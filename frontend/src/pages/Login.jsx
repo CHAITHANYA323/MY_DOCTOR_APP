@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FaHospitalSymbol,
@@ -13,142 +13,133 @@ import {
   FaExclamationTriangle,
   FaInfoCircle,
   FaArrowRight,
-  FaUserPlus
+  FaUserPlus,
+  FaClock,
+  FaBan
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getApiErrorMessage } from '../services/api';
 import {
   ROLES,
-  ROLE_LABELS,
   getRoleDashboardPath,
   normalizeRole
 } from '../utils/roleUtils';
 import { Button } from '../components/common/Button';
 
-// Dynamic configuration for each role-based portal
-const PORTAL_CONFIGS = Object.freeze({
-  [ROLES.PATIENT]: {
-    id: ROLES.PATIENT,
-    tabLabel: 'Patient / User',
-    heading: 'Patient Portal Sign In',
-    subtitle: 'Access verified doctors, book appointments, and review your personal healthcare history.',
-    description: 'Patient Portal: Book consultations, manage appointments, and access personal medical records.',
-    buttonLabel: 'Sign In to Patient Portal',
-    themeColor: '#0284c7', // Sky Blue
-    accentGradient: 'linear-gradient(135deg, #0284c7, #0369a1)',
-    badgeBg: '#f0f9ff',
-    badgeText: '#0369a1',
-    badgeBorder: '#bae6fd',
-    icon: <FaUser />,
-    emailLabel: 'Patient Email Address',
-    emailPlaceholder: 'name@example.com',
-    hasPublicRegistration: true,
-    registrationLink: '/register',
-    registrationLabel: 'Register as a Patient',
-    navPrompt: 'New to MediConnect?',
-    navNotice: 'Free public registration for doctor discovery, online booking & personal healthcare management.',
-  },
-  [ROLES.DOCTOR]: {
-    id: ROLES.DOCTOR,
-    tabLabel: 'Doctor',
-    heading: 'Doctor Clinical Sign In',
-    subtitle: 'Access your daily consultation agenda, patient medical histories, and clinical schedule.',
-    description: 'Clinical Portal: Access daily patient agenda, clinical consultations, and availability schedule.',
-    buttonLabel: 'Sign In as Doctor',
-    themeColor: '#0d9488', // Medical Teal
-    accentGradient: 'linear-gradient(135deg, #0d9488, #0f766e)',
-    badgeBg: '#f0fdfa',
-    badgeText: '#0f766e',
-    badgeBorder: '#99f6e4',
-    icon: <FaUserMd />,
-    emailLabel: 'Doctor Official Email',
-    emailPlaceholder: 'dr.name@hospital.com',
-    hasPublicRegistration: false,
-    navPrompt: 'Need Doctor Credentials?',
-    navNotice: 'No public doctor registration. Doctor accounts are provisioned by hospital administration and activated through authorized invitation links.',
-  },
-  [ROLES.RECEPTIONIST]: {
-    id: ROLES.RECEPTIONIST,
-    tabLabel: 'Receptionist',
-    heading: 'Hospital Front Desk Sign In',
-    subtitle: 'Real-time patient intake terminal, fast check-in queue, and consultation triage.',
-    description: 'Hospital Front Desk: Rapid patient check-in, queue management, and on-duty doctor status.',
-    buttonLabel: 'Sign In to Reception Terminal',
-    themeColor: '#7c3aed', // Front-desk Violet
-    accentGradient: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-    badgeBg: '#f5f3ff',
-    badgeText: '#6d28d9',
-    badgeBorder: '#ddd6fe',
-    icon: <FaClipboardList />,
-    emailLabel: 'Receptionist Staff Email',
-    emailPlaceholder: 'reception@hospital.com',
-    hasPublicRegistration: false,
-    navPrompt: 'Front Desk Access Notice:',
-    navNotice: 'No public receptionist registration. Front-desk accounts must be created and provisioned by an authorized Hospital Super Admin.',
-  },
-  [ROLES.HOSPITAL_SUPER_ADMIN]: {
-    id: ROLES.HOSPITAL_SUPER_ADMIN,
-    tabLabel: 'Super Admin',
-    heading: 'Hospital Administration Console',
-    subtitle: 'Hospital-level operations, clinical staff directory, departments, and appointment oversight.',
-    description: 'Hospital Operations: Manage hospital doctors, staff invitations, and departmental settings.',
-    buttonLabel: 'Sign In as Hospital Super Admin',
-    themeColor: '#ea580c', // Operations Amber/Orange
-    accentGradient: 'linear-gradient(135deg, #ea580c, #c2410c)',
-    badgeBg: '#fff7ed',
-    badgeText: '#c2410c',
-    badgeBorder: '#fed7aa',
-    icon: <FaHospitalSymbol />,
-    emailLabel: 'Hospital Super Admin Email',
-    emailPlaceholder: 'admin@hospital.com',
-    hasPublicRegistration: false,
-    navPrompt: 'Hospital Admin Provisioning:',
-    navNotice: 'No public administrator registration. Hospital Super Admin accounts are provisioned through the authorized Platform Owner governance workflow.',
-  },
-  [ROLES.PLATFORM_OWNER]: {
-    id: ROLES.PLATFORM_OWNER,
-    tabLabel: 'Platform Owner',
-    heading: 'Platform Governance Console',
-    subtitle: 'Multi-hospital oversight, security audit logs, platform metrics, and super admin onboarding.',
-    description: 'Platform Console: Multi-hospital oversight, platform security, and super admin onboarding.',
-    buttonLabel: 'Sign In to Platform Governance',
-    themeColor: '#b91c1c', // Security Red
-    accentGradient: 'linear-gradient(135deg, #b91c1c, #991b1b)',
-    badgeBg: '#fef2f2',
-    badgeText: '#991b1b',
-    badgeBorder: '#fecaca',
-    icon: <FaShieldAlt />,
-    emailLabel: 'Platform Owner Security Email',
-    emailPlaceholder: 'owner@mediconnect.com',
-    hasPublicRegistration: false,
-    navPrompt: 'Platform Governance Notice:',
-    navNotice: 'No public owner registration. Platform Owner accounts are strictly restricted to authorized server-level provisioning.',
-  },
-  [ROLES.ADMIN]: {
-    id: ROLES.ADMIN,
-    tabLabel: 'Legacy Admin',
-    heading: 'Legacy Administration Console',
-    subtitle: 'Unassigned administrator console access retained for backward compatibility.',
-    description: 'Legacy Administration Console: Unassigned administrator console access.',
-    buttonLabel: 'Sign In as Legacy Admin',
-    themeColor: '#475569',
-    accentGradient: 'linear-gradient(135deg, #475569, #334155)',
-    badgeBg: '#f8fafc',
-    badgeText: '#334155',
-    badgeBorder: '#cbd5e1',
-    icon: <FaShieldAlt />,
-    emailLabel: 'Legacy Admin Email',
-    emailPlaceholder: 'legacy.admin@medicare.com',
-    hasPublicRegistration: false,
-    navPrompt: 'Legacy Administration:',
-    navNotice: 'Legacy administrative console access.',
-  }
-});
-
 export const Login = () => {
   const { login } = useAuth();
+  const { t, isTelugu } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Dynamic configuration for each role-based portal (reactive to language)
+  // Visible Login roles: Patient, Doctor, Receptionist, Super Admin, Platform Owner
+  const portalConfigs = useMemo(() => ({
+    [ROLES.PATIENT]: {
+      id: ROLES.PATIENT,
+      tabLabel: t('auth.roles.patient.tabLabel'),
+      heading: t('auth.roles.patient.heading'),
+      subtitle: t('auth.roles.patient.subtitle'),
+      description: t('auth.roles.patient.description'),
+      buttonLabel: t('auth.roles.patient.buttonLabel'),
+      themeColor: '#0284c7', // Sky Blue
+      accentGradient: 'linear-gradient(135deg, #0284c7, #0369a1)',
+      badgeBg: '#f0f9ff',
+      badgeText: '#0369a1',
+      badgeBorder: '#bae6fd',
+      icon: <FaUser />,
+      emailLabel: t('auth.roles.patient.emailLabel'),
+      emailPlaceholder: t('auth.roles.patient.emailPlaceholder'),
+      hasPublicRegistration: true,
+      registrationLink: '/register',
+      registrationLabel: t('auth.roles.patient.registrationLabel'),
+      navPrompt: t('auth.roles.patient.navPrompt'),
+      navNotice: t('auth.roles.patient.navNotice'),
+    },
+    [ROLES.DOCTOR]: {
+      id: ROLES.DOCTOR,
+      tabLabel: t('auth.roles.doctor.tabLabel'),
+      heading: t('auth.roles.doctor.heading'),
+      subtitle: t('auth.roles.doctor.subtitle'),
+      description: t('auth.roles.doctor.description'),
+      buttonLabel: t('auth.roles.doctor.buttonLabel'),
+      themeColor: '#0d9488', // Medical Teal
+      accentGradient: 'linear-gradient(135deg, #0d9488, #0f766e)',
+      badgeBg: '#f0fdfa',
+      badgeText: '#0f766e',
+      badgeBorder: '#99f6e4',
+      icon: <FaUserMd />,
+      emailLabel: t('auth.roles.doctor.emailLabel'),
+      emailPlaceholder: t('auth.roles.doctor.emailPlaceholder'),
+      hasPublicRegistration: true,
+      registrationLink: '/register?role=DOCTOR',
+      registrationLabel: t('auth.roles.doctor.registrationLabel'),
+      navPrompt: t('auth.roles.doctor.navPrompt'),
+      navNotice: t('auth.roles.doctor.navNotice'),
+    },
+    [ROLES.RECEPTIONIST]: {
+      id: ROLES.RECEPTIONIST,
+      tabLabel: t('auth.roles.receptionist.tabLabel'),
+      heading: t('auth.roles.receptionist.heading'),
+      subtitle: t('auth.roles.receptionist.subtitle'),
+      description: t('auth.roles.receptionist.description'),
+      buttonLabel: t('auth.roles.receptionist.buttonLabel'),
+      themeColor: '#7c3aed', // Front-desk Violet
+      accentGradient: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+      badgeBg: '#f5f3ff',
+      badgeText: '#6d28d9',
+      badgeBorder: '#ddd6fe',
+      icon: <FaClipboardList />,
+      emailLabel: t('auth.roles.receptionist.emailLabel'),
+      emailPlaceholder: t('auth.roles.receptionist.emailPlaceholder'),
+      hasPublicRegistration: true,
+      registrationLink: '/register?role=RECEPTIONIST',
+      registrationLabel: t('auth.roles.receptionist.registrationLabel'),
+      navPrompt: t('auth.roles.receptionist.navPrompt'),
+      navNotice: t('auth.roles.receptionist.navNotice'),
+    },
+    [ROLES.HOSPITAL_SUPER_ADMIN]: {
+      id: ROLES.HOSPITAL_SUPER_ADMIN,
+      tabLabel: t('auth.roles.superAdmin.tabLabel'),
+      heading: t('auth.roles.superAdmin.heading'),
+      subtitle: t('auth.roles.superAdmin.subtitle'),
+      description: t('auth.roles.superAdmin.description'),
+      buttonLabel: t('auth.roles.superAdmin.buttonLabel'),
+      themeColor: '#ea580c', // Operations Amber/Orange
+      accentGradient: 'linear-gradient(135deg, #ea580c, #c2410c)',
+      badgeBg: '#fff7ed',
+      badgeText: '#c2410c',
+      badgeBorder: '#fed7aa',
+      icon: <FaHospitalSymbol />,
+      emailLabel: t('auth.roles.superAdmin.emailLabel'),
+      emailPlaceholder: t('auth.roles.superAdmin.emailPlaceholder'),
+      hasPublicRegistration: true,
+      registrationLink: '/register?role=HOSPITAL_SUPER_ADMIN',
+      registrationLabel: t('auth.roles.superAdmin.registrationLabel'),
+      navPrompt: t('auth.roles.superAdmin.navPrompt'),
+      navNotice: t('auth.roles.superAdmin.navNotice'),
+    },
+    [ROLES.PLATFORM_OWNER]: {
+      id: ROLES.PLATFORM_OWNER,
+      tabLabel: t('auth.roles.owner.tabLabel'),
+      heading: t('auth.roles.owner.heading'),
+      subtitle: t('auth.roles.owner.subtitle'),
+      description: t('auth.roles.owner.description'),
+      buttonLabel: t('auth.roles.owner.buttonLabel'),
+      themeColor: '#b91c1c', // Security Red
+      accentGradient: 'linear-gradient(135deg, #b91c1c, #991b1b)',
+      badgeBg: '#fef2f2',
+      badgeText: '#991b1b',
+      badgeBorder: '#fecaca',
+      icon: <FaShieldAlt />,
+      emailLabel: t('auth.roles.owner.emailLabel'),
+      emailPlaceholder: t('auth.roles.owner.emailPlaceholder'),
+      hasPublicRegistration: false,
+      navPrompt: t('auth.roles.owner.navPrompt'),
+      navNotice: t('auth.roles.owner.navNotice'),
+    }
+  }), [t]);
 
   // If redirected with a suggested role or from staff onboarding
   const initialRole = location.state?.suggestedRole
@@ -160,6 +151,7 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [approvalStatusError, setApprovalStatusError] = useState(null);
   const [mismatchRole, setMismatchRole] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -174,42 +166,47 @@ export const Login = () => {
       if (normalized && normalized !== selectedRole) {
         setSelectedRole(normalized);
         setError('');
+        setApprovalStatusError(null);
         setMismatchRole(null);
       }
     }
-  }, [location.state?.suggestedRole]);
+  }, [location.state?.suggestedRole, selectedRole]);
 
   // Active portal configuration
-  const currentPortal = PORTAL_CONFIGS[selectedRole] || PORTAL_CONFIGS[ROLES.PATIENT];
+  const currentPortal = portalConfigs[selectedRole] || portalConfigs[ROLES.PATIENT];
 
-  // Role selector configuration for the five portals
-  const roleTabs = [
-    { id: ROLES.PATIENT, label: 'Patient / User', icon: <FaUser aria-hidden="true" /> },
-    { id: ROLES.DOCTOR, label: 'Doctor', icon: <FaUserMd aria-hidden="true" /> },
-    { id: ROLES.RECEPTIONIST, label: 'Reception / Admin', icon: <FaClipboardList aria-hidden="true" /> },
-    { id: ROLES.HOSPITAL_SUPER_ADMIN, label: 'Super Admin', icon: <FaHospitalSymbol aria-hidden="true" /> },
-    { id: ROLES.PLATFORM_OWNER, label: 'Platform Owner', icon: <FaShieldAlt aria-hidden="true" /> },
-  ];
+  // Role selector configuration for the portal tabs
+  // Visible Login roles: Patient, Doctor, Receptionist, Super Admin, Platform Owner
+  const roleTabs = useMemo(() => [
+    { id: ROLES.PATIENT, label: portalConfigs[ROLES.PATIENT].tabLabel, icon: <FaUser aria-hidden="true" /> },
+    { id: ROLES.DOCTOR, label: portalConfigs[ROLES.DOCTOR].tabLabel, icon: <FaUserMd aria-hidden="true" /> },
+    { id: ROLES.RECEPTIONIST, label: portalConfigs[ROLES.RECEPTIONIST].tabLabel, icon: <FaClipboardList aria-hidden="true" /> },
+    { id: ROLES.HOSPITAL_SUPER_ADMIN, label: portalConfigs[ROLES.HOSPITAL_SUPER_ADMIN].tabLabel, icon: <FaHospitalSymbol aria-hidden="true" /> },
+    { id: ROLES.PLATFORM_OWNER, label: portalConfigs[ROLES.PLATFORM_OWNER].tabLabel, icon: <FaShieldAlt aria-hidden="true" /> },
+  ], [portalConfigs]);
 
   const handleRoleChange = (roleId) => {
     setSelectedRole(roleId);
     setError('');
+    setApprovalStatusError(null);
     setMismatchRole(null);
   };
 
   const handleSwitchToCorrectRole = (targetRole) => {
     setSelectedRole(targetRole);
     setError('');
+    setApprovalStatusError(null);
     setMismatchRole(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setApprovalStatusError(null);
     setMismatchRole(null);
 
     if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
+      setError(t('auth.fillRequiredFields'));
       return;
     }
 
@@ -234,10 +231,26 @@ export const Login = () => {
         setError(res.message);
         setMismatchRole(res.authenticatedRole);
       } else {
-        setError(res.message || 'Invalid email or password. Please try again.');
+        setError(res.message || (isTelugu ? 'చెల్లని ఈమెయిల్ లేదా పాస్‌వర్డ్. దయచేసి మళ్ళీ ప్రయత్నించండి.' : 'Invalid email or password. Please try again.'));
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Authentication failed. Please verify your credentials.'));
+      const errData = err.response?.data;
+      if (errData?.error_code === 'ACCOUNT_PENDING_APPROVAL') {
+        setApprovalStatusError({
+          code: 'ACCOUNT_PENDING_APPROVAL',
+          title: t('auth.approvalPendingTitle'),
+          message: errData.message || t('auth.approvalPendingDesc')
+        });
+      } else if (errData?.error_code === 'ACCOUNT_REJECTED') {
+        setApprovalStatusError({
+          code: 'ACCOUNT_REJECTED',
+          title: t('auth.approvalRejectedTitle'),
+          message: errData.message || (isTelugu ? 'మీ ఖాతా నమోదు అభ్యర్థన తిరస్కరించబడింది.' : 'Your account registration request has been rejected.'),
+          rejectionReason: errData.rejection_reason
+        });
+      } else {
+        setError(getApiErrorMessage(err, isTelugu ? 'ధృవీకరణ విఫలమైంది. దయచేసి మీ వివరాలను సరిచూసుకోండి.' : 'Authentication failed. Please verify your credentials.'));
+      }
     } finally {
       setLoading(false);
     }
@@ -245,6 +258,7 @@ export const Login = () => {
 
   const handleDemoFill = (roleKey) => {
     setError('');
+    setApprovalStatusError(null);
     setMismatchRole(null);
 
     switch (roleKey) {
@@ -273,11 +287,6 @@ export const Login = () => {
         setEmail('patient.alpha@test.com');
         setPassword('Patient@123');
         break;
-      case 'ADMIN':
-        setSelectedRole(ROLES.ADMIN);
-        setEmail('legacy.admin@medicare.com');
-        setPassword('Admin@123');
-        break;
       default:
         break;
     }
@@ -285,53 +294,59 @@ export const Login = () => {
 
   return (
     <div style={{
-      minHeight: '82vh',
+      minHeight: '84vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '2.5rem 1rem'
+      padding: '3rem 1.25rem',
+      background: 'radial-gradient(ellipse at top, #f0fdfa 0%, #f8fafc 65%, #f1f5f9 100%)'
     }}>
-      <div className="card" style={{
-        maxWidth: '560px',
+      <div className="card login-page-card" style={{
+        maxWidth: '620px',
         width: '100%',
-        padding: '2.25rem 2rem',
-        boxShadow: 'var(--shadow-xl)',
+        padding: 'clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4.5vw, 2.75rem)',
+        boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.12), 0 8px 24px -6px rgba(15, 23, 42, 0.08)',
         border: '1px solid var(--slate-200)',
-        transition: 'all 0.25s ease'
+        borderRadius: '20px',
+        backgroundColor: 'var(--white)',
+        transition: 'all 0.25s ease',
+        boxSizing: 'border-box'
       }}>
         {/* Dynamic Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div style={{
-            width: 52,
-            height: 52,
-            borderRadius: '14px',
+            width: 62,
+            height: 62,
+            borderRadius: '16px',
             background: currentPortal.accentGradient,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            margin: '0 auto 0.75rem',
-            boxShadow: `0 4px 14px ${currentPortal.themeColor}40`,
+            margin: '0 auto 0.9rem',
+            boxShadow: `0 6px 18px ${currentPortal.themeColor}40`,
             transition: 'all 0.25s ease'
           }}>
-            <span style={{ fontSize: '1.5rem', display: 'flex' }}>
+            <span style={{ fontSize: '1.85rem', display: 'flex' }}>
               {currentPortal.icon}
             </span>
           </div>
           <h1 style={{
-            fontSize: '1.65rem',
+            fontSize: 'clamp(1.75rem, 3.5vw, 2.15rem)',
             fontWeight: 800,
             color: 'var(--slate-900)',
             transition: 'all 0.2s ease',
-            margin: 0
+            letterSpacing: '-0.025em',
+            margin: '0 0 0.45rem',
+            lineHeight: 1.25
           }}>
             {currentPortal.heading}
           </h1>
           <p style={{
-            fontSize: '0.88rem',
-            color: 'var(--slate-500)',
-            marginTop: '0.35rem',
-            lineHeight: 1.45,
+            fontSize: 'clamp(0.95rem, 1.8vw, 1.05rem)',
+            color: 'var(--slate-600)',
+            lineHeight: 1.55,
+            margin: 0,
             transition: 'all 0.2s ease'
           }}>
             {currentPortal.subtitle}
@@ -339,54 +354,37 @@ export const Login = () => {
         </div>
 
         {/* Account Type Selector Tabs */}
-        <div style={{ marginBottom: '1.25rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
           <label style={{
-            fontSize: '0.78rem',
-            fontWeight: 700,
-            color: 'var(--slate-600)',
+            fontSize: '0.88rem',
+            fontWeight: 800,
+            color: 'var(--slate-700)',
             display: 'block',
-            marginBottom: '0.5rem',
+            marginBottom: '0.65rem',
             textTransform: 'uppercase',
             letterSpacing: '0.04em'
           }}>
-            Select Account Portal:
+            {t('auth.selectPortal')}
           </label>
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.35rem',
-            backgroundColor: 'var(--slate-100)',
-            padding: '0.35rem',
-            borderRadius: 'var(--radius-md)'
-          }}>
+          <div className="login-role-tabs-grid">
             {roleTabs.map((tab) => {
               const isSelected = selectedRole === tab.id;
-              const tabConfig = PORTAL_CONFIGS[tab.id];
+              const tabConfig = portalConfigs[tab.id];
               return (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => handleRoleChange(tab.id)}
+                  className={`login-role-tab-btn ${isSelected ? 'active' : ''}`}
                   style={{
-                    flex: '1 1 auto',
-                    minWidth: '95px',
-                    padding: '0.45rem 0.65rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: isSelected ? `1.5px solid ${tabConfig?.themeColor || 'var(--primary)'}` : '1.5px solid transparent',
-                    fontSize: '0.8rem',
-                    fontWeight: isSelected ? 700 : 500,
+                    border: isSelected ? `2px solid ${tabConfig?.themeColor || 'var(--primary)'}` : '2px solid transparent',
+                    fontWeight: isSelected ? 800 : 600,
                     backgroundColor: isSelected ? 'white' : 'transparent',
                     color: isSelected ? (tabConfig?.themeColor || 'var(--primary-dark)') : 'var(--slate-600)',
-                    boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.35rem',
-                    transition: 'all 0.15s ease'
+                    boxShadow: isSelected ? '0 4px 10px rgba(0,0,0,0.08)' : 'none'
                   }}
                 >
-                  <span style={{ fontSize: '0.85rem' }}>{tab.icon}</span>
+                  <span style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center' }}>{tab.icon}</span>
                   <span>{tab.label}</span>
                 </button>
               );
@@ -397,56 +395,100 @@ export const Login = () => {
         {/* Dynamic Role Context Description Badge */}
         <div style={{
           backgroundColor: currentPortal.badgeBg,
-          borderLeft: `4px solid ${currentPortal.themeColor}`,
+          borderLeft: `5px solid ${currentPortal.themeColor}`,
           borderTop: `1px solid ${currentPortal.badgeBorder}`,
           borderRight: `1px solid ${currentPortal.badgeBorder}`,
           borderBottom: `1px solid ${currentPortal.badgeBorder}`,
-          padding: '0.75rem 1rem',
-          borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
-          fontSize: '0.83rem',
-          color: 'var(--slate-700)',
-          lineHeight: 1.5,
-          marginBottom: '1.25rem',
+          padding: '1.1rem 1.35rem',
+          borderRadius: '0 12px 12px 0',
+          color: 'var(--slate-800)',
+          marginBottom: '1.5rem',
           display: 'flex',
           alignItems: 'flex-start',
-          gap: '0.65rem',
+          gap: '0.85rem',
           transition: 'all 0.25s ease'
         }}>
-          <span style={{ color: currentPortal.themeColor, marginTop: '0.15rem', flexShrink: 0, fontSize: '0.95rem' }}>
+          <span style={{ color: currentPortal.themeColor, marginTop: '0.15rem', flexShrink: 0, fontSize: '1.25rem', display: 'flex' }}>
             {currentPortal.icon}
           </span>
           <div>
             <strong style={{
               color: currentPortal.badgeText,
               display: 'block',
-              fontSize: '0.78rem',
+              fontSize: '0.85rem',
+              fontWeight: 800,
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
-              marginBottom: '0.15rem'
+              marginBottom: '0.3rem'
             }}>
-              {currentPortal.tabLabel} Portal
+              {currentPortal.tabLabel} {t('auth.portalSuffix')}
             </strong>
-            <span>{currentPortal.description}</span>
+            <span style={{ fontSize: '0.96rem', lineHeight: 1.6, display: 'block', color: 'var(--slate-700)' }}>
+              {currentPortal.description}
+            </span>
           </div>
         </div>
 
         {/* Redirect Message Banner */}
         {redirectMessage && (
           <div style={{
-            padding: '0.75rem 1rem',
+            padding: '1rem 1.25rem',
             backgroundColor: 'var(--primary-light)',
             color: 'var(--primary-dark)',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.85rem',
+            borderRadius: '10px',
+            fontSize: '0.92rem',
             fontWeight: 600,
-            marginBottom: '1.25rem',
+            marginBottom: '1.35rem',
             border: '1px solid var(--primary)',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem'
+            gap: '0.65rem'
           }}>
-            <FaInfoCircle />
+            <FaInfoCircle style={{ fontSize: '1.1rem', flexShrink: 0 }} />
             <span>{redirectMessage}</span>
+          </div>
+        )}
+
+        {/* Pending Approval / Rejection Notice Banner */}
+        {approvalStatusError && (
+          <div
+            className="login-approval-banner"
+            style={{
+              padding: '1.1rem 1.25rem',
+              backgroundColor: approvalStatusError.code === 'ACCOUNT_PENDING_APPROVAL' ? '#fffbeb' : '#fef2f2',
+              color: approvalStatusError.code === 'ACCOUNT_PENDING_APPROVAL' ? '#92400e' : '#991b1b',
+              borderRadius: '10px',
+              marginBottom: '1.35rem',
+              border: `1.5px solid ${approvalStatusError.code === 'ACCOUNT_PENDING_APPROVAL' ? '#fde68a' : '#fecaca'}`
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              {approvalStatusError.code === 'ACCOUNT_PENDING_APPROVAL' ? (
+                <FaClock style={{ marginTop: '0.2rem', flexShrink: 0, fontSize: '1.25rem', color: '#d97706' }} />
+              ) : (
+                <FaBan style={{ marginTop: '0.2rem', flexShrink: 0, fontSize: '1.25rem', color: '#dc2626' }} />
+              )}
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.96rem', marginBottom: '0.35rem' }}>
+                  {approvalStatusError.title}
+                </strong>
+                <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.55 }}>
+                  {approvalStatusError.message}
+                </p>
+                {approvalStatusError.rejectionReason && (
+                  <div style={{
+                    marginTop: '0.65rem',
+                    padding: '0.55rem 0.75rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700
+                  }}>
+                    {t('auth.rejectionReason')} {approvalStatusError.rejectionReason}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -455,38 +497,38 @@ export const Login = () => {
           <div
             className="login-error-banner"
             style={{
-              padding: '0.85rem 1rem',
+              padding: '1rem 1.25rem',
               backgroundColor: 'var(--emergency-light)',
               color: 'var(--emergency)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.85rem',
+              borderRadius: '10px',
+              fontSize: '0.92rem',
               fontWeight: 600,
-              marginBottom: '1.25rem',
-              border: '1px solid #fecaca'
+              marginBottom: '1.35rem',
+              border: '1.5px solid #fecaca'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-              <FaExclamationTriangle style={{ marginTop: '0.2rem', flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
+              <FaExclamationTriangle style={{ marginTop: '0.2rem', flexShrink: 0, fontSize: '1.15rem' }} />
               <div>
-                <p style={{ margin: 0 }}>{error}</p>
+                <p style={{ margin: 0, lineHeight: 1.5 }}>{error}</p>
                 {mismatchRole && (
                   <button
                     type="button"
                     className="role-switch-btn"
                     onClick={() => handleSwitchToCorrectRole(mismatchRole)}
                     style={{
-                      marginTop: '0.5rem',
+                      marginTop: '0.65rem',
                       background: 'var(--emergency)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '4px',
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.78rem',
+                      borderRadius: '6px',
+                      padding: '0.45rem 0.85rem',
+                      fontSize: '0.84rem',
                       fontWeight: 700,
                       cursor: 'pointer'
                     }}
                   >
-                    Switch to {ROLE_LABELS[mismatchRole] || mismatchRole} Tab
+                    {t('auth.switchToRoleTab', { role: portalConfigs[mismatchRole]?.tabLabel || mismatchRole })}
                   </button>
                 )}
               </div>
@@ -497,17 +539,18 @@ export const Login = () => {
         {/* Dynamic Login Form */}
         <form onSubmit={handleSubmit}>
           {/* Dynamic Email Field */}
-          <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 600 }}>
+          <div className="form-group" style={{ marginBottom: '1.35rem' }}>
+            <label className="form-label" style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.55rem' }}>
               {currentPortal.emailLabel} *
             </label>
             <div style={{ position: 'relative' }}>
               <FaEnvelope style={{
                 position: 'absolute',
-                left: '12px',
+                left: '14px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: 'var(--slate-400)'
+                color: 'var(--slate-400)',
+                fontSize: '1.15rem'
               }} />
               <input
                 type="email"
@@ -515,34 +558,48 @@ export const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="form-input"
-                style={{ paddingLeft: '2.5rem' }}
+                className="form-input login-form-input"
+                style={{
+                  minHeight: '52px',
+                  fontSize: '1.02rem',
+                  padding: '0.85rem 1.15rem',
+                  paddingLeft: '3rem',
+                  borderRadius: '10px'
+                }}
                 autoComplete="email"
               />
             </div>
           </div>
 
           {/* Password Field */}
-          <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 600 }}>
-              Password *
+          <div className="form-group" style={{ marginBottom: '1.35rem' }}>
+            <label className="form-label" style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.55rem' }}>
+              {t('auth.password')} *
             </label>
             <div style={{ position: 'relative' }}>
               <FaLock style={{
                 position: 'absolute',
-                left: '12px',
+                left: '14px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: 'var(--slate-400)'
+                color: 'var(--slate-400)',
+                fontSize: '1.15rem'
               }} />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Enter password"
+                placeholder={t('auth.enterPassword')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="form-input"
-                style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                className="form-input login-form-input"
+                style={{
+                  minHeight: '52px',
+                  fontSize: '1.02rem',
+                  padding: '0.85rem 1.15rem',
+                  paddingLeft: '3rem',
+                  paddingRight: '3rem',
+                  borderRadius: '10px'
+                }}
                 autoComplete="current-password"
               />
               <button
@@ -556,9 +613,14 @@ export const Login = () => {
                   background: 'none',
                   border: 'none',
                   color: 'var(--slate-400)',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.15rem'
                 }}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -573,39 +635,43 @@ export const Login = () => {
             fullWidth
             loading={loading}
             style={{
-              marginTop: '0.75rem',
+              marginTop: '0.85rem',
+              minHeight: '52px',
+              fontSize: '1.08rem',
+              fontWeight: 800,
+              borderRadius: '10px',
               background: currentPortal.accentGradient,
               border: 'none',
-              boxShadow: `0 4px 12px ${currentPortal.themeColor}35`,
-              fontWeight: 700,
-              transition: 'all 0.2s ease'
+              boxShadow: `0 6px 16px ${currentPortal.themeColor}38`,
+              transition: 'all 0.2s ease',
+              letterSpacing: '0.01em'
             }}
           >
-            {currentPortal.buttonLabel}
+            {loading ? t('common.loading') : currentPortal.buttonLabel}
           </Button>
         </form>
 
-        {/* 1-Click Quick Demo Sign-In */}
+        {/* 1-Click Quick Demo Sign-In (5 Roles) */}
         <div style={{
-          marginTop: '1.5rem',
-          padding: '0.75rem',
+          marginTop: '1.75rem',
+          padding: '1rem',
           backgroundColor: 'var(--slate-50)',
           border: '1px dashed var(--slate-300)',
-          borderRadius: 'var(--radius-md)'
+          borderRadius: '12px'
         }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--slate-600)', fontWeight: 700, display: 'block', marginBottom: '0.45rem' }}>
-            ⚡ 1-Click Demo Accounts:
+          <span style={{ fontSize: '0.82rem', color: 'var(--slate-700)', fontWeight: 800, display: 'block', marginBottom: '0.65rem' }}>
+            {t('auth.demoAccounts')}
           </span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.4rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => handleDemoFill('PATIENT')}
               icon={<FaUser aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
             >
-              Demo Patient
+              {t('auth.demoPatient')}
             </Button>
             <Button
               type="button"
@@ -613,9 +679,9 @@ export const Login = () => {
               size="sm"
               onClick={() => handleDemoFill('DOCTOR')}
               icon={<FaUserMd aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
             >
-              Demo Doctor
+              {t('auth.demoDoctor')}
             </Button>
             <Button
               type="button"
@@ -623,9 +689,9 @@ export const Login = () => {
               size="sm"
               onClick={() => handleDemoFill('RECEPTIONIST')}
               icon={<FaClipboardList aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
             >
-              Demo Receptionist
+              {t('auth.demoReceptionist')}
             </Button>
             <Button
               type="button"
@@ -633,9 +699,9 @@ export const Login = () => {
               size="sm"
               onClick={() => handleDemoFill('HOSPITAL_SUPER_ADMIN')}
               icon={<FaHospitalSymbol aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
             >
-              Demo Super Admin
+              {t('auth.demoSuperAdmin')}
             </Button>
             <Button
               type="button"
@@ -643,71 +709,62 @@ export const Login = () => {
               size="sm"
               onClick={() => handleDemoFill('PLATFORM_OWNER')}
               icon={<FaShieldAlt aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
+              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
             >
-              Demo Owner
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleDemoFill('ADMIN')}
-              icon={<FaShieldAlt aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.72rem', padding: '0.35rem 0.5rem', justifyContent: 'flex-start' }}
-            >
-              Legacy Admin
+              {t('auth.demoOwner')}
             </Button>
           </div>
         </div>
 
         {/* Dynamic Navigation & Provisioning Notices */}
-        <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.88rem' }}>
-          {selectedRole === ROLES.PATIENT ? (
+        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+          {currentPortal.hasPublicRegistration ? (
             <div style={{
-              padding: '0.9rem',
+              padding: '1.1rem 1.25rem',
               backgroundColor: 'var(--slate-50)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '12px',
               border: '1px solid var(--slate-200)',
               textAlign: 'center'
             }}>
-              <p style={{ margin: 0, fontWeight: 500, color: 'var(--slate-600)', fontSize: '0.88rem' }}>
+              <p style={{ margin: 0, fontWeight: 500, color: 'var(--slate-700)', fontSize: '0.95rem' }}>
                 {currentPortal.navPrompt}{' '}
                 <Link
-                  to="/register"
+                  to={currentPortal.registrationLink || '/register'}
                   style={{
                     color: currentPortal.themeColor,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     textDecoration: 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.3rem',
-                    marginLeft: '0.3rem'
+                    gap: '0.35rem',
+                    marginLeft: '0.35rem',
+                    fontSize: '0.98rem'
                   }}
                 >
-                  <FaUserPlus size={13} />
+                  <FaUserPlus size={14} />
                   <span>{currentPortal.registrationLabel}</span>
-                  <FaArrowRight size={10} />
+                  <FaArrowRight size={11} />
                 </Link>
               </p>
-              <span style={{ fontSize: '0.76rem', color: 'var(--slate-400)', display: 'block', marginTop: '0.35rem' }}>
+              <span style={{ fontSize: '0.84rem', color: 'var(--slate-500)', display: 'block', marginTop: '0.4rem' }}>
                 {currentPortal.navNotice}
               </span>
             </div>
           ) : (
             <div style={{
-              padding: '0.85rem 1rem',
+              padding: '1.1rem 1.25rem',
               backgroundColor: 'var(--slate-50)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '12px',
               border: '1px solid var(--slate-200)',
               textAlign: 'left'
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                <FaShieldAlt style={{ color: currentPortal.themeColor, marginTop: '0.2rem', flexShrink: 0, fontSize: '0.9rem' }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <FaShieldAlt style={{ color: currentPortal.themeColor, marginTop: '0.2rem', flexShrink: 0, fontSize: '1.1rem' }} />
                 <div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--slate-700)', display: 'block' }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--slate-800)', display: 'block' }}>
                     {currentPortal.navPrompt}
                   </span>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--slate-500)', marginTop: '0.25rem', lineHeight: 1.45 }}>
+                  <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--slate-600)', marginTop: '0.3rem', lineHeight: 1.5 }}>
                     {currentPortal.navNotice}
                   </p>
                 </div>

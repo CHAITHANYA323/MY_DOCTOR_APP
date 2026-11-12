@@ -160,9 +160,20 @@ export const ManageDoctors = () => {
                         style={{ width: 44, height: 44, borderRadius: '10px', objectFit: 'cover' }} 
                       />
                       <div>
-                        <Link to={`/doctors/${doc.id}`} target="_blank" style={{ fontWeight: 700, color: 'var(--slate-900)' }}>
-                          {doc.name}
-                        </Link>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <Link to={`/doctors/${doc.id}`} target="_blank" style={{ fontWeight: 700, color: 'var(--slate-900)' }}>
+                            {doc.name}
+                          </Link>
+                          {doc.is_verified ? (
+                            <span style={{ fontSize: '0.68rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                              Verified
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.68rem', backgroundColor: '#f1f5f9', color: '#64748b', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
+                              Demo
+                            </span>
+                          )}
+                        </div>
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--slate-400)' }}>
                           {doc.qualification}
                         </span>

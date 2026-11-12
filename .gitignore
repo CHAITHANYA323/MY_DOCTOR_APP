@@ -79,3 +79,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch & Temporary Testing Caches
+scratch/

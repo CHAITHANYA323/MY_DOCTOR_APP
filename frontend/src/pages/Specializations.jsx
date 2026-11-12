@@ -6,8 +6,10 @@ import { SkeletonGrid } from '../components/SkeletonLoader';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Specializations = () => {
+  const { t, isTelugu } = useLanguage();
   const [specializations, setSpecializations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,14 +49,14 @@ export const Specializations = () => {
         <div style={{ marginBottom: '2rem', textAlign: 'center', maxWidth: '750px', margin: '0 auto 2.5rem' }}>
           <div style={{ marginBottom: '0.75rem' }}>
             <Badge variant="primary" size="md">
-              <FaStethoscope style={{ marginRight: '0.35rem' }} aria-hidden="true" /> Simple Medical Specialties
+              <FaStethoscope style={{ marginRight: '0.35rem' }} aria-hidden="true" /> {isTelugu ? 'వైద్య విభాగాలు' : 'Simple Medical Specialties'}
             </Badge>
           </div>
           <h1 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.75rem' }}>
-            Find the Right Doctor by Specialty
+            {t('specialties.title')}
           </h1>
           <p style={{ color: 'var(--slate-600)', fontSize: '1.05rem', lineHeight: 1.6 }}>
-            Select what you need help with. You don’t need to know complex medical terms — choose from simple everyday health categories below.
+            {t('specialties.subtitle')}
           </p>
         </div>
 
@@ -63,7 +65,7 @@ export const Specializations = () => {
           <FaSearch style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
           <input 
             type="text" 
-            placeholder="Search condition or specialty (e.g. Heart, Teeth, Skin, Child)..."
+            placeholder={t('specialties.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="form-input"
@@ -77,10 +79,10 @@ export const Specializations = () => {
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <FaStethoscope className="empty-state-icon" />
-            <h3 className="empty-state-title">No categories match "{search}"</h3>
-            <p className="empty-state-desc">Try searching for simple words like "heart", "eye", "child", or "pain".</p>
+            <h3 className="empty-state-title">{isTelugu ? `"${search}" కోసం విభాగాలు ఏవీ కనుగొనబడలేదు` : `No categories match "${search}"`}</h3>
+            <p className="empty-state-desc">{isTelugu ? 'గుండె, పళ్ళు, చర్మం, కంటి మొదలైన సాధారణ పదాలతో వెతకండి.' : 'Try searching for simple words like "heart", "eye", "child", or "pain".'}</p>
             <Button variant="primary" onClick={() => setSearch('')}>
-              View All Specialties
+              {t('common.viewAll')}
             </Button>
           </div>
         ) : (
@@ -122,12 +124,12 @@ export const Specializations = () => {
                       {info.layman}
                     </h3>
                     <Badge variant="success" size="sm">
-                      {spec.doctor_count || 1}+ Doctors
+                      {spec.doctor_count || 1}+ {isTelugu ? 'వైద్యులు' : 'Doctors'}
                     </Badge>
                   </div>
 
                   <span style={{ fontSize: '0.8rem', color: 'var(--primary-dark)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                    Clinical Department: {spec.name}
+                    {isTelugu ? `క్లినికల్ విభాగం: ${spec.name}` : `Clinical Department: ${spec.name}`}
                   </span>
 
                   <p style={{ fontSize: '0.88rem', color: 'var(--slate-600)', lineHeight: 1.5, marginBottom: '1.5rem', flexGrow: 1 }}>
@@ -139,7 +141,7 @@ export const Specializations = () => {
                     className="btn btn-outline"
                     style={{ width: '100%', marginTop: 'auto', fontWeight: 700 }}
                   >
-                    View {info.layman} Doctors <FaArrowRight size={11} />
+                    {isTelugu ? `${info.layman} వైద్యులను చూడండి` : `View ${info.layman} Doctors`} <FaArrowRight size={11} />
                   </Link>
                 </div>
               );
@@ -150,3 +152,5 @@ export const Specializations = () => {
     </div>
   );
 };
+
+export default Specializations;

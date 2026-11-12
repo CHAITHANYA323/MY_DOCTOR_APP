@@ -8,19 +8,41 @@ import {
   FaCheckCircle,
   FaTimes,
   FaCopy,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaBan,
+  FaCheck,
+  FaClipboardList
 } from 'react-icons/fa';
 import { hospitalService } from '../../services/hospitalService';
+import { approvalService } from '../../services/approvalService';
 import { getApiErrorMessage } from '../../services/api';
 import { Button } from '../../components/common/Button';
 
+const DUMMY_HOSPITAL_PATTERNS = [
+  'reliability general hospital',
+  'rate limit hospital',
+  'hospital alpha',
+  'hospital beta'
+];
+
 export const ManagePlatformHospitals = () => {
+  const [activeTab, setActiveTab] = useState('HOSPITALS'); // 'HOSPITALS' | 'REQUESTS'
   const [hospitals, setHospitals] = useState([]);
+  const [onboardingRequests, setOnboardingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
+  const [actionError, setActionError] = useState('');
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState('');
   const [cities, setCities] = useState([]);
+
+  // Onboarding Request Actions State
+  const [processingReqId, setProcessingReqId] = useState(null);
+  const [rejectModalReq, setRejectModalReq] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectModalError, setRejectModalError] = useState('');
+  const [rejecting, setRejecting] = useState(false);
 
   // Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -47,22 +69,35 @@ export const ManagePlatformHospitals = () => {
   const fetchHospitals = useCallback(async () => {
     setLoading(true);
     setError('');
+    setActionError('');
     try {
       const params = {};
       if (search.trim()) params.search = search.trim();
       if (cityFilter.trim()) params.city = cityFilter.trim();
 
-      const res = await hospitalService.getHospitals(params);
-      if (res.success && Array.isArray(res.hospitals)) {
-        setHospitals(res.hospitals);
-        if (Array.isArray(res.cities)) {
-          setCities(res.cities);
+      const [hospRes, reqRes] = await Promise.all([
+        hospitalService.getHospitals(params),
+        approvalService.getPlatformApprovals('pending').catch(() => ({ success: false, requests: [] }))
+      ]);
+
+      if (hospRes.success && Array.isArray(hospRes.hospitals)) {
+        const filtered = hospRes.hospitals.filter(
+          (h) => !DUMMY_HOSPITAL_PATTERNS.some((p) => h.name?.toLowerCase().includes(p) || h.slug?.toLowerCase().includes(p.replace(/ /g, '-')))
+        );
+        setHospitals(filtered);
+        if (Array.isArray(hospRes.cities)) {
+          const dummyCities = ['metropolis', 'gotham'];
+          setCities(hospRes.cities.filter((c) => !dummyCities.includes(c.toLowerCase())));
         }
       } else {
-        setError(res.message || 'Unable to load hospitals.');
+        setError(hospRes.message || 'Unable to load hospitals.');
+      }
+
+      if (reqRes.success && Array.isArray(reqRes.requests)) {
+        setOnboardingRequests(reqRes.requests);
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to fetch hospital directory from backend.'));
+      setError(getApiErrorMessage(err, 'Failed to fetch hospital records from backend.'));
     } finally {
       setLoading(false);
     }
@@ -71,6 +106,63 @@ export const ManagePlatformHospitals = () => {
   useEffect(() => {
     fetchHospitals();
   }, [fetchHospitals]);
+
+  const handleApproveOnboardingRequest = async (req) => {
+    if (!req?.id) return;
+    setProcessingReqId(req.id);
+    setActionError('');
+    setActionSuccess('');
+
+    try {
+      const res = await approvalService.approveSuperAdminRequest(req.id, {});
+      if (res.success) {
+        const hospName = res.hospital?.name || req.parsed_notes?.hospital_name || 'Hospital';
+        setActionSuccess(`Hospital "${hospName}" provisioned successfully and Super Admin authority granted to ${req.name}.`);
+        await fetchHospitals();
+      } else {
+        setActionError(res.message || 'Failed to approve hospital onboarding request.');
+      }
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, 'Unable to approve hospital onboarding request.'));
+    } finally {
+      setProcessingReqId(null);
+    }
+  };
+
+  const handleOpenRejectModal = (req) => {
+    setRejectModalReq(req);
+    setRejectReason('');
+    setRejectModalError('');
+  };
+
+  const handleConfirmRejectRequest = async (e) => {
+    e.preventDefault();
+    if (!rejectModalReq) return;
+    if (!rejectReason.trim()) {
+      setRejectModalError('Please specify the reason for rejecting this hospital onboarding request.');
+      return;
+    }
+
+    setRejecting(true);
+    setRejectModalError('');
+    setActionError('');
+    setActionSuccess('');
+
+    try {
+      const res = await approvalService.rejectSuperAdminRequest(rejectModalReq.id, rejectReason.trim());
+      if (res.success) {
+        setActionSuccess(`Hospital onboarding request for ${rejectModalReq.name} has been rejected.`);
+        setRejectModalReq(null);
+        await fetchHospitals();
+      } else {
+        setRejectModalError(res.message || 'Failed to reject request.');
+      }
+    } catch (err) {
+      setRejectModalError(getApiErrorMessage(err, 'Unable to reject onboarding request.'));
+    } finally {
+      setRejecting(false);
+    }
+  };
 
   const handleOpenCreateModal = () => {
     setCreateError('');
@@ -164,7 +256,109 @@ export const ManagePlatformHospitals = () => {
         </Button>
       </div>
 
-      {/* Search & Filters */}
+      {/* Action Success / Error Notifications */}
+      {actionSuccess && (
+        <div style={{
+          padding: '0.85rem 1rem',
+          backgroundColor: '#ecfdf5',
+          color: '#065f46',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          border: '1px solid #a7f3d0'
+        }}>
+          <FaCheckCircle />
+          <span>{actionSuccess}</span>
+        </div>
+      )}
+
+      {actionError && (
+        <div style={{
+          padding: '0.85rem 1rem',
+          backgroundColor: 'var(--emergency-light)',
+          color: 'var(--emergency)',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <FaExclamationTriangle />
+          <span>{actionError}</span>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{
+        display: 'flex',
+        gap: '0.5rem',
+        backgroundColor: 'white',
+        padding: '0.75rem 1rem',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--slate-200)'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('HOSPITALS')}
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            backgroundColor: activeTab === 'HOSPITALS' ? '#0284c7' : 'var(--slate-100)',
+            color: activeTab === 'HOSPITALS' ? 'white' : 'var(--slate-700)',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem'
+          }}
+        >
+          <FaHospital />
+          <span>Active Hospitals ({hospitals.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('REQUESTS')}
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            backgroundColor: activeTab === 'REQUESTS' ? '#0284c7' : 'var(--slate-100)',
+            color: activeTab === 'REQUESTS' ? 'white' : 'var(--slate-700)',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          <FaClipboardList />
+          <span>Onboarding Requests</span>
+          {onboardingRequests.length > 0 && (
+            <span style={{
+              backgroundColor: activeTab === 'REQUESTS' ? 'white' : '#ea580c',
+              color: activeTab === 'REQUESTS' ? '#0284c7' : 'white',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              padding: '0.1rem 0.45rem',
+              borderRadius: '10px'
+            }}>
+              {onboardingRequests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'HOSPITALS' ? (
+        <>
+          {/* Search & Filters */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -323,6 +517,135 @@ export const ManagePlatformHospitals = () => {
             </div>
           ))}
         </div>
+      )}
+        </>
+      ) : (
+        /* Onboarding Requests Tab */
+        onboardingRequests.length === 0 ? (
+          <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+            <FaClipboardList size={44} color="var(--slate-300)" style={{ margin: '0 auto 1rem' }} />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--slate-800)' }}>No Pending Onboarding Requests</h3>
+            <p style={{ color: 'var(--slate-500)', fontSize: '0.88rem', marginTop: '0.25rem' }}>
+              When hospital leaders submit onboarding requests through the registration portal, they will appear here for verification and automated provisioning.
+            </p>
+          </div>
+        ) : (
+          <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--slate-50)', borderBottom: '1px solid var(--slate-200)', color: 'var(--slate-600)' }}>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Applicant Super Admin</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Proposed Hospital Details</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Institutional Contact</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Requested On</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700, textAlign: 'right' }}>Governance Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {onboardingRequests.map((req) => {
+                  const notes = req.parsed_notes || {};
+                  const isProcessing = processingReqId === req.id;
+
+                  return (
+                    <tr key={req.id} style={{ borderBottom: '1px solid var(--slate-100)' }}>
+                      <td style={{ padding: '0.85rem 1rem' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--slate-900)' }}>{req.name}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--slate-600)' }}>{req.email}</div>
+                        {req.phone && (
+                          <div style={{ fontSize: '0.76rem', color: 'var(--slate-400)' }}>{req.phone}</div>
+                        )}
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          backgroundColor: '#ffedd5',
+                          color: '#c2410c',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '10px',
+                          display: 'inline-block',
+                          marginTop: '0.25rem'
+                        }}>
+                          SUPER ADMIN APPLICANT
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '0.85rem 1rem' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--slate-900)', fontSize: '0.92rem' }}>
+                          {notes.hospital_name || 'Proposed Hospital'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--slate-600)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                          <FaMapMarkerAlt size={12} color="var(--slate-400)" />
+                          <span>{notes.hospital_city || 'City N/A'}, {notes.hospital_state || 'Telangana'}</span>
+                        </div>
+                        {notes.hospital_address && (
+                          <div style={{ fontSize: '0.76rem', color: 'var(--slate-400)', marginTop: '0.15rem' }}>
+                            {notes.hospital_address}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '0.85rem 1rem' }}>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--slate-800)' }}>
+                          Emergency: <strong style={{ color: 'var(--emergency)' }}>{notes.emergency_number || '108'}</strong>
+                        </div>
+                        {notes.hospital_phone && (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--slate-600)' }}>
+                            Desk: {notes.hospital_phone}
+                          </div>
+                        )}
+                        {notes.facilities && (
+                          <div style={{ fontSize: '0.74rem', color: 'var(--slate-500)', marginTop: '0.2rem' }}>
+                            {notes.facilities.slice(0, 40)}...
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '0.85rem 1rem', color: 'var(--slate-500)', fontSize: '0.8rem' }}>
+                        {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Recent'}
+                      </td>
+
+                      <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleApproveOnboardingRequest(req)}
+                            loading={isProcessing}
+                            style={{
+                              backgroundColor: '#059669',
+                              borderColor: '#059669',
+                              fontSize: '0.74rem',
+                              padding: '0.25rem 0.65rem'
+                            }}
+                            icon={<FaCheck aria-hidden="true" />}
+                          >
+                            Approve & Provision
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenRejectModal(req)}
+                            disabled={isProcessing}
+                            style={{
+                              color: 'var(--emergency)',
+                              borderColor: '#fecaca',
+                              fontSize: '0.74rem',
+                              padding: '0.25rem 0.65rem'
+                            }}
+                            icon={<FaBan aria-hidden="true" />}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
 
       {/* Hospital Details Modal */}
@@ -661,6 +984,110 @@ export const ManagePlatformHospitals = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Reject Onboarding Request Modal */}
+      {rejectModalReq && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 60,
+            padding: '1rem'
+          }}
+        >
+          <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--emergency)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FaBan />
+                  <span>Reject Hospital Onboarding</span>
+                </h2>
+                <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)', margin: '0.25rem 0 0' }}>
+                  Proposed Hospital: <strong>{rejectModalReq.parsed_notes?.hospital_name || 'Hospital'}</strong>
+                </p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--slate-400)', margin: '0.1rem 0 0' }}>
+                  Applicant: {rejectModalReq.name} ({rejectModalReq.email})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectModalReq(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--slate-400)', cursor: 'pointer' }}
+                aria-label="Close dialog"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            <div style={{
+              padding: '0.75rem 1rem',
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.82rem',
+              color: '#92400e',
+              lineHeight: 1.5,
+              marginBottom: '1.25rem'
+            }}>
+              Rejecting this request will mark the applicant account as <strong>REJECTED</strong> and decline provisioning of the proposed hospital branch.
+            </div>
+
+            {rejectModalError && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                backgroundColor: 'var(--emergency-light)',
+                color: 'var(--emergency)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                marginBottom: '1rem'
+              }}>
+                {rejectModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmRejectRequest}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>
+                  Institutional Rejection Reason *
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Hospital license number could not be validated, or facility does not meet minimum regulatory requirements."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  required
+                  className="form-input"
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRejectModalReq(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="danger"
+                  loading={rejecting}
+                >
+                  Confirm Rejection
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

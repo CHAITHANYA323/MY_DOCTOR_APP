@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaClock,
   FaCalendarAlt,
   FaMoneyBillWave,
   FaVideo,
   FaSave,
-  FaHospital
+  FaInfoCircle,
+  FaCheckCircle,
+  FaTimesCircle
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
 
 export const DoctorSchedule = () => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [doctor, setDoctor] = useState(null);
@@ -21,13 +25,20 @@ export const DoctorSchedule = () => {
   const [consultationFee, setConsultationFee] = useState(500);
   const [status, setStatus] = useState('Active');
 
+  const getLabel = useCallback((key, fallback) => {
+    const val = t(key);
+    if (!val || val === key) return fallback;
+    return val;
+  }, [t]);
+
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {
       try {
         setLoading(true);
         const res = await doctorService.getDoctorProfile();
-        if (res.success && isMounted) {
+        if (!isMounted) return;
+        if (res && res.success) {
           const doc = res.doctor;
           setDoctor(doc);
           setAvailableDays(doc.available_days || 'Monday - Saturday');
@@ -36,10 +47,11 @@ export const DoctorSchedule = () => {
           setConsultationFee(doc.consultation_fee || 500);
           setStatus(doc.status || 'Active');
         } else {
-          toast.error(res.message || 'Failed to fetch doctor schedule.');
+          toast.error(res?.message || 'Failed to fetch doctor schedule.');
         }
       } catch (err) {
-        console.error(err);
+        if (!isMounted) return;
+        console.error('Error fetching schedule:', err);
         toast.error(err.response?.data?.message || 'Error loading schedule.');
       } finally {
         if (isMounted) setLoading(false);
@@ -60,15 +72,15 @@ export const DoctorSchedule = () => {
       }
 
       const res = await doctorService.updateDoctorProfile({
-        available_days: availableDays,
-        available_time: availableTime,
+        available_days: availableDays.trim(),
+        available_time: availableTime.trim(),
         consultation_type: consultationType,
         consultation_fee: feeNum,
         status: status
       });
 
       if (res.success) {
-        toast.success('Practice hours and availability updated successfully!');
+        toast.success(getLabel('doctorPortal.scheduleSaveSuccess', 'Practice schedule and availability updated successfully!'));
         setDoctor(res.doctor);
       } else {
         toast.error(res.message || 'Failed to update schedule.');
@@ -84,175 +96,150 @@ export const DoctorSchedule = () => {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
-        <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTopColor: '#0284c7', borderRadius: '50%' }} />
-        <p style={{ color: '#64748b' }}>Loading practice hours & availability...</p>
+        <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid #E2E8F0', borderTopColor: '#0D9488', borderRadius: '50%' }} />
+        <p style={{ color: '#0F766E', fontSize: '0.95rem', fontWeight: 600 }}>
+          {getLabel('doctorPortal.scheduleSubtitle', 'Loading practice hours & availability...')}
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.25rem 0', letterSpacing: '-0.02em' }}>
-          Hours & Availability
+    <div style={{ maxWidth: '850px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* Top Header */}
+      <div>
+        <h1 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0C2328', margin: '0 0 0.25rem 0', letterSpacing: '-0.02em' }}>
+          {getLabel('doctorPortal.scheduleTitle', 'Practice Hours & Availability')}
         </h1>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-          Manage your consultation working days, daily clinic hours, consultation types, and fees
+        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: 0 }}>
+          {getLabel('doctorPortal.scheduleSubtitle', 'Configure your weekly consultation schedule, working hours, and practice status')}
         </p>
       </div>
 
-      {/* Facility Notice */}
-      <div style={{
-        background: '#f0f9ff',
-        border: '1px solid #bae6fd',
-        borderRadius: '12px',
-        padding: '1rem 1.25rem',
-        marginBottom: '1.75rem',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '0.75rem'
-      }}>
-        <FaHospital size={18} style={{ color: '#0284c7', marginTop: '2px', flexShrink: 0 }} />
-        <div style={{ fontSize: '0.85rem', color: '#0369a1', lineHeight: 1.5 }}>
-          <strong>Hospital Facility:</strong> You are currently affiliated with <strong>{doctor?.hospital_name || 'Hospital'}</strong> in <strong>{doctor?.location || 'General Wing'}</strong>.
-          Patients booking appointments through reception or the online portal will be scheduled according to the hours defined below.
-        </div>
-      </div>
-
-      {/* Settings Form Card */}
-      <div style={{
-        background: '#ffffff',
+      {/* Main Schedule Form Card */}
+      <form onSubmit={handleSaveSchedule} style={{
+        background: '#FFFFFF',
         borderRadius: '16px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid #E2E8F0',
         padding: '2rem',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+        boxShadow: '0 4px 12px rgba(15, 23, 42, 0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem'
       }}>
-        <form onSubmit={handleSaveSchedule}>
-          {/* Active Status Toggle */}
-          <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              Practice Availability Status
-            </label>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                <input
-                  type="radio"
-                  name="practice_status"
-                  value="Active"
-                  checked={status === 'Active'}
-                  onChange={() => setStatus('Active')}
-                />
-                <span style={{ fontWeight: 600, color: '#16a34a' }}>Active & Accepting Appointments</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                <input
-                  type="radio"
-                  name="practice_status"
-                  value="Inactive"
-                  checked={status === 'Inactive'}
-                  onChange={() => setStatus('Inactive')}
-                />
-                <span style={{ fontWeight: 600, color: '#dc2626' }}>Temporarily On Leave / Inactive</span>
-              </label>
+        {/* Practice Status Selector */}
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+            {getLabel('doctorPortal.practiceStatus', 'Practice Availability Status')}
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div
+              onClick={() => setStatus('Active')}
+              style={{
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '2px solid',
+                borderColor: status === 'Active' ? '#0D9488' : '#E2E8F0',
+                backgroundColor: status === 'Active' ? '#F0FDFA' : '#FFFFFF',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                transition: 'border-color 0.15s ease'
+              }}
+            >
+              <FaCheckCircle size={20} style={{ color: status === 'Active' ? '#0D9488' : '#94A3B8' }} />
+              <div>
+                <div style={{ fontWeight: 800, color: '#0C2328', fontSize: '0.9rem' }}>
+                  {getLabel('doctorPortal.statusActive', 'Active (Accepting Consultations)')}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.15rem' }}>
+                  Visible to patients for appointment booking
+                </div>
+              </div>
             </div>
-            <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
-              When set to Inactive, new appointment bookings will be paused for your profile across all channels.
-            </p>
-          </div>
 
-          {/* Working Days */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              <FaCalendarAlt size={14} style={{ color: '#0284c7' }} />
-              Available Working Days
+            <div
+              onClick={() => setStatus('Inactive')}
+              style={{
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '2px solid',
+                borderColor: status === 'Inactive' ? '#EF4444' : '#E2E8F0',
+                backgroundColor: status === 'Inactive' ? '#FEF2F2' : '#FFFFFF',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                transition: 'border-color 0.15s ease'
+              }}
+            >
+              <FaTimesCircle size={20} style={{ color: status === 'Inactive' ? '#EF4444' : '#94A3B8' }} />
+              <div>
+                <div style={{ fontWeight: 800, color: '#0C2328', fontSize: '0.9rem' }}>
+                  {getLabel('doctorPortal.statusInactive', 'Inactive / On Leave')}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.15rem' }}>
+                  Temporarily pause new appointment bookings
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Days & Hours Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+              <FaCalendarAlt size={13} style={{ color: '#0D9488' }} />
+              {getLabel('doctorPortal.weeklyAvailability', 'Weekly Available Days')}
             </label>
             <input
               type="text"
               value={availableDays}
               onChange={(e) => setAvailableDays(e.target.value)}
-              placeholder="e.g. Monday - Saturday, Mon/Wed/Fri"
+              placeholder={getLabel('doctorPortal.availableDaysPlaceholder', 'e.g., Monday - Saturday')}
+              required
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #CBD5E1',
                 borderRadius: '8px',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 boxSizing: 'border-box'
               }}
-              required
             />
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              {['Monday - Saturday', 'Monday - Friday', 'Mon, Wed, Fri', 'Tue, Thu, Sat'].map((preset) => (
-                <button
-                  type="button"
-                  key={preset}
-                  onClick={() => setAvailableDays(preset)}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    fontSize: '0.75rem',
-                    background: '#f1f5f9',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    color: '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Available Working Hours */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              <FaClock size={14} style={{ color: '#0284c7' }} />
-              Consultation Working Hours
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+              <FaClock size={13} style={{ color: '#0D9488' }} />
+              {getLabel('doctorPortal.dailyWorkingHours', 'Daily Consultation Hours')}
             </label>
             <input
               type="text"
               value={availableTime}
               onChange={(e) => setAvailableTime(e.target.value)}
-              placeholder="e.g. 09:00 AM - 05:00 PM, 10:00 AM - 02:00 PM"
+              placeholder={getLabel('doctorPortal.workingHoursPlaceholder', 'e.g., 09:00 AM - 05:00 PM')}
+              required
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #CBD5E1',
                 borderRadius: '8px',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 boxSizing: 'border-box'
               }}
-              required
             />
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              {['09:00 AM - 05:00 PM', '10:00 AM - 02:00 PM', '02:00 PM - 08:00 PM', '08:00 AM - 04:00 PM'].map((preset) => (
-                <button
-                  type="button"
-                  key={preset}
-                  onClick={() => setAvailableTime(preset)}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    fontSize: '0.75rem',
-                    background: '#f1f5f9',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    color: '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
           </div>
+        </div>
 
-          {/* Consultation Type */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              <FaVideo size={14} style={{ color: '#0284c7' }} />
-              Consultation Modes Offered
+        {/* Mode & Consultation Fee Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+              <FaVideo size={13} style={{ color: '#0D9488' }} />
+              {getLabel('doctorPortal.consultationType', 'Consultation Modes')}
             </label>
             <select
               value={consultationType}
@@ -260,24 +247,24 @@ export const DoctorSchedule = () => {
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #CBD5E1',
                 borderRadius: '8px',
-                fontSize: '0.9rem',
-                background: '#ffffff',
-                boxSizing: 'border-box'
+                fontSize: '0.88rem',
+                background: '#FFFFFF',
+                boxSizing: 'border-box',
+                color: '#1E293B'
               }}
             >
               <option value="In-Person & Video">In-Person & Video Consultation</option>
-              <option value="In-Person Only">In-Person Consultation Only</option>
-              <option value="Video Only">Telehealth / Video Consultation Only</option>
+              <option value="In-Person Only">In-Person Clinic Visit Only</option>
+              <option value="Video Only">Telehealth / Video Only</option>
             </select>
           </div>
 
-          {/* Consultation Fee */}
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-              <FaMoneyBillWave size={14} style={{ color: '#0284c7' }} />
-              Consultation Fee (₹ INR)
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#0C2328', marginBottom: '0.5rem' }}>
+              <FaMoneyBillWave size={13} style={{ color: '#0D9488' }} />
+              {getLabel('doctorPortal.consultationFeeLabel', 'Consultation Fee (INR ₹)')}
             </label>
             <input
               type="number"
@@ -285,47 +272,67 @@ export const DoctorSchedule = () => {
               step="50"
               value={consultationFee}
               onChange={(e) => setConsultationFee(e.target.value)}
-              placeholder="e.g. 500"
+              required
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #CBD5E1',
                 borderRadius: '8px',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 boxSizing: 'border-box'
               }}
-              required
             />
-            <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
-              This fee is presented to patients at the time of booking and receipt generation.
-            </p>
           </div>
+        </div>
 
-          {/* Submit Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 2rem',
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: saving ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <FaSave size={14} />
-              {saving ? 'Saving...' : 'Save Availability'}
-            </button>
+        {/* Guidelines Callout */}
+        <div style={{
+          backgroundColor: '#F0FDFA',
+          border: '1px solid #99F6E4',
+          borderRadius: '10px',
+          padding: '1.1rem',
+          display: 'flex',
+          gap: '0.85rem',
+          alignItems: 'flex-start'
+        }}>
+          <FaInfoCircle size={18} style={{ color: '#0D9488', flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <div style={{ fontWeight: 800, color: '#0F766E', fontSize: '0.88rem', marginBottom: '0.2rem' }}>
+              {getLabel('doctorPortal.scheduleNoticeTitle', 'Clinical Scheduling Guidelines')}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#134E4A', lineHeight: 1.5 }}>
+              {getLabel('doctorPortal.scheduleNoticeDesc', 'Updated hours directly reflect on the patient booking portal. Set status to Inactive when on leave to prevent double-booking.')}
+            </div>
           </div>
-        </form>
-      </div>
+        </div>
+
+        {/* Action Button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
+          <button
+            type="submit"
+            disabled={saving}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.8rem 1.75rem',
+              background: '#0D9488',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.9rem',
+              fontWeight: 800,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)'
+            }}
+          >
+            <FaSave size={14} />
+            {saving
+              ? getLabel('doctorPortal.savingSchedule', 'Saving Changes...')
+              : getLabel('doctorPortal.saveScheduleBtn', 'Save Schedule & Availability')}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

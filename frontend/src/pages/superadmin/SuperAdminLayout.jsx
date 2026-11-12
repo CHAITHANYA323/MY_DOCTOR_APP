@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import {
   FaChartPie,
@@ -17,10 +17,12 @@ import {
   FaBuilding
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import { Button } from '../../components/common/Button';
+import { useLanguage } from '../../context/LanguageContext';
+import { LanguageToggle } from '../../components/common/LanguageToggle';
 
 export const SuperAdminLayout = () => {
   const { user, hospitalName, hospitalId, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -42,16 +44,16 @@ export const SuperAdminLayout = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [sidebarOpen]);
 
-  const navItems = [
-    { label: 'Hospital Overview', to: '/superadmin', icon: <FaChartPie aria-hidden="true" />, end: true },
-    { label: 'Staff Management', to: '/superadmin/staff', icon: <FaUserFriends aria-hidden="true" /> },
-    { label: 'Doctors', to: '/superadmin/doctors', icon: <FaUserMd aria-hidden="true" /> },
-    { label: 'Departments', to: '/superadmin/departments', icon: <FaStethoscope aria-hidden="true" /> },
-    { label: 'Appointments', to: '/superadmin/appointments', icon: <FaCalendarCheck aria-hidden="true" /> },
-    { label: 'Operational Reports', to: '/superadmin/reports', icon: <FaChartBar aria-hidden="true" /> },
-    { label: 'Ambulance Fleet', to: '/superadmin/ambulances', icon: <FaAmbulance aria-hidden="true" /> },
-    { label: 'Hospital Settings', to: '/superadmin/settings', icon: <FaCog aria-hidden="true" /> },
-  ];
+  const navItems = useMemo(() => [
+    { label: t('portalNav.hospitalOverview'), to: '/superadmin', icon: <FaChartPie aria-hidden="true" />, end: true },
+    { label: t('portalNav.staffManagement'), to: '/superadmin/staff', icon: <FaUserFriends aria-hidden="true" /> },
+    { label: t('portalNav.doctorsList'), to: '/superadmin/doctors', icon: <FaUserMd aria-hidden="true" /> },
+    { label: t('portalNav.departments'), to: '/superadmin/departments', icon: <FaStethoscope aria-hidden="true" /> },
+    { label: t('portalNav.appointments'), to: '/superadmin/appointments', icon: <FaCalendarCheck aria-hidden="true" /> },
+    { label: t('portalNav.operationalReports'), to: '/superadmin/reports', icon: <FaChartBar aria-hidden="true" /> },
+    { label: t('portalNav.ambulanceFleet'), to: '/superadmin/ambulances', icon: <FaAmbulance aria-hidden="true" /> },
+    { label: t('portalNav.settings'), to: '/superadmin/settings', icon: <FaCog aria-hidden="true" /> },
+  ], [t]);
 
   const activeHospital = hospitalName || user?.hospital_name || (hospitalId ? `Hospital Branch #${hospitalId}` : 'Assigned Hospital');
 
@@ -251,7 +253,7 @@ export const SuperAdminLayout = () => {
                 cursor: 'pointer'
               }}
             >
-              <FaSignOutAlt size={11} /> Logout
+              <FaSignOutAlt size={11} /> {t('portalNav.signOut')}
             </button>
           </div>
         </div>
@@ -307,17 +309,8 @@ export const SuperAdminLayout = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              icon={<FaSignOutAlt aria-hidden="true" />}
-              style={{ fontSize: '0.78rem' }}
-            >
-              Sign Out
-            </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <LanguageToggle size="sm" showIcon={false} />
           </div>
         </header>
 

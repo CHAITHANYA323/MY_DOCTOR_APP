@@ -9,9 +9,11 @@ import {
   FaCheckCircle,
   FaCalendarCheck,
   FaBriefcase,
-  FaClock
+  FaClock,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { doctorService } from '../services/doctorService';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
 import { notify } from '../utils/toast';
@@ -37,6 +39,7 @@ const FALLBACK_DOCTOR_IMAGES = [
 
 export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false }) => {
   const { isAuthenticated } = useAuth();
+  const { t, isTelugu } = useLanguage();
   const [isFavorite, setIsFavorite] = useState(isFavoriteInitial);
   const [favLoading, setFavLoading] = useState(false);
 
@@ -121,28 +124,54 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
           {isFavorite ? <FaHeart size={18} /> : <FaRegHeart size={18} />}
         </button>
 
-        {/* Verified Doctor Badge */}
-        <div 
-          style={{
-            position: 'absolute',
-            bottom: '12px',
-            left: '12px',
-            backgroundColor: 'rgba(15, 23, 42, 0.88)',
-            backdropFilter: 'blur(4px)',
-            color: '#ffffff',
-            fontSize: '0.78rem',
-            fontWeight: 700,
-            padding: '0.3rem 0.75rem',
-            borderRadius: 'var(--radius-full)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
-          }}
-        >
-          <FaCheckCircle color="#38bdf8" size={12} />
-          <span>Verified Doctor</span>
-        </div>
+        {/* Verified or Demo Profile Badge */}
+        {doctor.is_verified ? (
+          <div 
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '12px',
+              backgroundColor: 'rgba(5, 150, 105, 0.94)',
+              backdropFilter: 'blur(4px)',
+              color: '#ffffff',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              padding: '0.28rem 0.7rem',
+              borderRadius: 'var(--radius-full)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
+            }}
+            title="Clinically verified medical practitioner"
+          >
+            <FaCheckCircle color="#a7f3d0" size={12} />
+            <span>{isTelugu ? 'ధృవీకరించబడిన వైద్యుడు' : 'Verified Clinician'}</span>
+          </div>
+        ) : (
+          <div 
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '12px',
+              backgroundColor: 'rgba(15, 23, 42, 0.88)',
+              backdropFilter: 'blur(4px)',
+              color: '#e2e8f0',
+              fontSize: '0.74rem',
+              fontWeight: 600,
+              padding: '0.25rem 0.65rem',
+              borderRadius: 'var(--radius-full)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
+            }}
+            title="Demo profile created for system simulation"
+          >
+            <FaInfoCircle color="#94a3b8" size={11} />
+            <span>{isTelugu ? 'డెమో ప్రొఫైల్ (ధృవీకరించబడలేదు)' : 'Demo Profile (Unverified)'}</span>
+          </div>
+        )}
       </div>
 
       {/* 2. Doctor Information Body */}
@@ -186,7 +215,7 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
               </>
             ) : (
               <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)', fontWeight: 600 }}>
-                New Doctor
+                {isTelugu ? 'కొత్త డాక్టర్' : 'New Doctor'}
               </span>
             )}
           </div>
@@ -202,13 +231,29 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
         {/* Clinical Specialization & Experience */}
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.86rem', color: 'var(--slate-600)', marginBottom: '0.85rem' }}>
           <span style={{ fontWeight: 600, color: 'var(--slate-700)' }}>
-            {doctor.specialization_name}
+            {doctor.designation ? `${doctor.designation} • ` : ''}{doctor.specialization_name}
           </span>
           <span style={{ color: 'var(--slate-300)' }}>&bull;</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
             <FaBriefcase size={12} color="var(--primary)" />
-            {doctor.experience} Years Exp.
+            {isTelugu ? `${doctor.experience} సం. అనుభవం` : `${doctor.experience} Years Exp.`}
           </span>
+          {doctor.registration_number && (
+            <span 
+              style={{ 
+                fontSize: '0.72rem', 
+                color: doctor.is_verified ? '#0f766e' : '#64748b', 
+                backgroundColor: doctor.is_verified ? '#f0fdfa' : '#f1f5f9', 
+                border: `1px solid ${doctor.is_verified ? '#ccfbf1' : '#e2e8f0'}`, 
+                padding: '1px 6px', 
+                borderRadius: '4px', 
+                fontWeight: 600 
+              }}
+              title={doctor.is_demo ? "Fictional Indian demo registration number for simulation only (Unverified NMC record)" : "Verified Medical Registration Number"}
+            >
+              {doctor.is_demo ? `Demo Reg: ${doctor.registration_number}` : `Reg: ${doctor.registration_number}`}
+            </span>
+          )}
         </div>
 
         {/* Hospital & Location */}
@@ -242,10 +287,10 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--slate-600)' }}>
             <FaClock size={12} color="var(--primary)" />
-            <span>{doctor.available_days || 'Mon - Sat'}</span>
+            <span>{doctor.available_days || (isTelugu ? 'సోమ - శని' : 'Mon - Sat')}</span>
           </div>
           <Badge variant="success" size="sm">
-            Available
+            {isTelugu ? 'అందుబాటులో ఉన్నారు' : 'Available'}
           </Badge>
         </div>
 
@@ -254,14 +299,14 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
             <div>
               <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)', display: 'block', fontWeight: 600 }}>
-                Consultation Fee
+                {isTelugu ? 'సంప్రదింపు రుసుము' : 'Consultation Fee'}
               </span>
               <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--slate-900)' }}>
                 ₹{doctor.consultation_fee}
               </span>
             </div>
             <Badge variant="secondary" size="sm">
-              Zero Platform Fee
+              {isTelugu ? 'ఉచిత ప్లాట్‌ఫారమ్' : 'Zero Platform Fee'}
             </Badge>
           </div>
 
@@ -280,7 +325,7 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
                 borderRadius: 'var(--radius-md)'
               }}
             >
-              View Profile
+              {isTelugu ? 'ప్రొఫైల్ చూడండి' : 'View Profile'}
             </Link>
 
             <Link 
@@ -301,7 +346,7 @@ export const DoctorCard = ({ doctor, onFavoriteToggle, isFavoriteInitial = false
               }}
             >
               <FaCalendarCheck size={13} />
-              <span>Book Appointment</span>
+              <span>{isTelugu ? 'బుక్ చేయండి' : 'Book Appointment'}</span>
             </Link>
           </div>
         </div>

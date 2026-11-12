@@ -434,18 +434,18 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* 5. BOTTOM CTA BANNER */}
+      {/* 5. BOTTOM HEALTHCARE ACTION CARD */}
       <section style={{
-        background: 'linear-gradient(135deg, var(--primary, #0284c7) 0%, var(--primary-dark, #0c4a6e) 100%)',
-        color: 'var(--white)',
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid var(--slate-200)',
         padding: '3.5rem 1rem',
         textAlign: 'center'
       }}>
         <div className="container" style={{ maxWidth: '720px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', fontWeight: 900, marginBottom: '1rem', color: 'var(--white)' }}>
+          <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.3rem)', fontWeight: 900, marginBottom: '0.85rem', color: 'var(--slate-900)' }}>
             {isAuthenticated ? `Welcome back, ${user?.name?.split(' ')[0] || 'User'}` : 'Start Experiencing Better Healthcare Today'}
           </h2>
-          <p style={{ fontSize: '1.05rem', color: '#e0f2fe', marginBottom: '2rem', lineHeight: 1.6 }}>
+          <p style={{ fontSize: '1.05rem', color: 'var(--slate-600)', marginBottom: '2rem', lineHeight: 1.6 }}>
             {isAuthenticated 
               ? 'Find doctors, view your scheduled appointments, or request emergency transport anytime.' 
               : 'Create your free patient account to book consultations, track appointments, and access certified specialists.'
@@ -455,15 +455,13 @@ export const Home = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <Link 
               to="/doctors"
-              className="btn btn-secondary"
+              className="btn btn-primary"
               style={{
-                backgroundColor: 'var(--white)',
-                color: 'var(--primary-dark)',
                 fontWeight: 800,
-                padding: '0.75rem 1.75rem',
+                padding: '0.75rem 2rem',
                 borderRadius: 'var(--radius-full)',
                 textDecoration: 'none',
-                boxShadow: 'var(--shadow-md)'
+                boxShadow: 'var(--shadow-sm)'
               }}
             >
               Find a Doctor
@@ -472,10 +470,8 @@ export const Home = () => {
             {!isAuthenticated && (
               <Link 
                 to="/register"
-                className="btn btn-outline"
+                className="btn btn-secondary"
                 style={{
-                  color: 'var(--white)',
-                  borderColor: 'rgba(255, 255, 255, 0.4)',
                   fontWeight: 700,
                   padding: '0.75rem 1.75rem',
                   borderRadius: 'var(--radius-full)',

@@ -1,0 +1,69 @@
+{
+  "test1_welcome": {
+    "status": "PASS",
+    "evidence": [
+      "Banner exact match: true",
+      "Hero headline exact match: true",
+      "CTA button exact match: true",
+      "4 Core highlight cards exact match: true",
+      "Clicking CTA navigated to /login: true (current pathname: /login)",
+      "Route /welcome renders Welcome page: true"
+    ]
+  },
+  "test2_language": {
+    "status": "PASS",
+    "evidence": [
+      "Default HTML lang attribute: \"te\"",
+      "Default localStorage key \"mediconnect_lang\": \"te\"",
+      "After switch to English: lang=\"en\", stored=\"en\"",
+      "English Hero H1: \"Your Health, Our Responsibility\"",
+      "English Cards include \"Find Doctors Easily.\": true",
+      "Persistence after reload in English: true (lang=\"en\")",
+      "Switch back to Telugu: true (lang=\"te\", Hero=\"మీ ఆరోగ్యం మా బాధ్యత\")",
+      "Telugu Typography: font-family=\"\"Noto Sans Telugu\", \"Plus Jakarta Sans\", system-ui, -apple-system, sans-serif\", line-height=\"76px\"",
+      "No Telugu vertical clipping detected: true"
+    ]
+  },
+  "test3_auth": {
+    "status": "PASS",
+    "evidence": [
+      "Login page LanguageToggle present: true",
+      "Login card heading rendered: \"Patient Portal Sign In\"",
+      "Register page LanguageToggle present: true",
+      "Register 5 Role tabs present: Patient=true, Doctor=true"
+    ]
+  },
+  "test4_portals": {
+    "status": "PASS",
+    "evidence": [
+      "Patient Portal (/patient): Unauthenticated access safely redirected to /login (true)",
+      "Doctor Portal (/doctor): Unauthenticated access safely redirected to /login (true)",
+      "Hospital Admin Portal (/admin): Unauthenticated access safely redirected to /login (true)",
+      "Receptionist Portal (/admin): Unauthenticated access safely redirected to /login (true)",
+      "Super Admin Portal (/superadmin): Unauthenticated access safely redirected to /login (true)",
+      "Platform Owner Portal (/owner): Unauthenticated access safely redirected to /login (true)",
+      "Static Code Verification: All 6 layout files verified to contain <LanguageToggle /> component in both desktop header/sidebar and mobile drawer.",
+      "Zero authentication bypass or token manufacture attempted. Internal clinical views marked NOT TESTED per safety instructions."
+    ]
+  },
+  "test5_responsive": {
+    "status": "PASS",
+    "evidence": [
+      "Welcome @ Desktop (1440x900): Horizontal scroll: false (body=1425px, win=1440px), Button height: 61px (>=44px: true)",
+      "Login @ Desktop (1440x900): Horizontal scroll: false",
+      "Welcome @ Tablet (768x1024): Horizontal scroll: false (body=753px, win=768px), Button height: 58px (>=44px: true)",
+      "Login @ Tablet (768x1024): Horizontal scroll: false",
+      "Welcome @ Mobile (375x812): Horizontal scroll: false (body=375px, win=375px), Button height: 80px (>=44px: true)",
+      "Login @ Mobile (375x812): Horizontal scroll: false"
+    ]
+  },
+  "test6_technical": {
+    "status": "PASS",
+    "evidence": [
+      "Browser Console Errors count: 0",
+      "Failed Network Requests count: 0"
+    ],
+    "consoleErrors": [],
+    "networkFailures": []
+  }
+}

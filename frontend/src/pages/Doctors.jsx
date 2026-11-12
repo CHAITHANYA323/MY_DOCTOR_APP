@@ -19,8 +19,10 @@ import { hospitalService } from '../services/hospitalService';
 import { DoctorCard } from '../components/DoctorCard';
 import { SkeletonGrid } from '../components/SkeletonLoader';
 import { getSpecialtyInfo } from '../utils/specialtyMap';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Doctors = () => {
+  const { t, isTelugu } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filter & Search State
@@ -226,7 +228,7 @@ export const Doctors = () => {
               marginBottom: '0.4rem' 
             }}
           >
-            Find & Book a Doctor
+            {t('doctors.title')}
           </h1>
 
           <p 
@@ -238,7 +240,7 @@ export const Doctors = () => {
               margin: 0 
             }}
           >
-            Find the right doctor based on specialty, hospital, experience, or location and book an appointment easily.
+            {t('doctors.subtitle')}
           </p>
         </div>
 
@@ -270,8 +272,8 @@ export const Doctors = () => {
               type="text" 
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search doctor, specialty, hospital or symptom"
-              aria-label="Search doctor, specialty, hospital or symptom"
+              placeholder={t('doctors.searchPlaceholder')}
+              aria-label={t('doctors.searchPlaceholder')}
               style={{
                 width: '100%',
                 height: '56px',

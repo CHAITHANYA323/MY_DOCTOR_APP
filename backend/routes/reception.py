@@ -17,7 +17,7 @@ EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
 # -------------------------------------------------------------------------
 @reception_bp.route('/stats', methods=['GET'])
 @jwt_required
-@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN')
+@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN', 'ADMIN')
 def get_reception_stats():
     """
     Retrieves real-time daily operational statistics scoped strictly to
@@ -80,7 +80,7 @@ def get_reception_stats():
 # -------------------------------------------------------------------------
 @reception_bp.route('/patients', methods=['GET'])
 @jwt_required
-@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN')
+@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN', 'ADMIN')
 def list_or_search_patients():
     """
     Search and retrieve patient directory scoped strictly to patients who
@@ -152,7 +152,7 @@ def list_or_search_patients():
 # -------------------------------------------------------------------------
 @reception_bp.route('/patients/<int:patient_id>', methods=['GET'])
 @jwt_required
-@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN')
+@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN', 'ADMIN')
 def get_patient_detail(patient_id):
     """
     Retrieves basic patient information and consultation history AT THIS HOSPITAL ONLY.
@@ -202,7 +202,7 @@ def get_patient_detail(patient_id):
 # -------------------------------------------------------------------------
 @reception_bp.route('/patients', methods=['POST'])
 @jwt_required
-@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN')
+@roles_required('RECEPTIONIST', 'HOSPITAL_SUPER_ADMIN', 'ADMIN')
 def register_walkin_patient():
     """
     Allows a Receptionist to register a new walk-in patient.

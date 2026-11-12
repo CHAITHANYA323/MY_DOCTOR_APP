@@ -13,8 +13,21 @@ def get_admin_stats():
         return jsonify({'success': False, 'message': 'Access denied. Hospital administrative privileges required.'}), 403
 
     if user.role == 'PLATFORM_OWNER':
-        total_doctors = Doctor.query.count()
-        total_hospitals = Hospital.query.count()
+        # Exclude legacy dummy/test hospitals from platform metrics and distribution
+        EXCLUDED_DUMMY_HOSPITAL_SLUGS = {
+            'reliability-general-hospital',
+            'rate-limit-hospital',
+            'hospital-alpha',
+            'hospital-beta'
+        }
+        active_hospitals = Hospital.query.filter(
+            ~Hospital.slug.in_(EXCLUDED_DUMMY_HOSPITAL_SLUGS),
+            ~Hospital.id.in_([1, 2, 3, 4])
+        ).all()
+        active_hospital_ids = [h.id for h in active_hospitals]
+
+        total_hospitals = len(active_hospitals)
+        total_doctors = Doctor.query.filter(Doctor.hospital_id.in_(active_hospital_ids)).count()
         total_users = User.query.filter(User.role.in_(['USER', 'PATIENT'])).count()
         total_appointments = Appointment.query.count()
         pending_appointments = Appointment.query.filter_by(status='Pending').count()
@@ -31,19 +44,21 @@ def get_admin_stats():
         total_ambulance_requests = AmbulanceRequest.query.count()
         pending_ambulance_requests = AmbulanceRequest.query.filter_by(status='Pending').count()
 
-        # Specialization distribution
+        # Specialization distribution across active platform hospitals
         specs = Specialization.query.all()
-        specialization_stats = [
-            {'name': s.name, 'count': len(s.doctors)} for s in specs if len(s.doctors) > 0
-        ]
+        specialization_stats = []
+        for s in specs:
+            doc_cnt = sum(1 for d in s.doctors if d.hospital_id in active_hospital_ids)
+            if doc_cnt > 0:
+                specialization_stats.append({'name': s.name, 'count': doc_cnt})
         specialization_stats.sort(key=lambda x: x['count'], reverse=True)
 
-        # Hospital doctor distribution
-        hospitals = Hospital.query.all()
+        # Hospital doctor distribution - exactly the active AP & Telangana integration hospitals
         hospital_stats = [
             {'name': h.name, 'city': h.city, 'doctors': len(h.doctors), 'rating': h.rating}
-            for h in hospitals
+            for h in active_hospitals
         ]
+        hospital_stats.sort(key=lambda x: (x['doctors'], x['rating'] or 0), reverse=True)
 
         recent_appointments = Appointment.query.order_by(Appointment.created_at.desc()).limit(6).all()
         recent_requests = AmbulanceRequest.query.order_by(AmbulanceRequest.created_at.desc()).limit(6).all()

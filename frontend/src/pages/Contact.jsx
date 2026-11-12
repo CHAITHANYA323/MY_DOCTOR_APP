@@ -13,8 +13,10 @@ import {
   FaQuestionCircle 
 } from 'react-icons/fa';
 import { Button } from '../components/common/Button';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Contact = () => {
+  const { t, isTelugu } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -69,13 +71,13 @@ export const Contact = () => {
         <div className="container">
           <div style={{ maxWidth: '750px', margin: '0 auto', textAlign: 'center' }}>
             <div className="section-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-              <FaHeadset /> 24/7 Patient & Hospital Support
+              <FaHeadset /> {t('contact.tag')}
             </div>
             <h1 style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '1rem' }}>
-              We're Here to Help With Your <span style={{ color: 'var(--primary)' }}>Healthcare</span> Needs
+              {t('contact.heroTitle')}
             </h1>
             <p style={{ fontSize: '1.1rem', color: 'var(--slate-600)', lineHeight: 1.6 }}>
-              Have questions about booking appointments, hospital admission guidance, or ambulance dispatch? Connect with our dedicated patient care team.
+              {t('contact.heroSubtitle')}
             </p>
           </div>
         </div>
@@ -267,10 +269,10 @@ export const Contact = () => {
           {/* Right Column: Interactive Contact Form */}
           <div className="card" style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)', border: '1px solid var(--slate-200)', boxShadow: 'var(--shadow-md)' }}>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
-              Send Us a Message
+              {isTelugu ? 'మాకు సందేశం పంపండి' : 'Send Us a Message'}
             </h3>
             <p style={{ fontSize: '0.92rem', color: 'var(--slate-500)', marginBottom: '1.75rem' }}>
-              Fill out the form below. Our healthcare assistance team usually responds within 2 to 4 hours.
+              {isTelugu ? 'క్రింది ఫారమ్‌ను పూరించండి. మా హెల్త్‌కేర్ బృందం 2 నుండి 4 గంటల్లో సంప్రదిస్తుంది.' : 'Fill out the form below. Our healthcare assistance team usually responds within 2 to 4 hours.'}
             </p>
 
             {submitted && (
@@ -287,10 +289,7 @@ export const Contact = () => {
               }}>
                 <FaCheckCircle size={22} color="var(--success)" />
                 <div>
-                  <p style={{ margin: 0, fontWeight: 700 }}>Thank you! Your message has been received.</p>
-                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 500, color: '#047857' }}>
-                    A patient relationship coordinator will get in touch with you shortly.
-                  </p>
+                  <p style={{ margin: 0, fontWeight: 700 }}>{t('contact.messageSent')}</p>
                 </div>
               </div>
             )}

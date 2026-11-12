@@ -6,13 +6,17 @@ import { HospitalCard } from '../components/HospitalCard';
 import { SkeletonGrid } from '../components/SkeletonLoader';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Hospitals = () => {
+  const { t, isTelugu } = useLanguage();
   const [search, setSearch] = useState('');
   const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [sortBy, setSortBy] = useState('rating_desc');
   const [hospitals, setHospitals] = useState([]);
   const [cities, setCities] = useState([]);
+  const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,12 +26,14 @@ export const Hospitals = () => {
         const res = await hospitalService.getHospitals({
           search,
           city,
+          state,
           sort_by: sortBy,
-          limit: 30
+          limit: 50
         });
         if (res.success) {
           setHospitals(res.hospitals);
           if (res.cities) setCities(res.cities);
+          if (res.states) setStates(res.states);
         }
       } catch (err) {
         console.error('Error fetching hospitals:', err);
@@ -37,11 +43,12 @@ export const Hospitals = () => {
     };
 
     fetchHospitals();
-  }, [search, city, sortBy]);
+  }, [search, city, state, sortBy]);
 
   const handleReset = () => {
     setSearch('');
     setCity('');
+    setState('');
     setSortBy('rating_desc');
   };
 
@@ -52,14 +59,14 @@ export const Hospitals = () => {
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ marginBottom: '0.75rem' }}>
             <Badge variant="primary" size="md">
-              <FaHospital style={{ marginRight: '0.35rem' }} aria-hidden="true" /> Multi-Speciality Network
+              <FaHospital style={{ marginRight: '0.35rem' }} aria-hidden="true" /> {isTelugu ? 'మల్టీ-స్పెషాలిటీ నెట్‌వర్క్' : 'Multi-Speciality Network'}
             </Badge>
           </div>
           <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
-            Top Multi-Speciality & Super-Speciality Hospitals
+            {t('hospitals.title')}
           </h1>
           <p style={{ color: 'var(--slate-600)', fontSize: '1.05rem' }}>
-            Explore leading medical institutions equipped with emergency trauma centers and modern surgical wings
+            {t('hospitals.subtitle')}
           </p>
         </div>
 
@@ -80,7 +87,7 @@ export const Hospitals = () => {
             <FaSearch style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
             <input 
               type="text" 
-              placeholder="Search by hospital name or department..."
+              placeholder={t('hospitals.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="form-input"
@@ -90,11 +97,24 @@ export const Hospitals = () => {
 
           <div>
             <select 
+              value={state} 
+              onChange={(e) => setState(e.target.value)}
+              className="form-select"
+            >
+              <option value="">{t('hospitals.filterState') || (isTelugu ? 'అన్ని రాష్ట్రాలు' : 'All States')}</option>
+              {states.map((s, i) => (
+                <option key={i} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <select 
               value={city} 
               onChange={(e) => setCity(e.target.value)}
               className="form-select"
             >
-              <option value="">All Cities</option>
+              <option value="">{t('hospitals.filterCity')}</option>
               {cities.map((c, i) => (
                 <option key={i} value={c}>{c}</option>
               ))}
@@ -107,8 +127,8 @@ export const Hospitals = () => {
               onChange={(e) => setSortBy(e.target.value)}
               className="form-select"
             >
-              <option value="rating_desc">Highest Rated</option>
-              <option value="name_asc">Hospital Name: A to Z</option>
+              <option value="rating_desc">{isTelugu ? 'అత్యధిక రేటింగ్' : 'Highest Rated'}</option>
+              <option value="name_asc">{isTelugu ? 'ఆసుపత్రి పేరు (A - Z)' : 'Hospital Name: A to Z'}</option>
             </select>
           </div>
 
@@ -118,7 +138,7 @@ export const Hospitals = () => {
             onClick={handleReset}
             icon={<FaRedo aria-hidden="true" />}
           >
-            Reset
+            {t('common.reset')}
           </Button>
         </div>
 
@@ -128,9 +148,9 @@ export const Hospitals = () => {
         ) : hospitals.length === 0 ? (
           <div className="empty-state">
             <FaHospital className="empty-state-icon" />
-            <h3 className="empty-state-title">No hospitals found</h3>
-            <p className="empty-state-desc">Try resetting your filters or searching for a different city.</p>
-            <Button variant="primary" onClick={handleReset}>Reset Filters</Button>
+            <h3 className="empty-state-title">{t('hospitals.noHospitalsFound')}</h3>
+            <p className="empty-state-desc">{isTelugu ? 'ఫిల్టర్లను రీసెట్ చేయండి లేదా వేరే నగరాన్ని ఎంచుకోండి.' : 'Try resetting your filters or searching for a different city.'}</p>
+            <Button variant="primary" onClick={handleReset}>{t('hospitals.resetFilters')}</Button>
           </div>
         ) : (
           <div style={{
@@ -147,3 +167,5 @@ export const Hospitals = () => {
     </div>
   );
 };
+
+export default Hospitals;

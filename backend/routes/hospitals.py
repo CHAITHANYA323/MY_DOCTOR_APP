@@ -10,27 +10,52 @@ def slugify(text):
     text = re.sub(r'[^\w\s-]', '', text)
     return re.sub(r'[-\s]+', '-', text)
 
+EXCLUDED_DUMMY_HOSPITAL_SLUGS = {
+    'reliability-general-hospital',
+    'rate-limit-hospital',
+    'hospital-alpha',
+    'hospital-beta'
+}
+EXCLUDED_DUMMY_HOSPITAL_IDS = {1, 2, 3, 4}
+
 @hospitals_bp.route('', methods=['GET'])
 def get_hospitals():
     search = request.args.get('search', '').strip()
     city = request.args.get('city', '').strip()
+    state = request.args.get('state', '').strip()
+    hospital_type = request.args.get('type', '').strip()
     sort_by = request.args.get('sort_by', 'rating_desc')
     page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 20))
+    limit = int(request.args.get('limit', 50))
+    include_dummy = request.args.get('include_dummy', 'false').lower() in ('true', '1')
 
     query = Hospital.query
+
+    # Exclude legacy dummy/test hospitals by default unless explicitly requested
+    if not include_dummy:
+        query = query.filter(
+            ~Hospital.slug.in_(EXCLUDED_DUMMY_HOSPITAL_SLUGS),
+            ~Hospital.id.in_(EXCLUDED_DUMMY_HOSPITAL_IDS)
+        )
 
     if search:
         search_term = f"%{search}%"
         query = query.filter(
             (Hospital.name.ilike(search_term)) |
             (Hospital.city.ilike(search_term)) |
+            (Hospital.state.ilike(search_term)) |
             (Hospital.address.ilike(search_term)) |
             (Hospital.facilities.ilike(search_term))
         )
 
     if city:
         query = query.filter(Hospital.city.ilike(f"%{city}%"))
+
+    if state:
+        query = query.filter(Hospital.state.ilike(f"%{state}%"))
+
+    if hospital_type:
+        query = query.filter(Hospital.hospital_type.ilike(f"%{hospital_type}%"))
 
     # Sorting
     if sort_by == 'name_asc':
@@ -45,8 +70,17 @@ def get_hospitals():
     total = query.count()
     hospitals = query.offset((page - 1) * limit).limit(limit).all()
 
-    # Get distinct cities for filter dropdowns
-    cities = [c[0] for c in db.session.query(Hospital.city).distinct().order_by(Hospital.city.asc()).all() if c[0]]
+    # Get distinct cities and states for filter dropdowns
+    if not include_dummy:
+        base_hosp = Hospital.query.filter(
+            ~Hospital.slug.in_(EXCLUDED_DUMMY_HOSPITAL_SLUGS),
+            ~Hospital.id.in_(EXCLUDED_DUMMY_HOSPITAL_IDS)
+        )
+    else:
+        base_hosp = Hospital.query
+
+    cities = [c[0] for c in base_hosp.with_entities(Hospital.city).distinct().order_by(Hospital.city.asc()).all() if c[0]]
+    states = [s[0] for s in base_hosp.with_entities(Hospital.state).distinct().order_by(Hospital.state.asc()).all() if s[0]]
 
     return jsonify({
         'success': True,
@@ -54,6 +88,7 @@ def get_hospitals():
         'page': page,
         'limit': limit,
         'cities': cities,
+        'states': states,
         'hospitals': [h.to_dict() for h in hospitals]
     }), 200
 
