@@ -34,6 +34,7 @@ def get_doctors():
     gender = request.args.get('gender', '').strip()
     availability = request.args.get('availability', '').strip()
     status = request.args.get('status', 'Active') # default Active for public
+    region = request.args.get('region', '').strip().upper()
     sort_by = request.args.get('sort_by', 'rating_desc')
 
     # Safe Numeric & Range Parameter Validation
@@ -94,10 +95,16 @@ def get_doctors():
     needs_spec_join = bool(search or specialization_name)
     needs_hosp_join = bool(search or hospital_name)
 
+    if region in ('AP_TS', 'AP-TS', 'AP_AND_TS', 'AP', 'TS'):
+        if not needs_hosp_join:
+            query = query.join(Doctor.hospital)
+            needs_hosp_join = True
+        query = query.filter(Hospital.state.in_(['Andhra Pradesh', 'Telangana']))
+
     if needs_spec_join:
         query = query.join(Doctor.specialization)
 
-    if needs_hosp_join:
+    if needs_hosp_join and not (region in ('AP_TS', 'AP-TS', 'AP_AND_TS', 'AP', 'TS')):
         query = query.join(Doctor.hospital)
 
     # Global text search filter (OR logic across doctor name, location, specialization, hospital, city, state, qualification)

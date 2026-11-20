@@ -6,9 +6,11 @@ import {
   FaUserMd,
   FaCheckCircle,
   FaTimes,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
 import { getApiErrorMessage } from '../../services/api';
 import api from '../../services/api';
@@ -16,6 +18,7 @@ import { Button } from '../../components/common/Button';
 
 export const HospitalDepartments = () => {
   const { user, hospitalName } = useAuth();
+  const { t } = useLanguage();
 
   const [departments, setDepartments] = useState([]);
   const [hospitalDoctors, setHospitalDoctors] = useState([]);
@@ -121,10 +124,10 @@ export const HospitalDepartments = () => {
       }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-            Hospital Departments & Specializations
+            {t('superAdminPortal.departments.title')}
           </h1>
           <p style={{ fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '0.25rem', marginBottom: 0 }}>
-            Clinical medical departments operating at {hospitalName || 'your hospital branch'}
+            {t('superAdminPortal.departments.subtitle')} &bull; {hospitalName || 'Your Hospital'}
           </p>
         </div>
 
@@ -134,8 +137,29 @@ export const HospitalDepartments = () => {
           onClick={() => { setIsAddModalOpen(true); setCreateError(''); }}
           icon={<FaPlusCircle aria-hidden="true" />}
         >
-          Add Specialization
+          {t('superAdminPortal.departments.btnAddDept')}
         </Button>
+      </div>
+
+      {/* Guidance Banner */}
+      <div style={{
+        padding: '1rem 1.25rem',
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem'
+      }}>
+        <FaInfoCircle color="#0284c7" size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0369a1', display: 'block' }}>
+            Clinical Specialty Organization
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.5, display: 'block', marginTop: '0.25rem' }}>
+            {t('superAdminPortal.departments.guidanceNotice')} Assigning doctors to specific clinical departments enables patients to discover the appropriate care provider.
+          </span>
+        </div>
       </div>
 
       {/* Search Bar */}

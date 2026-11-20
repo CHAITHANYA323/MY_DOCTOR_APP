@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FaHospital,
   FaPlusCircle,
@@ -11,8 +11,11 @@ import {
   FaExclamationTriangle,
   FaBan,
   FaCheck,
-  FaClipboardList
+  FaClipboardList,
+  FaInfoCircle,
+  FaPhoneAlt
 } from 'react-icons/fa';
+import { useLanguage } from '../../context/LanguageContext';
 import { hospitalService } from '../../services/hospitalService';
 import { approvalService } from '../../services/approvalService';
 import { getApiErrorMessage } from '../../services/api';
@@ -26,6 +29,7 @@ const DUMMY_HOSPITAL_PATTERNS = [
 ];
 
 export const ManagePlatformHospitals = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('HOSPITALS'); // 'HOSPITALS' | 'REQUESTS'
   const [hospitals, setHospitals] = useState([]);
   const [onboardingRequests, setOnboardingRequests] = useState([]);
@@ -34,11 +38,12 @@ export const ManagePlatformHospitals = () => {
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
   const [search, setSearch] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
-  const [cities, setCities] = useState([]);
+  const [stateFilter, setStateFilter] = useState('ALL');
+  const [cityFilter, setCityFilter] = useState('ALL');
 
   // Onboarding Request Actions State
   const [processingReqId, setProcessingReqId] = useState(null);
+  const [approveModalReq, setApproveModalReq] = useState(null);
   const [rejectModalReq, setRejectModalReq] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectModalError, setRejectModalError] = useState('');
@@ -71,12 +76,8 @@ export const ManagePlatformHospitals = () => {
     setError('');
     setActionError('');
     try {
-      const params = {};
-      if (search.trim()) params.search = search.trim();
-      if (cityFilter.trim()) params.city = cityFilter.trim();
-
       const [hospRes, reqRes] = await Promise.all([
-        hospitalService.getHospitals(params),
+        hospitalService.getHospitals({ limit: 100 }),
         approvalService.getPlatformApprovals('pending').catch(() => ({ success: false, requests: [] }))
       ]);
 
@@ -85,10 +86,6 @@ export const ManagePlatformHospitals = () => {
           (h) => !DUMMY_HOSPITAL_PATTERNS.some((p) => h.name?.toLowerCase().includes(p) || h.slug?.toLowerCase().includes(p.replace(/ /g, '-')))
         );
         setHospitals(filtered);
-        if (Array.isArray(hospRes.cities)) {
-          const dummyCities = ['metropolis', 'gotham'];
-          setCities(hospRes.cities.filter((c) => !dummyCities.includes(c.toLowerCase())));
-        }
       } else {
         setError(hospRes.message || 'Unable to load hospitals.');
       }
@@ -101,11 +98,37 @@ export const ManagePlatformHospitals = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, cityFilter]);
+  }, []);
 
   useEffect(() => {
     fetchHospitals();
   }, [fetchHospitals]);
+
+  // Derived cities based on state filter
+  const availableCities = useMemo(() => {
+    const set = new Set();
+    hospitals.forEach((h) => {
+      if (h.city) {
+        if (stateFilter === 'ALL' || (h.state && h.state.toLowerCase() === stateFilter.toLowerCase())) {
+          set.add(h.city.trim());
+        }
+      }
+    });
+    return Array.from(set).sort();
+  }, [hospitals, stateFilter]);
+
+  // Filtered hospitals
+  const filteredHospitals = useMemo(() => {
+    return hospitals.filter((h) => {
+      const matchState = stateFilter === 'ALL' || (h.state && h.state.toLowerCase() === stateFilter.toLowerCase());
+      const matchCity = cityFilter === 'ALL' || (h.city && h.city.toLowerCase() === cityFilter.toLowerCase());
+      const matchSearch = !search.trim() ||
+        h.name?.toLowerCase().includes(search.toLowerCase()) ||
+        h.address?.toLowerCase().includes(search.toLowerCase()) ||
+        (typeof h.facilities === 'string' && h.facilities.toLowerCase().includes(search.toLowerCase()));
+      return matchState && matchCity && matchSearch;
+    });
+  }, [hospitals, stateFilter, cityFilter, search]);
 
   const handleApproveOnboardingRequest = async (req) => {
     if (!req?.id) return;
@@ -234,15 +257,15 @@ export const ManagePlatformHospitals = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '1rem',
-        borderBottom: '1px solid var(--slate-200)',
+        borderBottom: '1px solid #e2e8f0',
         paddingBottom: '1.25rem'
       }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-            Hospital Management
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+            {t('ownerPortal.hospitals.title')}
           </h1>
-          <p style={{ fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '0.25rem', marginBottom: 0 }}>
-            Onboard new hospital branches and configure initial Super Admin authority
+          <p style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '0.25rem', marginBottom: 0 }}>
+            {t('ownerPortal.hospitals.subtitle')}
           </p>
         </div>
 
@@ -252,8 +275,29 @@ export const ManagePlatformHospitals = () => {
           onClick={handleOpenCreateModal}
           icon={<FaPlusCircle aria-hidden="true" />}
         >
-          Onboard New Hospital
+          {t('ownerPortal.hospitals.btnOnboard')}
         </Button>
+      </div>
+
+      {/* Guidance Banner */}
+      <div style={{
+        padding: '1.1rem 1.25rem',
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem'
+      }}>
+        <FaInfoCircle color="#0284c7" size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0369a1', display: 'block' }}>
+            {t('ownerPortal.hospitals.guidanceTitle')}
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.5, display: 'block', marginTop: '0.25rem' }}>
+            {t('ownerPortal.hospitals.guidanceText')}
+          </span>
+        </div>
       </div>
 
       {/* Action Success / Error Notifications */}
@@ -262,7 +306,7 @@ export const ManagePlatformHospitals = () => {
           padding: '0.85rem 1rem',
           backgroundColor: '#ecfdf5',
           color: '#065f46',
-          borderRadius: 'var(--radius-sm)',
+          borderRadius: '8px',
           fontSize: '0.85rem',
           fontWeight: 600,
           display: 'flex',
@@ -278,14 +322,15 @@ export const ManagePlatformHospitals = () => {
       {actionError && (
         <div style={{
           padding: '0.85rem 1rem',
-          backgroundColor: 'var(--emergency-light)',
-          color: 'var(--emergency)',
-          borderRadius: 'var(--radius-sm)',
+          backgroundColor: '#fef2f2',
+          color: '#dc2626',
+          borderRadius: '8px',
           fontSize: '0.85rem',
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem'
+          gap: '0.5rem',
+          border: '1px solid #fecaca'
         }}>
           <FaExclamationTriangle />
           <span>{actionError}</span>
@@ -298,28 +343,28 @@ export const ManagePlatformHospitals = () => {
         gap: '0.5rem',
         backgroundColor: 'white',
         padding: '0.75rem 1rem',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--slate-200)'
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0'
       }}>
         <button
           type="button"
           onClick={() => setActiveTab('HOSPITALS')}
           style={{
             padding: '0.5rem 1rem',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: '8px',
             border: 'none',
-            backgroundColor: activeTab === 'HOSPITALS' ? '#0284c7' : 'var(--slate-100)',
-            color: activeTab === 'HOSPITALS' ? 'white' : 'var(--slate-700)',
+            backgroundColor: activeTab === 'HOSPITALS' ? '#0284c7' : '#f1f5f9',
+            color: activeTab === 'HOSPITALS' ? 'white' : '#334155',
             fontSize: '0.85rem',
             fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem'
+            gap: '0.45rem'
           }}
         >
           <FaHospital />
-          <span>Active Hospitals ({hospitals.length})</span>
+          <span>{t('ownerPortal.hospitals.tabActive')} ({hospitals.length})</span>
         </button>
 
         <button
@@ -327,10 +372,10 @@ export const ManagePlatformHospitals = () => {
           onClick={() => setActiveTab('REQUESTS')}
           style={{
             padding: '0.5rem 1rem',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: '8px',
             border: 'none',
-            backgroundColor: activeTab === 'REQUESTS' ? '#0284c7' : 'var(--slate-100)',
-            color: activeTab === 'REQUESTS' ? 'white' : 'var(--slate-700)',
+            backgroundColor: activeTab === 'REQUESTS' ? '#0284c7' : '#f1f5f9',
+            color: activeTab === 'REQUESTS' ? 'white' : '#334155',
             fontSize: '0.85rem',
             fontWeight: 700,
             cursor: 'pointer',
@@ -340,7 +385,7 @@ export const ManagePlatformHospitals = () => {
           }}
         >
           <FaClipboardList />
-          <span>Onboarding Requests</span>
+          <span>{t('ownerPortal.hospitals.tabRequests')}</span>
           {onboardingRequests.length > 0 && (
             <span style={{
               backgroundColor: activeTab === 'REQUESTS' ? 'white' : '#ea580c',
@@ -358,174 +403,197 @@ export const ManagePlatformHospitals = () => {
 
       {activeTab === 'HOSPITALS' ? (
         <>
-          {/* Search & Filters */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.75rem',
-        alignItems: 'center',
-        backgroundColor: 'white',
-        padding: '1rem',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--slate-200)'
-      }}>
-        <div style={{ position: 'relative', flex: '1 1 260px' }}>
-          <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
-          <input
-            type="text"
-            placeholder="Search hospitals by name, city, or facilities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="form-input"
-            style={{ paddingLeft: '2.4rem' }}
-          />
-        </div>
+          {/* Search, State & City Filters */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            alignItems: 'center',
+            backgroundColor: 'white',
+            padding: '1rem',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ position: 'relative', flex: '1 1 240px' }}>
+              <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input
+                type="text"
+                placeholder={t('ownerPortal.hospitals.searchPlaceholder')}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="form-input"
+                style={{ paddingLeft: '2.4rem' }}
+              />
+            </div>
 
-        <div style={{ minWidth: '160px' }}>
-          <select
-            value={cityFilter}
-            onChange={(e) => setCityFilter(e.target.value)}
-            className="form-input"
-          >
-            <option value="">All Cities</option>
-            {cities.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
+            <div style={{ minWidth: '150px' }}>
+              <select
+                value={stateFilter}
+                onChange={(e) => {
+                  setStateFilter(e.target.value);
+                  setCityFilter('ALL');
+                }}
+                className="form-input"
+              >
+                <option value="ALL">{t('ownerPortal.hospitals.allStates')}</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Andhra Pradesh">Andhra Pradesh</option>
+              </select>
+            </div>
 
-        {(search || cityFilter) && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => { setSearch(''); setCityFilter(''); }}
-          >
-            Clear Filters
-          </Button>
-        )}
-      </div>
+            <div style={{ minWidth: '150px' }}>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="form-input"
+              >
+                <option value="ALL">{t('ownerPortal.hospitals.allCities')}</option>
+                {availableCities.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
 
-      {/* Error state */}
-      {error && (
-        <div className="card" style={{ padding: '1.5rem', borderColor: '#fca5a5', backgroundColor: '#fef2f2' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--emergency)' }}>
-            <FaExclamationTriangle />
-            <span style={{ fontWeight: 600 }}>{error}</span>
+            {(search || stateFilter !== 'ALL' || cityFilter !== 'ALL') && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => { setSearch(''); setStateFilter('ALL'); setCityFilter('ALL'); }}
+              >
+                {t('ownerPortal.hospitals.clearFilters')}
+              </Button>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Hospital Cards Grid */}
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="skeleton" style={{ height: '200px', borderRadius: '12px' }} />
-          ))}
-        </div>
-      ) : hospitals.length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-          <FaHospital size={44} color="var(--slate-300)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--slate-800)' }}>No Hospitals Found</h3>
-          <p style={{ color: 'var(--slate-500)', fontSize: '0.88rem', marginTop: '0.25rem' }}>
-            {search || cityFilter ? 'Try clearing your search terms.' : 'Click "Onboard New Hospital" above to add the first branch.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
-          {hospitals.map((hosp) => (
-            <div
-              key={hosp.id}
-              className="card"
-              style={{
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-                    {hosp.name}
-                  </h3>
-                  <span style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    backgroundColor: 'var(--primary-ultralight)',
-                    color: 'var(--primary-dark)',
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: '12px',
-                    flexShrink: 0
-                  }}>
-                    ID #{hosp.id}
-                  </span>
-                </div>
-
-                <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
-                  <FaMapMarkerAlt /> {hosp.city}, {hosp.state}
-                </p>
-
-                <p style={{ fontSize: '0.85rem', color: 'var(--slate-700)', lineHeight: 1.5, marginBottom: '1rem' }}>
-                  {hosp.address}
-                </p>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '1rem' }}>
-                  {(Array.isArray(hosp.facilities) ? hosp.facilities : (typeof hosp.facilities === 'string' ? hosp.facilities.split(',') : [])).slice(0, 3).map((f, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        fontSize: '0.72rem',
-                        backgroundColor: 'var(--slate-100)',
-                        color: 'var(--slate-700)',
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      {(typeof f === 'string' ? f.trim() : f)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{
-                borderTop: '1px solid var(--slate-100)',
-                paddingTop: '0.75rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.8rem',
-                color: 'var(--slate-500)'
-              }}>
-                <span>Emergency: <strong>{hosp.emergency_number}</strong></span>
-                <button
-                  type="button"
-                  onClick={() => setDetailsHospital(hosp)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--primary)',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontSize: '0.82rem'
-                  }}
-                >
-                  View Details &rarr;
-                </button>
+          {/* Error state */}
+          {error && (
+            <div className="card" style={{ padding: '1.5rem', borderColor: '#fca5a5', backgroundColor: '#fef2f2' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#dc2626' }}>
+                <FaExclamationTriangle />
+                <span style={{ fontWeight: 600 }}>{error}</span>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+
+          {/* Hospital Cards Grid */}
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="skeleton" style={{ height: '200px', borderRadius: '12px' }} />
+              ))}
+            </div>
+          ) : filteredHospitals.length === 0 ? (
+            <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+              <FaHospital size={44} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                {t('ownerPortal.hospitals.noHospitals')}
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '0.88rem', marginTop: '0.25rem' }}>
+                {search || stateFilter !== 'ALL' || cityFilter !== 'ALL'
+                  ? 'Try clearing your filters.'
+                  : 'Click "Add New Hospital" above to onboard the first institution.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
+              {filteredHospitals.map((hosp) => (
+                <div
+                  key={hosp.id}
+                  className="card"
+                  style={{
+                    padding: '1.35rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                        {hosp.name}
+                      </h3>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        backgroundColor: '#e0f2fe',
+                        color: '#0369a1',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '12px',
+                        flexShrink: 0
+                      }}>
+                        ID #{hosp.id}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.82rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                      <FaMapMarkerAlt color="#0284c7" /> {hosp.city}, {hosp.state}
+                    </p>
+
+                    <p style={{ fontSize: '0.84rem', color: '#334155', lineHeight: 1.5, marginBottom: '0.85rem' }}>
+                      {hosp.address}
+                    </p>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '1rem' }}>
+                      {(Array.isArray(hosp.facilities) ? hosp.facilities : (typeof hosp.facilities === 'string' ? hosp.facilities.split(',') : [])).slice(0, 3).map((f, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: '0.72rem',
+                            backgroundColor: '#f1f5f9',
+                            color: '#475569',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          {(typeof f === 'string' ? f.trim() : f)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    borderTop: '1px solid #f1f5f9',
+                    paddingTop: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.8rem',
+                    color: '#64748b'
+                  }}>
+                    <span>{t('ownerPortal.hospitals.emergencyLabel')} <strong style={{ color: '#dc2626' }}>{hosp.emergency_number}</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => setDetailsHospital(hosp)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0284c7',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontSize: '0.82rem'
+                      }}
+                    >
+                      {t('ownerPortal.hospitals.viewDetails')} &rarr;
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       ) : (
         /* Onboarding Requests Tab */
         onboardingRequests.length === 0 ? (
           <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-            <FaClipboardList size={44} color="var(--slate-300)" style={{ margin: '0 auto 1rem' }} />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--slate-800)' }}>No Pending Onboarding Requests</h3>
-            <p style={{ color: 'var(--slate-500)', fontSize: '0.88rem', marginTop: '0.25rem' }}>
+            <FaClipboardList size={44} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+              {t('ownerPortal.hospitals.noRequests')}
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.88rem', marginTop: '0.25rem' }}>
               When hospital leaders submit onboarding requests through the registration portal, they will appear here for verification and automated provisioning.
             </p>
           </div>
@@ -533,12 +601,12 @@ export const ManagePlatformHospitals = () => {
           <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
               <thead>
-                <tr style={{ backgroundColor: 'var(--slate-50)', borderBottom: '1px solid var(--slate-200)', color: 'var(--slate-600)' }}>
-                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Applicant Super Admin</th>
-                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Proposed Hospital Details</th>
-                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Institutional Contact</th>
-                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>Requested On</th>
-                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700, textAlign: 'right' }}>Governance Action</th>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>{t('ownerPortal.hospitals.colApplicant')}</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>{t('ownerPortal.hospitals.colHospital')}</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>{t('ownerPortal.hospitals.colContact')}</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700 }}>{t('ownerPortal.hospitals.colDate')}</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 700, textAlign: 'right' }}>{t('ownerPortal.hospitals.colAction')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -547,12 +615,12 @@ export const ManagePlatformHospitals = () => {
                   const isProcessing = processingReqId === req.id;
 
                   return (
-                    <tr key={req.id} style={{ borderBottom: '1px solid var(--slate-100)' }}>
+                    <tr key={req.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--slate-900)' }}>{req.name}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--slate-600)' }}>{req.email}</div>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{req.name}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#475569' }}>{req.email}</div>
                         {req.phone && (
-                          <div style={{ fontSize: '0.76rem', color: 'var(--slate-400)' }}>{req.phone}</div>
+                          <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>{req.phone}</div>
                         )}
                         <span style={{
                           fontSize: '0.72rem',
@@ -569,37 +637,37 @@ export const ManagePlatformHospitals = () => {
                       </td>
 
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--slate-900)', fontSize: '0.92rem' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>
                           {notes.hospital_name || 'Proposed Hospital'}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--slate-600)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
-                          <FaMapMarkerAlt size={12} color="var(--slate-400)" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#475569', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                          <FaMapMarkerAlt size={12} color="#0284c7" />
                           <span>{notes.hospital_city || 'City N/A'}, {notes.hospital_state || 'Telangana'}</span>
                         </div>
                         {notes.hospital_address && (
-                          <div style={{ fontSize: '0.76rem', color: 'var(--slate-400)', marginTop: '0.15rem' }}>
+                          <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '0.15rem' }}>
                             {notes.hospital_address}
                           </div>
                         )}
                       </td>
 
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <div style={{ fontSize: '0.82rem', color: 'var(--slate-800)' }}>
-                          Emergency: <strong style={{ color: 'var(--emergency)' }}>{notes.emergency_number || '108'}</strong>
+                        <div style={{ fontSize: '0.82rem', color: '#0f172a' }}>
+                          Emergency: <strong style={{ color: '#dc2626' }}>{notes.emergency_number || '108'}</strong>
                         </div>
                         {notes.hospital_phone && (
-                          <div style={{ fontSize: '0.78rem', color: 'var(--slate-600)' }}>
+                          <div style={{ fontSize: '0.78rem', color: '#475569' }}>
                             Desk: {notes.hospital_phone}
                           </div>
                         )}
                         {notes.facilities && (
-                          <div style={{ fontSize: '0.74rem', color: 'var(--slate-500)', marginTop: '0.2rem' }}>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.2rem' }}>
                             {notes.facilities.slice(0, 40)}...
                           </div>
                         )}
                       </td>
 
-                      <td style={{ padding: '0.85rem 1rem', color: 'var(--slate-500)', fontSize: '0.8rem' }}>
+                      <td style={{ padding: '0.85rem 1rem', color: '#64748b', fontSize: '0.8rem' }}>
                         {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Recent'}
                       </td>
 
@@ -609,7 +677,7 @@ export const ManagePlatformHospitals = () => {
                             type="button"
                             variant="primary"
                             size="sm"
-                            onClick={() => handleApproveOnboardingRequest(req)}
+                            onClick={() => setApproveModalReq(req)}
                             loading={isProcessing}
                             style={{
                               backgroundColor: '#059669',
@@ -619,7 +687,7 @@ export const ManagePlatformHospitals = () => {
                             }}
                             icon={<FaCheck aria-hidden="true" />}
                           >
-                            Approve & Provision
+                            {t('ownerPortal.hospitals.btnApprove')}
                           </Button>
                           <Button
                             type="button"
@@ -628,14 +696,14 @@ export const ManagePlatformHospitals = () => {
                             onClick={() => handleOpenRejectModal(req)}
                             disabled={isProcessing}
                             style={{
-                              color: 'var(--emergency)',
+                              color: '#dc2626',
                               borderColor: '#fecaca',
                               fontSize: '0.74rem',
                               padding: '0.25rem 0.65rem'
                             }}
                             icon={<FaBan aria-hidden="true" />}
                           >
-                            Reject
+                            {t('ownerPortal.hospitals.btnReject')}
                           </Button>
                         </div>
                       </td>
@@ -667,17 +735,17 @@ export const ManagePlatformHospitals = () => {
           <div className="card" style={{ maxWidth: '560px', width: '100%', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                   {detailsHospital.name}
                 </h2>
-                <span style={{ fontSize: '0.78rem', color: 'var(--slate-500)' }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                   Hospital Reference: #{detailsHospital.id} &bull; Slug: {detailsHospital.slug}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setDetailsHospital(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--slate-400)', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
                 aria-label="Close dialog"
               >
                 <FaTimes size={18} />
@@ -685,23 +753,23 @@ export const ManagePlatformHospitals = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.75rem 1rem', fontSize: '0.88rem', marginBottom: '1.5rem' }}>
-              <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Address:</span>
-              <span style={{ color: 'var(--slate-800)' }}>{detailsHospital.address}</span>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Address:</span>
+              <span style={{ color: '#0f172a' }}>{detailsHospital.address}</span>
 
-              <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Location:</span>
-              <span style={{ color: 'var(--slate-800)' }}>{detailsHospital.city}, {detailsHospital.state}</span>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Location:</span>
+              <span style={{ color: '#0f172a' }}>{detailsHospital.city}, {detailsHospital.state}</span>
 
-              <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Emergency:</span>
-              <span style={{ color: 'var(--emergency)', fontWeight: 700 }}>{detailsHospital.emergency_number}</span>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Emergency:</span>
+              <span style={{ color: '#dc2626', fontWeight: 700 }}>{detailsHospital.emergency_number}</span>
 
-              <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Phone:</span>
-              <span style={{ color: 'var(--slate-800)' }}>{detailsHospital.phone || 'N/A'}</span>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Phone:</span>
+              <span style={{ color: '#0f172a' }}>{detailsHospital.phone || 'N/A'}</span>
 
-              <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Hours:</span>
-              <span style={{ color: 'var(--slate-800)' }}>{detailsHospital.working_hours || '24/7'}</span>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Hours:</span>
+              <span style={{ color: '#0f172a' }}>{detailsHospital.working_hours || '24/7'}</span>
 
-              <span style={{ color: 'var(--slate-500)', fontWeight: 600 }}>Facilities:</span>
-              <span style={{ color: 'var(--slate-800)' }}>{Array.isArray(detailsHospital.facilities) ? detailsHospital.facilities.join(', ') : (detailsHospital.facilities || 'Standard Care')}</span>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Facilities:</span>
+              <span style={{ color: '#0f172a' }}>{Array.isArray(detailsHospital.facilities) ? detailsHospital.facilities.join(', ') : (detailsHospital.facilities || 'Standard Care')}</span>
             </div>
 
             <Button
@@ -710,7 +778,7 @@ export const ManagePlatformHospitals = () => {
               fullWidth
               onClick={() => setDetailsHospital(null)}
             >
-              Close
+              {t('ownerPortal.hospitals.modalClose')}
             </Button>
           </div>
         </div>
@@ -735,17 +803,17 @@ export const ManagePlatformHospitals = () => {
           <div className="card" style={{ maxWidth: '640px', width: '100%', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-                  Onboard Hospital & Invite Super Admin
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  {t('ownerPortal.hospitals.btnOnboard')}
                 </h2>
-                <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)', margin: '0.2rem 0 0' }}>
-                  Provisions a new hospital entity and creates its initial Super Admin invitation
+                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0.2rem 0 0' }}>
+                  Register a verified hospital and create its initial Super Admin invitation
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--slate-400)', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
                 aria-label="Close dialog"
               >
                 <FaTimes size={18} />
@@ -759,8 +827,8 @@ export const ManagePlatformHospitals = () => {
                   width: 56,
                   height: 56,
                   borderRadius: '50%',
-                  backgroundColor: 'var(--primary-light)',
-                  color: 'var(--primary-dark)',
+                  backgroundColor: '#dcfce7',
+                  color: '#15803d',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -769,23 +837,23 @@ export const ManagePlatformHospitals = () => {
                 }}>
                   <FaCheckCircle />
                 </div>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
                   Hospital Successfully Provisioned!
                 </h3>
-                <p style={{ fontSize: '0.88rem', color: 'var(--slate-600)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                <p style={{ fontSize: '0.88rem', color: '#475569', marginBottom: '1.5rem', lineHeight: 1.5 }}>
                   Hospital <strong>{createdResult.hospital?.name}</strong> has been registered. The cryptographic Super Admin invitation token has been generated.
                 </p>
 
                 {createdResult.invitation?.invite_link && (
                   <div style={{
-                    backgroundColor: 'var(--slate-50)',
-                    border: '1px solid var(--slate-200)',
-                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
                     padding: '1rem',
                     textAlign: 'left',
                     marginBottom: '1.5rem'
                   }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--slate-500)', fontWeight: 700, display: 'block', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
                       Single-Use Invitation Activation Link:
                     </span>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -806,8 +874,8 @@ export const ManagePlatformHospitals = () => {
                         {copiedLink ? 'Copied!' : 'Copy'}
                       </Button>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--slate-500)', marginTop: '0.5rem', marginBottom: 0 }}>
-                      ⚠️ Send this link to <strong>{createdResult.invitation.email}</strong>. Stored only as SHA-256 hash in the database.
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', marginBottom: 0 }}>
+                      Send this link to <strong>{createdResult.invitation.email}</strong>. Stored only as SHA-256 hash in the database.
                     </p>
                   </div>
                 )}
@@ -818,7 +886,7 @@ export const ManagePlatformHospitals = () => {
                   fullWidth
                   onClick={() => setIsCreateModalOpen(false)}
                 >
-                  Done
+                  {t('ownerPortal.hospitals.modalClose')}
                 </Button>
               </div>
             ) : (
@@ -827,12 +895,13 @@ export const ManagePlatformHospitals = () => {
                 {createError && (
                   <div style={{
                     padding: '0.75rem 1rem',
-                    backgroundColor: 'var(--emergency-light)',
-                    color: 'var(--emergency)',
-                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    borderRadius: '8px',
                     fontSize: '0.85rem',
                     fontWeight: 600,
-                    marginBottom: '1.25rem'
+                    marginBottom: '1.25rem',
+                    border: '1px solid #fecaca'
                   }}>
                     {createError}
                   </div>
@@ -877,14 +946,15 @@ export const ManagePlatformHospitals = () => {
 
                   <div className="form-group">
                     <label className="form-label">State *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Telangana"
+                    <select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
                       required
                       className="form-input"
-                    />
+                    >
+                      <option value="Telangana">Telangana</option>
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    </select>
                   </div>
 
                   <div className="form-group">
@@ -926,13 +996,13 @@ export const ManagePlatformHospitals = () => {
                 <div style={{
                   marginTop: '1.25rem',
                   padding: '1rem',
-                  backgroundColor: 'var(--slate-50)',
-                  border: '1px solid var(--slate-200)',
-                  borderRadius: 'var(--radius-sm)'
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <FaUserShield color="var(--primary)" />
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--slate-800)' }}>
+                    <FaUserShield color="#0284c7" />
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>
                       Initial Hospital Super Administrator *
                     </span>
                   </div>
@@ -961,7 +1031,7 @@ export const ManagePlatformHospitals = () => {
                       />
                     </div>
                   </div>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)' }}>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
                     A single-use cryptographic invitation will be generated for this email.
                   </span>
                 </div>
@@ -1007,21 +1077,21 @@ export const ManagePlatformHospitals = () => {
           <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--emergency)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#dc2626', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <FaBan />
-                  <span>Reject Hospital Onboarding</span>
+                  <span>{t('ownerPortal.hospitals.confirmRejectTitle')}</span>
                 </h2>
-                <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)', margin: '0.25rem 0 0' }}>
+                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0.25rem 0 0' }}>
                   Proposed Hospital: <strong>{rejectModalReq.parsed_notes?.hospital_name || 'Hospital'}</strong>
                 </p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--slate-400)', margin: '0.1rem 0 0' }}>
+                <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '0.1rem 0 0' }}>
                   Applicant: {rejectModalReq.name} ({rejectModalReq.email})
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setRejectModalReq(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--slate-400)', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
                 aria-label="Close dialog"
               >
                 <FaTimes size={18} />
@@ -1032,7 +1102,7 @@ export const ManagePlatformHospitals = () => {
               padding: '0.75rem 1rem',
               backgroundColor: '#fffbeb',
               border: '1px solid #fde68a',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: '8px',
               fontSize: '0.82rem',
               color: '#92400e',
               lineHeight: 1.5,
@@ -1044,9 +1114,9 @@ export const ManagePlatformHospitals = () => {
             {rejectModalError && (
               <div style={{
                 padding: '0.75rem 1rem',
-                backgroundColor: 'var(--emergency-light)',
-                color: 'var(--emergency)',
-                borderRadius: 'var(--radius-sm)',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                borderRadius: '8px',
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 marginBottom: '1rem'
@@ -1062,7 +1132,7 @@ export const ManagePlatformHospitals = () => {
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="e.g. Hospital license number could not be validated, or facility does not meet minimum regulatory requirements."
+                  placeholder="e.g. Hospital regulatory license could not be validated."
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   required
@@ -1084,10 +1154,88 @@ export const ManagePlatformHospitals = () => {
                   variant="danger"
                   loading={rejecting}
                 >
-                  Confirm Rejection
+                  {t('ownerPortal.hospitals.btnReject')}
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Hospital Onboarding Approval */}
+      {approveModalReq && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 60,
+            padding: '1rem',
+            backdropFilter: 'blur(3px)'
+          }}
+        >
+          <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '1.75rem', backgroundColor: '#ffffff', borderRadius: '14px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaCheckCircle size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+                  {t('ownerPortal.hospitals.confirmApproveTitle')}
+                </h3>
+                <span style={{ fontSize: '0.76rem', color: '#64748b' }}>Hospital Credentialing Governance</span>
+              </div>
+            </div>
+
+            <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+              {t('ownerPortal.hospitals.confirmApproveText')}
+            </p>
+
+            <div style={{
+              padding: '0.85rem 1rem',
+              backgroundColor: '#f8fafc',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              marginBottom: '1.5rem',
+              fontSize: '0.84rem'
+            }}>
+              <div style={{ marginBottom: '0.25rem' }}>
+                <strong>Hospital Name:</strong> {approveModalReq.parsed_notes?.hospital_name || 'Proposed Hospital'}
+              </div>
+              <div style={{ marginBottom: '0.25rem' }}>
+                <strong>Location:</strong> {approveModalReq.parsed_notes?.hospital_city || 'City N/A'}, {approveModalReq.parsed_notes?.hospital_state || 'Telangana'}
+              </div>
+              <div>
+                <strong>Super Admin:</strong> {approveModalReq.name} ({approveModalReq.email})
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setApproveModalReq(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+                onClick={async () => {
+                  const req = approveModalReq;
+                  setApproveModalReq(null);
+                  await handleApproveOnboardingRequest(req);
+                }}
+              >
+                {t('ownerPortal.hospitals.btnApprove')}
+              </Button>
+            </div>
           </div>
         </div>
       )}

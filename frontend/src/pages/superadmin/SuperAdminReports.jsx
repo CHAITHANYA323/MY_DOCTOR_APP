@@ -7,16 +7,19 @@ import {
   FaTimesCircle,
   FaClock,
   FaMoneyBillWave,
-  FaPrint
+  FaPrint,
+  FaStethoscope
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { dashboardService } from '../../services/dashboardService';
 import { appointmentService } from '../../services/appointmentService';
 import { doctorService } from '../../services/doctorService';
 import { getApiErrorMessage } from '../../services/api';
 
 export const SuperAdminReports = () => {
-  const { hospitalName } = useAuth();
+  const { hospitalName, user } = useAuth();
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,7 +34,7 @@ export const SuperAdminReports = () => {
 
       const [statsRes, docRes, apptRes] = await Promise.all([
         dashboardService.getAdminStats().catch(() => ({ success: false })),
-        doctorService.getDoctors().catch(() => ({ success: false, doctors: [] })),
+        doctorService.getDoctors({ hospital_id: user?.hospital_id }).catch(() => ({ success: false, doctors: [] })),
         appointmentService.getAppointments().catch(() => ({ success: false, appointments: [] }))
       ]);
 
@@ -46,23 +49,21 @@ export const SuperAdminReports = () => {
       }
     } catch (err) {
       console.error('Failed to load operational report data:', err);
-      setError(getApiErrorMessage(err, 'Unable to load report data.'));
+      setError(getApiErrorMessage(err, 'Unable to load hospital reports.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.hospital_id]);
 
   useEffect(() => {
     fetchReportData();
   }, [fetchReportData]);
 
-  // Derived Metrics
+  // Derived Plain-Language Metrics
   const metrics = stats?.metrics || {};
   const totalAppointments = appointments.length || metrics.total_appointments || 0;
-  const completedCount = appointments.filter(a => a.status === 'Completed').length || metrics.completed_appointments || 0;
-  const _pendingCount = appointments.filter(a => a.status === 'Pending').length || metrics.pending_appointments || 0;
-  const _confirmedCount = appointments.filter(a => a.status === 'Confirmed').length || metrics.confirmed_appointments || 0;
-  const cancelledCount = appointments.filter(a => a.status === 'Cancelled').length || metrics.cancelled_appointments || 0;
+  const completedCount = appointments.filter((a) => a.status === 'Completed').length || metrics.completed_appointments || 0;
+  const cancelledCount = appointments.filter((a) => a.status === 'Cancelled').length || metrics.cancelled_appointments || 0;
 
   const completionRate = totalAppointments > 0
     ? Math.round((completedCount / totalAppointments) * 100)
@@ -74,7 +75,7 @@ export const SuperAdminReports = () => {
 
   // Estimated gross revenue from completed appointments
   const totalRevenue = appointments
-    .filter(a => a.status === 'Completed')
+    .filter((a) => a.status === 'Completed')
     .reduce((sum, a) => sum + (Number(a.consultation_fee) || 0), 0);
 
   // Department distribution
@@ -95,7 +96,7 @@ export const SuperAdminReports = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Hospital Operations Report
+              {t('superAdminPortal.reports.title')}
             </h1>
             <span style={{
               display: 'inline-flex',
@@ -109,11 +110,11 @@ export const SuperAdminReports = () => {
               color: '#0f766e'
             }}>
               <FaHospital size={11} />
-              {hospitalName || 'Your Hospital'}
+              {hospitalName || user?.hospital_name || 'Assigned Hospital'}
             </span>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-            Operational throughput, appointment fulfillment rates, and clinical capacity analytics.
+          <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>
+            {t('superAdminPortal.reports.subtitle')}
           </p>
         </div>
 
@@ -122,21 +123,21 @@ export const SuperAdminReports = () => {
             type="button"
             onClick={() => window.print()}
             style={{
-              padding: '0.6rem 1.1rem',
+              padding: '0.6rem 1.15rem',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
               background: '#ffffff',
               color: '#334155',
               cursor: 'pointer',
               fontWeight: 700,
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.5rem',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
             }}
           >
-            <FaPrint size={14} /> Print Report
+            <FaPrint size={14} /> {t('superAdminPortal.reports.btnPrint')}
           </button>
         </div>
       </div>
@@ -168,12 +169,13 @@ export const SuperAdminReports = () => {
         </div>
       ) : (
         <>
-          {/* Top Performance Indicators */}
+          {/* Top Performance Indicators - 4 Metric Cards with Plain Language */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '1rem'
           }}>
+            {/* Completed Appointment Rate */}
             <div style={{
               background: '#ffffff',
               borderRadius: '12px',
@@ -182,17 +184,20 @@ export const SuperAdminReports = () => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Fulfillment Rate</span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  {t('superAdminPortal.reports.metricCompletedRate')}
+                </span>
                 <FaCheckCircle style={{ color: '#15803d' }} />
               </div>
               <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem' }}>
                 {completionRate}%
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
-                {completedCount} of {totalAppointments} completed
+              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '0.2rem' }}>
+                {completedCount} of {totalAppointments} consultations completed
               </div>
             </div>
 
+            {/* Cancellation Rate */}
             <div style={{
               background: '#ffffff',
               borderRadius: '12px',
@@ -201,17 +206,20 @@ export const SuperAdminReports = () => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Cancellation Rate</span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  {t('superAdminPortal.reports.metricCancellationRate')}
+                </span>
                 <FaTimesCircle style={{ color: '#ef4444' }} />
               </div>
               <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#ef4444', marginTop: '0.35rem' }}>
                 {cancellationRate}%
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '0.2rem' }}>
                 {cancelledCount} cancelled bookings
               </div>
             </div>
 
+            {/* Estimated Gross Revenue */}
             <div style={{
               background: '#ffffff',
               borderRadius: '12px',
@@ -220,17 +228,20 @@ export const SuperAdminReports = () => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Consultation Gross</span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  {t('superAdminPortal.reports.metricRevenue')}
+                </span>
                 <FaMoneyBillWave style={{ color: '#0f766e' }} />
               </div>
               <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f766e', marginTop: '0.35rem' }}>
                 ₹{totalRevenue.toLocaleString('en-IN')}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
-                From completed visits
+              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '0.2rem' }}>
+                {t('superAdminPortal.reports.metricRevenueDesc')}
               </div>
             </div>
 
+            {/* Active Doctors */}
             <div style={{
               background: '#ffffff',
               borderRadius: '12px',
@@ -239,19 +250,21 @@ export const SuperAdminReports = () => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Active Doctors</span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  {t('superAdminPortal.reports.metricActiveDocs')}
+                </span>
                 <FaUserMd style={{ color: '#0f766e' }} />
               </div>
               <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem' }}>
                 {doctors.length || metrics.total_doctors || 0}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
-                Across {specializationStats.length} departments
+              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '0.2rem' }}>
+                Across {specializationStats.length} clinical departments
               </div>
             </div>
           </div>
 
-          {/* Section: Department Capacity Breakdown */}
+          {/* Section: Doctors by Department (Department Distribution) */}
           <div style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -260,20 +273,20 @@ export const SuperAdminReports = () => {
             padding: '1.5rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-              <FaChartBar size={18} style={{ color: '#0f766e' }} />
+              <FaStethoscope size={18} style={{ color: '#0f766e' }} />
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
-                Clinical Department Distribution
+                {t('superAdminPortal.reports.deptDistribution')}
               </h3>
             </div>
 
             {specializationStats.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                No department metrics recorded yet.
+                No clinical department metrics recorded yet.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {specializationStats.map((spec) => {
-                  const maxCount = Math.max(...specializationStats.map(s => s.count), 1);
+                  const maxCount = Math.max(...specializationStats.map((s) => s.count), 1);
                   const pct = Math.round((spec.count / maxCount) * 100);
 
                   return (
@@ -388,3 +401,5 @@ export const SuperAdminReports = () => {
     </div>
   );
 };
+
+export default SuperAdminReports;

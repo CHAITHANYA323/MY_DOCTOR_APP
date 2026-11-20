@@ -285,10 +285,31 @@ def get_patient_prescriptions():
         patient_id=patient.id
     ).order_by(Prescription.created_at.desc(), Prescription.id.desc()).all()
 
+    # Deduplicate repeated identical entries (e.g. repeated test submissions for the same clinical consultation)
+    # Preserves different legitimate prescriptions for the same doctor on different dates or different diagnoses.
+    seen_clinical_keys = set()
+    seen_ids = set()
+    unique_prescriptions = []
+
+    for rx in prescriptions:
+        if rx.id in seen_ids:
+            continue
+        seen_ids.add(rx.id)
+
+        # Unique clinical key: (patient_id, doctor_id, normalized_diagnosis, date)
+        date_str = rx.created_at.strftime('%Y-%m-%d') if rx.created_at else ''
+        diag_key = (rx.diagnosis or '').strip().lower()
+        clinical_key = (rx.patient_id, rx.doctor_id, diag_key, date_str)
+
+        if clinical_key in seen_clinical_keys:
+            continue
+        seen_clinical_keys.add(clinical_key)
+        unique_prescriptions.append(rx)
+
     return jsonify({
         'success': True,
-        'total': len(prescriptions),
-        'prescriptions': [p.to_dict() for p in prescriptions]
+        'total': len(unique_prescriptions),
+        'prescriptions': [p.to_dict() for p in unique_prescriptions]
     }), 200
 
 

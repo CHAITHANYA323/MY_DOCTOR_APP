@@ -10,15 +10,18 @@ import {
   FaUserMd,
   FaCalendarAlt,
   FaEye,
-  FaHospital
+  FaHospital,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { appointmentService } from '../../services/appointmentService';
 import { getApiErrorMessage } from '../../services/api';
 import { notify } from '../../utils/toast';
 
 export const SuperAdminAppointments = () => {
   const { hospitalName } = useAuth();
+  const { t } = useLanguage();
 
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -185,7 +188,7 @@ export const SuperAdminAppointments = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Hospital Appointments
+              {t('superAdminPortal.appointments.title')}
             </h1>
             <span style={{
               display: 'inline-flex',
@@ -203,8 +206,29 @@ export const SuperAdminAppointments = () => {
             </span>
           </div>
           <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-            Comprehensive schedule of all patient consultations, confirmations, and attendance status.
+            {t('superAdminPortal.appointments.subtitle')}
           </p>
+        </div>
+      </div>
+
+      {/* Guidance Banner */}
+      <div style={{
+        padding: '1rem 1.25rem',
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem'
+      }}>
+        <FaInfoCircle color="#0284c7" size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0369a1', display: 'block' }}>
+            Patient Consultation Lifecycle
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.5, display: 'block', marginTop: '0.25rem' }}>
+            {t('superAdminPortal.appointments.guidanceNotice')} Statuses: Pending (awaiting visit), Confirmed (slot confirmed), Checked In (patient in waiting area), Completed (concluded by doctor).
+          </span>
         </div>
       </div>
 
@@ -342,7 +366,7 @@ export const SuperAdminAppointments = () => {
 
         {/* Status Filters */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'].map((tab) => {
+          {['All', 'Pending', 'Confirmed', 'Checked In', 'Completed', 'Cancelled'].map((tab) => {
             const active = statusFilter === tab;
             return (
               <button

@@ -41,6 +41,7 @@ ORDERED_TABLES = [
     "reviews",
     "favorites",
     "invitations",
+    "prescriptions",
     "audit_logs"
 ]
 

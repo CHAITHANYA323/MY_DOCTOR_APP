@@ -10,9 +10,11 @@ import {
   FaMoneyBillWave,
   FaMapMarkerAlt,
   FaExclamationTriangle,
-  FaEnvelope
+  FaEnvelope,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
 import { getApiErrorMessage } from '../../services/api';
 import api from '../../services/api';
@@ -20,6 +22,7 @@ import { Button } from '../../components/common/Button';
 
 export const HospitalDoctors = () => {
   const { user, hospitalName } = useAuth();
+  const { t } = useLanguage();
 
   const [doctors, setDoctors] = useState([]);
   const [specializations, setSpecializations] = useState([]);
@@ -162,10 +165,10 @@ export const HospitalDoctors = () => {
       }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-            Hospital Doctors
+            {t('superAdminPortal.doctors.title')}
           </h1>
           <p style={{ fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '0.25rem', marginBottom: 0 }}>
-            Specialist medical profiles assigned strictly to {hospitalName || 'your hospital'}
+            {t('superAdminPortal.doctors.subtitle')} &bull; {hospitalName || 'Your Hospital'}
           </p>
         </div>
 
@@ -175,8 +178,29 @@ export const HospitalDoctors = () => {
           onClick={handleOpenAddModal}
           icon={<FaPlusCircle aria-hidden="true" />}
         >
-          Add Doctor Profile
+          {t('superAdminPortal.doctors.btnAddDoctor')}
         </Button>
+      </div>
+
+      {/* Guidance Banner */}
+      <div style={{
+        padding: '1rem 1.25rem',
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem'
+      }}>
+        <FaInfoCircle color="#0284c7" size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0369a1', display: 'block' }}>
+            Doctor Profiles & Specialist Assignment
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.5, display: 'block', marginTop: '0.25rem' }}>
+            {t('superAdminPortal.doctors.guidanceNotice')} Doctors linked to verified user accounts can log in, view scheduled appointments, and write digital prescriptions.
+          </span>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -191,11 +215,11 @@ export const HospitalDoctors = () => {
         borderRadius: 'var(--radius-md)',
         border: '1px solid var(--slate-200)'
       }}>
-        <div style={{ display: 'flex', gap: '0.35rem' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {[
-            { id: 'ALL', label: `All Doctors (${doctors.length})` },
-            { id: 'LINKED', label: `Linked (${doctors.filter(d => d.is_linked || d.user_id).length})` },
-            { id: 'UNLINKED', label: `Unlinked (${doctors.filter(d => !d.is_linked && !d.user_id).length})` }
+            { id: 'ALL', label: `${t('superAdminPortal.doctors.statusAll')} (${doctors.length})` },
+            { id: 'LINKED', label: `${t('superAdminPortal.doctors.statusLinked')} (${doctors.filter(d => d.is_linked || d.user_id).length})` },
+            { id: 'UNLINKED', label: `${t('superAdminPortal.doctors.statusUnlinked')} (${doctors.filter(d => !d.is_linked && !d.user_id).length})` }
           ].map((st) => (
             <button
               key={st.id}

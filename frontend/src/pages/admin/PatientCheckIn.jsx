@@ -9,17 +9,17 @@ import {
   FaTimes,
   FaTimesCircle,
   FaRedo,
-  FaStethoscope,
-  FaUser
+  FaPhoneAlt
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { receptionService } from '../../services/receptionService';
-import { appointmentService } from '../../services/appointmentService';
 import { getApiErrorMessage } from '../../services/api';
 import { notify } from '../../utils/toast';
 
 export const PatientCheckIn = () => {
   const { hospitalName } = useAuth();
+  const { t, isTelugu } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,11 +46,11 @@ export const PatientCheckIn = () => {
       }
     } catch (err) {
       console.error('Failed to load check-in terminal queue:', err);
-      setError(getApiErrorMessage(err, 'Unable to load today’s patient queue.'));
+      setError(getApiErrorMessage(err, isTelugu ? 'క్యూ వివరాలు లోడ్ చేయడం సాధ్యం కాలేదు.' : 'Unable to load today’s patient queue.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isTelugu]);
 
   useEffect(() => {
     fetchTodayQueue();
@@ -58,7 +58,7 @@ export const PatientCheckIn = () => {
 
   const handleOpenCheckInModal = (appt) => {
     setCheckInTarget(appt);
-    setCheckInNotes(`Patient arrived and verified at reception desk.`);
+    setCheckInNotes(isTelugu ? 'రోగి ఆసుపత్రికి చేరుకున్నారు.' : 'Patient arrived and verified at reception desk.');
   };
 
   const handleConfirmCheckIn = async (e) => {
@@ -68,11 +68,11 @@ export const PatientCheckIn = () => {
     try {
       setActionLoading(true);
       await receptionService.checkInPatient(checkInTarget.id, checkInNotes);
-      notify.success(`Appointment #${checkInTarget.id} successfully checked in! Patient marked as waiting.`);
+      notify.success(t('receptionPortal.checkInSuccess'));
       setCheckInTarget(null);
       fetchTodayQueue();
     } catch (err) {
-      notify.error(getApiErrorMessage(err, 'Failed to complete patient check-in.'));
+      notify.error(getApiErrorMessage(err, isTelugu ? 'చెక్-ఇన్ విఫలమైంది.' : 'Failed to complete patient check-in.'));
     } finally {
       setActionLoading(false);
     }
@@ -85,11 +85,11 @@ export const PatientCheckIn = () => {
     try {
       setActionLoading(true);
       await receptionService.cancelAppointment(cancelTarget.id, cancelReason || 'Cancelled at front desk by receptionist.');
-      notify.success(`Appointment #${cancelTarget.id} marked as Cancelled.`);
+      notify.success(isTelugu ? `అపాయింట్‌మెంట్ #${cancelTarget.id} రద్దు చేయబడింది.` : `Appointment #${cancelTarget.id} marked as Cancelled.`);
       setCancelTarget(null);
       fetchTodayQueue();
     } catch (err) {
-      notify.error(getApiErrorMessage(err, 'Failed to cancel appointment.'));
+      notify.error(getApiErrorMessage(err, isTelugu ? 'రద్దు చేయడం విఫలమైంది.' : 'Failed to cancel appointment.'));
     } finally {
       setActionLoading(false);
     }
@@ -99,6 +99,7 @@ export const PatientCheckIn = () => {
   const filteredAppointments = todayAppointments.filter((appt) => {
     const term = search.toLowerCase();
     const matchesSearch =
+      !term ||
       String(appt.id).includes(term) ||
       (appt.patient_name || '').toLowerCase().includes(term) ||
       (appt.patient_phone || appt.user_phone || '').includes(term) ||
@@ -133,7 +134,7 @@ export const PatientCheckIn = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Patient Arrival & Check-In Terminal
+              {t('receptionPortal.checkInTerminalTitle')}
             </h1>
             <span style={{
               display: 'inline-flex',
@@ -146,11 +147,11 @@ export const PatientCheckIn = () => {
               background: '#ccfbf1',
               color: '#0f766e'
             }}>
-              <FaHospital size={11} /> {hospitalName || 'Your Hospital'}
+              <FaHospital size={11} /> {hospitalName || (isTelugu ? 'విశ్వసనీయ ఆసుపత్రి' : 'Hospital Reception')}
             </span>
           </div>
           <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-            Front desk triage terminal: confirm patient arrivals, manage waiting room queues, and notify clinical staff.
+            {t('receptionPortal.checkInTerminalSubtitle')}
           </p>
         </div>
 
@@ -171,7 +172,7 @@ export const PatientCheckIn = () => {
             gap: '0.4rem'
           }}
         >
-          <FaRedo size={12} /> Refresh Live Queue
+          <FaRedo size={12} /> {t('receptionPortal.refresh')}
         </button>
       </div>
 
@@ -207,14 +208,16 @@ export const PatientCheckIn = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#b45309' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Awaiting Arrival</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+              {t('receptionPortal.cardWaitingTitle')}
+            </span>
             <FaClock />
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#b45309', marginTop: '0.25rem' }}>
             {pendingCount}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.15rem' }}>
-            Patients scheduled to arrive
+            {t('receptionPortal.cardWaitingDesc')}
           </div>
         </div>
 
@@ -231,14 +234,16 @@ export const PatientCheckIn = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#0f766e' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Waiting in Reception</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+              {t('receptionPortal.cardCheckedInTitle')}
+            </span>
             <FaUserCheck />
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f766e', marginTop: '0.25rem' }}>
             {waitingCount}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#0f766e', marginTop: '0.15rem' }}>
-            Checked in & ready for doctor
+            {t('receptionPortal.cardCheckedInDesc')}
           </div>
         </div>
 
@@ -255,14 +260,16 @@ export const PatientCheckIn = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Total Schedule</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+              {t('receptionPortal.tabAllToday')}
+            </span>
             <FaCheckCircle />
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', marginTop: '0.25rem' }}>
             {todayAppointments.length}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
-            {completedCount} already consulted
+            {completedCount} {isTelugu ? 'పూర్తయ్యాయి' : 'already completed'}
           </div>
         </div>
       </div>
@@ -290,7 +297,7 @@ export const PatientCheckIn = () => {
           }} />
           <input
             type="text"
-            placeholder="Scan or Search by Appt #, Patient Name, Phone..."
+            placeholder={t('receptionPortal.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -299,13 +306,14 @@ export const PatientCheckIn = () => {
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
               fontSize: '0.875rem',
-              outline: 'none'
+              outline: 'none',
+              background: '#ffffff'
             }}
           />
         </div>
 
         {/* Queue Selector Tabs */}
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setActiveQueue('PENDING')}
@@ -320,7 +328,7 @@ export const PatientCheckIn = () => {
               color: activeQueue === 'PENDING' ? '#ffffff' : '#475569'
             }}
           >
-            Awaiting Arrival ({pendingCount})
+            {t('receptionPortal.tabAwaitingArrival')} ({pendingCount})
           </button>
           <button
             type="button"
@@ -336,7 +344,7 @@ export const PatientCheckIn = () => {
               color: activeQueue === 'WAITING' ? '#ffffff' : '#475569'
             }}
           >
-            In Waiting Area ({waitingCount})
+            {t('receptionPortal.tabInWaitingArea')} ({waitingCount})
           </button>
           <button
             type="button"
@@ -352,7 +360,7 @@ export const PatientCheckIn = () => {
               color: activeQueue === 'ALL' ? '#ffffff' : '#475569'
             }}
           >
-            All Today ({todayAppointments.length})
+            {t('receptionPortal.tabAllToday')} ({todayAppointments.length})
           </button>
         </div>
       </div>
@@ -368,16 +376,16 @@ export const PatientCheckIn = () => {
         {loading ? (
           <div style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
             <FaClock size={28} style={{ animation: 'spin 1s linear infinite', color: '#0f766e', marginBottom: '0.5rem' }} />
-            <div>Loading live queue...</div>
+            <div>{isTelugu ? 'క్యూ లోడ్ అవుతోంది...' : 'Loading live queue...'}</div>
           </div>
         ) : filteredAppointments.length === 0 ? (
           <div style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
             <FaCheckCircle size={36} style={{ color: '#cbd5e1', marginBottom: '0.5rem' }} />
             <div style={{ fontWeight: 600, color: '#334155' }}>
-              No appointments in this queue
+              {t('receptionPortal.noAppointmentsTitle')}
             </div>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-              All scheduled patients for this filter have either checked in or been attended to.
+              {t('receptionPortal.noAppointmentsDesc')}
             </div>
           </div>
         ) : (
@@ -385,12 +393,12 @@ export const PatientCheckIn = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Appt #</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Scheduled Time</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Patient Name & Contact</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Consulting Doctor</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Status</th>
-                  <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Terminal Action</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colApptId')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colTime')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colPatient')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colDoctor')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colStatus')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>{t('receptionPortal.colAction')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -415,19 +423,20 @@ export const PatientCheckIn = () => {
                     </td>
                     <td style={{ padding: '1rem 1.25rem' }}>
                       <div style={{ fontWeight: 700, color: '#0f172a' }}>
-                        {appt.patient_name || 'Walk-in Patient'}
+                        {appt.patient_name || (isTelugu ? 'నడచి వచ్చిన రోగి' : 'Walk-in Patient')}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.1rem' }}>
-                        {appt.patient_phone || appt.user_phone || 'No phone'}
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.1rem' }}>
+                        <FaPhoneAlt size={10} style={{ color: '#94a3b8' }} />
+                        {appt.patient_phone || appt.user_phone || (isTelugu ? 'ఫోన్ లేదు' : 'No phone')}
                       </div>
                     </td>
                     <td style={{ padding: '1rem 1.25rem' }}>
                       <div style={{ fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <FaUserMd size={12} style={{ color: '#0f766e' }} />
-                        {appt.doctor_name || 'Assigned Doctor'}
+                        {appt.doctor_name || (isTelugu ? 'డాక్టర్' : 'Doctor')}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.1rem' }}>
-                        {appt.specialization_name || 'General'}
+                        {appt.specialization_name || (isTelugu ? 'సాధారణ' : 'General')}
                       </div>
                     </td>
                     <td style={{ padding: '1rem 1.25rem' }}>
@@ -440,7 +449,7 @@ export const PatientCheckIn = () => {
                           background: '#fef3c7',
                           color: '#b45309'
                         }}>
-                          Pending Arrival
+                          {t('receptionPortal.statusPending')}
                         </span>
                       ) : appt.status === 'Confirmed' ? (
                         <span style={{
@@ -451,7 +460,7 @@ export const PatientCheckIn = () => {
                           background: '#ccfbf1',
                           color: '#0f766e'
                         }}>
-                          Waiting in Reception
+                          {t('receptionPortal.statusConfirmed')}
                         </span>
                       ) : (
                         <span style={{
@@ -462,7 +471,7 @@ export const PatientCheckIn = () => {
                           background: '#dcfce7',
                           color: '#15803d'
                         }}>
-                          {appt.status}
+                          {appt.status === 'Completed' ? t('receptionPortal.statusCompleted') : appt.status}
                         </span>
                       )}
                     </td>
@@ -488,7 +497,7 @@ export const PatientCheckIn = () => {
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                               }}
                             >
-                              <FaUserCheck size={12} /> Confirm Arrival
+                              <FaUserCheck size={12} /> {t('receptionPortal.btnCheckIn')}
                             </button>
                             <button
                               type="button"
@@ -504,28 +513,15 @@ export const PatientCheckIn = () => {
                                 cursor: 'pointer'
                               }}
                             >
-                              Cancel
+                              {t('receptionPortal.btnCancelAppt')}
                             </button>
                           </>
                         )}
 
                         {appt.status === 'Confirmed' && (
-                          <button
-                            type="button"
-                            onClick={() => setCancelTarget(appt)}
-                            style={{
-                              padding: '0.45rem 0.75rem',
-                              borderRadius: '6px',
-                              border: '1px solid #cbd5e1',
-                              background: '#ffffff',
-                              color: '#64748b',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Mark Cancellation
-                          </button>
+                          <span style={{ fontSize: '0.78rem', color: '#0f766e', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <FaCheckCircle size={12} /> {t('receptionPortal.statusConfirmed')}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -570,7 +566,7 @@ export const PatientCheckIn = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <FaUserCheck size={18} style={{ color: '#0f766e' }} />
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
-                    Confirm Patient Arrival
+                    {t('receptionPortal.modalCheckInTitle')}
                   </h3>
                 </div>
                 <button
@@ -583,6 +579,10 @@ export const PatientCheckIn = () => {
               </div>
 
               <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p style={{ margin: 0, fontSize: '0.925rem', color: '#334155' }}>
+                  {t('receptionPortal.modalCheckInPrompt')}
+                </p>
+
                 <div style={{
                   background: '#f8fafc',
                   borderRadius: '10px',
@@ -592,19 +592,19 @@ export const PatientCheckIn = () => {
                 }}>
                   <div style={{ marginBottom: '0.4rem' }}>
                     <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Patient Details
+                      {t('receptionPortal.colPatient')}
                     </span>
                     <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>
                       {checkInTarget.patient_name || 'Patient'}
                     </div>
                     <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                      Appt #{checkInTarget.id} • Scheduled for {checkInTarget.appointment_time}
+                      #{checkInTarget.id} • {checkInTarget.appointment_time}
                     </div>
                   </div>
 
                   <div>
                     <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Consulting Specialist
+                      {t('receptionPortal.colDoctor')}
                     </span>
                     <div style={{ fontWeight: 700, color: '#0f766e' }}>
                       Dr. {checkInTarget.doctor_name || 'Doctor'} ({checkInTarget.specialization_name || 'General'})
@@ -614,13 +614,13 @@ export const PatientCheckIn = () => {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                    Arrival & Triage Notes (Optional)
+                    {t('receptionPortal.modalNotesLabel')}
                   </label>
                   <textarea
                     rows={2}
                     value={checkInNotes}
                     onChange={(e) => setCheckInNotes(e.target.value)}
-                    placeholder="e.g. Vitals checked, BP: 120/80. Seated in waiting room."
+                    placeholder={t('receptionPortal.modalNotesPlaceholder')}
                     style={{
                       width: '100%',
                       padding: '0.6rem 0.75rem',
@@ -656,7 +656,7 @@ export const PatientCheckIn = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  Cancel
+                  {t('receptionPortal.modalCancelBtn')}
                 </button>
                 <button
                   type="submit"
@@ -672,7 +672,7 @@ export const PatientCheckIn = () => {
                     cursor: actionLoading ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {actionLoading ? 'Processing...' : 'Mark Checked In'}
+                  {actionLoading ? t('receptionPortal.checkingIn') : t('receptionPortal.modalConfirmBtn')}
                 </button>
               </div>
             </form>
@@ -713,7 +713,7 @@ export const PatientCheckIn = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <FaTimesCircle size={18} style={{ color: '#e11d48' }} />
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#9f1239' }}>
-                    Cancel Appointment #{cancelTarget.id}
+                    {t('receptionPortal.modalCancelTitle')}
                   </h3>
                 </div>
                 <button
@@ -727,18 +727,18 @@ export const PatientCheckIn = () => {
 
               <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#475569' }}>
-                  Are you sure you want to cancel the appointment for <strong>{cancelTarget.patient_name}</strong>?
+                  {isTelugu ? `అపాయింట్‌మెంట్ #${cancelTarget.id} ను రద్దు చేయాలనుకుంటున్నారా?` : `Are you sure you want to cancel the appointment for ${cancelTarget.patient_name}?`}
                 </p>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                    Reason for Cancellation
+                    {t('receptionPortal.cancelReasonLabel')}
                   </label>
                   <input
                     type="text"
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="e.g. Patient called to reschedule, no-show"
+                    placeholder={isTelugu ? 'ఉదా: రోగి రాలేకపోతున్నారు' : 'e.g. Patient called to reschedule, no-show'}
                     style={{
                       width: '100%',
                       padding: '0.6rem 0.75rem',
@@ -773,7 +773,7 @@ export const PatientCheckIn = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  Keep Appointment
+                  {t('receptionPortal.modalCancelBtn')}
                 </button>
                 <button
                   type="submit"
@@ -789,7 +789,7 @@ export const PatientCheckIn = () => {
                     cursor: actionLoading ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {actionLoading ? 'Cancelling...' : 'Confirm Cancellation'}
+                  {actionLoading ? '...' : t('receptionPortal.modalCancelConfirm')}
                 </button>
               </div>
             </form>

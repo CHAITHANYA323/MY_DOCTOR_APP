@@ -14,6 +14,7 @@ import {
   FaCalendarPlus
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { appointmentService } from '../../services/appointmentService';
 import { receptionService } from '../../services/receptionService';
 import { doctorService } from '../../services/doctorService';
@@ -22,6 +23,7 @@ import { notify } from '../../utils/toast';
 
 export const ReceptionAppointments = () => {
   const { user, hospitalName } = useAuth();
+  const { t, isTelugu } = useLanguage();
   const location = useLocation();
 
   const [appointments, setAppointments] = useState([]);
@@ -204,7 +206,7 @@ export const ReceptionAppointments = () => {
             background: '#fef3c7',
             color: '#b45309'
           }}>
-            <FaClock size={10} /> Pending Arrival
+            <FaClock size={10} /> {t('receptionPortal.statusPending')}
           </span>
         );
       case 'Confirmed':
@@ -220,7 +222,7 @@ export const ReceptionAppointments = () => {
             background: '#ccfbf1',
             color: '#0f766e'
           }}>
-            <FaUserCheck size={10} /> Checked In
+            <FaUserCheck size={10} /> {t('receptionPortal.statusConfirmed')}
           </span>
         );
       case 'Completed':
@@ -236,7 +238,7 @@ export const ReceptionAppointments = () => {
             background: '#dcfce7',
             color: '#15803d'
           }}>
-            <FaCheckCircle size={10} /> Completed
+            <FaCheckCircle size={10} /> {t('receptionPortal.statusCompleted')}
           </span>
         );
       case 'Cancelled':
@@ -252,7 +254,7 @@ export const ReceptionAppointments = () => {
             background: '#fee2e2',
             color: '#b91c1c'
           }}>
-            <FaTimesCircle size={10} /> Cancelled
+            <FaTimesCircle size={10} /> {t('receptionPortal.statusCancelled')}
           </span>
         );
       default:
@@ -286,7 +288,7 @@ export const ReceptionAppointments = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Hospital Consultation Schedule
+              {isTelugu ? 'ఆసుపత్రి సంప్రదింపుల షెడ్యూల్' : 'Hospital Consultation Schedule'}
             </h1>
             <span style={{
               display: 'inline-flex',
@@ -299,11 +301,11 @@ export const ReceptionAppointments = () => {
               background: '#ccfbf1',
               color: '#0f766e'
             }}>
-              <FaHospital size={11} /> {hospitalName || 'Your Hospital'}
+              <FaHospital size={11} /> {hospitalName || (isTelugu ? 'విశ్వసనీయ ఆసుపత్రి' : 'Your Hospital')}
             </span>
           </div>
           <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-            Manage appointments, perform arrival check-in, and book new consultations for registered facility patients.
+            {isTelugu ? 'అపాయింట్‌మెంట్‌లను నిర్వహించండి, రోగి రాకను నమోదు చేయండి మరియు కొత్త సంప్రదింపులను బుక్ చేయండి.' : 'Manage appointments, perform arrival check-in, and book new consultations for registered facility patients.'}
           </p>
         </div>
 
@@ -325,7 +327,7 @@ export const ReceptionAppointments = () => {
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}
         >
-          <FaCalendarPlus size={14} /> Book New Consultation
+          <FaCalendarPlus size={14} /> {isTelugu ? 'కొత్త సంప్రదింపు బుక్ చేయండి' : 'Book New Consultation'}
         </button>
       </div>
 
@@ -381,13 +383,19 @@ export const ReceptionAppointments = () => {
 
         {/* Status Filters */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {['ALL', 'Pending', 'Confirmed', 'Completed', 'Cancelled'].map((tab) => {
-            const active = statusFilter === tab;
+          {[
+            { id: 'ALL', label: t('receptionPortal.filterAll') },
+            { id: 'Pending', label: t('receptionPortal.filterWaiting') },
+            { id: 'Confirmed', label: t('receptionPortal.filterCheckedIn') },
+            { id: 'Completed', label: t('receptionPortal.filterCompleted') },
+            { id: 'Cancelled', label: t('receptionPortal.filterCancelled') }
+          ].map((tab) => {
+            const active = statusFilter === tab.id;
             return (
               <button
-                key={tab}
+                key={tab.id}
                 type="button"
-                onClick={() => setStatusFilter(tab)}
+                onClick={() => setStatusFilter(tab.id)}
                 style={{
                   padding: '0.45rem 0.85rem',
                   borderRadius: '6px',
@@ -399,7 +407,7 @@ export const ReceptionAppointments = () => {
                   color: active ? '#ffffff' : '#475569'
                 }}
               >
-                {tab === 'Confirmed' ? 'Checked In' : tab}
+                {tab.label}
               </button>
             );
           })}
@@ -434,13 +442,13 @@ export const ReceptionAppointments = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>ID</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Patient Name</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Doctor & Department</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Date & Time</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Consultation Fee</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Status</th>
-                  <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colApptId')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colPatient')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colDoctor')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colTime')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{isTelugu ? 'ఫీజు' : 'Consultation Fee'}</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>{t('receptionPortal.colStatus')}</th>
+                  <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>{t('receptionPortal.colAction')}</th>
                 </tr>
               </thead>
               <tbody>

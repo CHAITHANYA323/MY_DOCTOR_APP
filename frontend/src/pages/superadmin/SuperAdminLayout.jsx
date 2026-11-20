@@ -14,22 +14,37 @@ import {
   FaTimes,
   FaHospitalSymbol,
   FaArrowLeft,
-  FaBuilding
+  FaBuilding,
+  FaQuestionCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
+import { FirstTimeGuideModal } from '../../components/common/FirstTimeGuideModal';
 
 export const SuperAdminLayout = () => {
   const { user, hospitalName, hospitalId, logout } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  // Check first-time tour on initial mount
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem('mediconnect_superadmin_tour_seen');
+      if (!seen) {
+        setGuideOpen(true);
+      }
+    } catch {
+      // Ignore localStorage read errors
+    }
+  }, []);
 
   // Close mobile sidebar on Escape key
   useEffect(() => {
@@ -45,14 +60,65 @@ export const SuperAdminLayout = () => {
   }, [sidebarOpen]);
 
   const navItems = useMemo(() => [
-    { label: t('portalNav.hospitalOverview'), to: '/superadmin', icon: <FaChartPie aria-hidden="true" />, end: true },
-    { label: t('portalNav.staffManagement'), to: '/superadmin/staff', icon: <FaUserFriends aria-hidden="true" /> },
-    { label: t('portalNav.doctorsList'), to: '/superadmin/doctors', icon: <FaUserMd aria-hidden="true" /> },
-    { label: t('portalNav.departments'), to: '/superadmin/departments', icon: <FaStethoscope aria-hidden="true" /> },
-    { label: t('portalNav.appointments'), to: '/superadmin/appointments', icon: <FaCalendarCheck aria-hidden="true" /> },
-    { label: t('portalNav.operationalReports'), to: '/superadmin/reports', icon: <FaChartBar aria-hidden="true" /> },
-    { label: t('portalNav.ambulanceFleet'), to: '/superadmin/ambulances', icon: <FaAmbulance aria-hidden="true" /> },
-    { label: t('portalNav.settings'), to: '/superadmin/settings', icon: <FaCog aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.dashboard'), to: '/superadmin', icon: <FaChartPie aria-hidden="true" />, end: true },
+    { label: t('superAdminPortal.nav.staff'), to: '/superadmin/staff', icon: <FaUserFriends aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.doctors'), to: '/superadmin/doctors', icon: <FaUserMd aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.departments'), to: '/superadmin/departments', icon: <FaStethoscope aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.appointments'), to: '/superadmin/appointments', icon: <FaCalendarCheck aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.reports'), to: '/superadmin/reports', icon: <FaChartBar aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.ambulances'), to: '/superadmin/ambulances', icon: <FaAmbulance aria-hidden="true" /> },
+    { label: t('superAdminPortal.nav.settings'), to: '/superadmin/settings', icon: <FaCog aria-hidden="true" /> },
+  ], [t]);
+
+  const guideSteps = useMemo(() => [
+    {
+      title: t('superAdminPortal.guideTour.step1Title'),
+      description: t('superAdminPortal.guideTour.step1Desc'),
+      icon: <FaChartPie />,
+      colorBg: '#e0f2fe',
+      colorFg: '#0284c7',
+      tip: 'The dashboard updates automatically with live consultation volume and staffing figures.'
+    },
+    {
+      title: t('superAdminPortal.guideTour.step2Title'),
+      description: t('superAdminPortal.guideTour.step2Desc'),
+      icon: <FaCog />,
+      colorBg: '#fef3c7',
+      colorFg: '#b45309',
+      tip: 'Make sure your hospital phone number and 24/7 operating hours are verified so patients can reach emergency desks.'
+    },
+    {
+      title: t('superAdminPortal.guideTour.step3Title'),
+      description: t('superAdminPortal.guideTour.step3Desc'),
+      icon: <FaUserMd />,
+      colorBg: '#dcfce7',
+      colorFg: '#15803d',
+      tip: 'All staff accounts created or invited here are strictly bound to your assigned hospital branch.'
+    },
+    {
+      title: t('superAdminPortal.guideTour.step4Title'),
+      description: t('superAdminPortal.guideTour.step4Desc'),
+      icon: <FaStethoscope />,
+      colorBg: '#f3e8ff',
+      colorFg: '#7e22ce',
+      tip: 'Organizing doctors under clean clinical departments helps patients book the right consultations.'
+    },
+    {
+      title: t('superAdminPortal.guideTour.step5Title'),
+      description: t('superAdminPortal.guideTour.step5Desc'),
+      icon: <FaCalendarCheck />,
+      colorBg: '#ccfbf1',
+      colorFg: '#0f766e',
+      tip: 'Filter appointments by status: Pending, Confirmed, Checked In, or Completed.'
+    },
+    {
+      title: t('superAdminPortal.guideTour.step6Title'),
+      description: t('superAdminPortal.guideTour.step6Desc'),
+      icon: <FaChartBar />,
+      colorBg: '#fee2e2',
+      colorFg: '#b91c1c',
+      tip: 'Print and archive monthly operational reports directly from the Hospital Reports tab.'
+    }
   ], [t]);
 
   const activeHospital = hospitalName || user?.hospital_name || (hospitalId ? `Hospital Branch #${hospitalId}` : 'Assigned Hospital');
@@ -74,7 +140,7 @@ export const SuperAdminLayout = () => {
         />
       )}
 
-      {/* Sidebar: Teal / Slate styling distinguishing Hospital Super Admin branch level */}
+      {/* Sidebar: Deep Teal / Slate styling distinguishing Hospital Super Admin branch level */}
       <aside
         style={{
           width: '270px',
@@ -119,7 +185,7 @@ export const SuperAdminLayout = () => {
                 MEDICONNECT
               </span>
               <span style={{ fontSize: '0.7rem', color: '#7dd3fc', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Super Admin Portal
+                {t('superAdminPortal.nav.badge')}
               </span>
             </div>
           </Link>
@@ -154,7 +220,7 @@ export const SuperAdminLayout = () => {
           <FaBuilding color="#38bdf8" size={14} style={{ flexShrink: 0 }} />
           <div style={{ overflow: 'hidden' }}>
             <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
-              Hospital Scope:
+              {t('superAdminPortal.nav.assignedHospital')}:
             </span>
             <span style={{ fontSize: '0.8rem', color: '#e0f2fe', fontWeight: 700, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {activeHospital}
@@ -200,6 +266,31 @@ export const SuperAdminLayout = () => {
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
           backgroundColor: '#07161e'
         }}>
+          {/* Guide Quick Access */}
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.55rem',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'rgba(56, 189, 248, 0.12)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              marginBottom: '1rem',
+              transition: 'background 0.15s ease'
+            }}
+          >
+            <FaQuestionCircle size={13} /> {t('superAdminPortal.nav.helpGuide')}
+          </button>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <img
               src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'SuperAdmin')}&background=0284c7&color=fff`}
@@ -233,7 +324,7 @@ export const SuperAdminLayout = () => {
                 fontWeight: 600
               }}
             >
-              <FaArrowLeft size={10} /> Public
+              <FaArrowLeft size={10} /> {t('superAdminPortal.nav.publicPortal')}
             </Link>
             <button
               type="button"
@@ -253,7 +344,7 @@ export const SuperAdminLayout = () => {
                 cursor: 'pointer'
               }}
             >
-              <FaSignOutAlt size={11} /> {t('portalNav.signOut')}
+              <FaSignOutAlt size={11} /> {t('superAdminPortal.nav.signOut')}
             </button>
           </div>
         </div>
@@ -304,12 +395,32 @@ export const SuperAdminLayout = () => {
                 padding: '0.15rem 0.5rem',
                 borderRadius: '12px'
               }}>
-                Super Admin
+                {t('superAdminPortal.nav.badge')}
               </span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => setGuideOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: 'var(--slate-700)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <FaQuestionCircle color="#0284c7" />
+              <span>{t('superAdminPortal.nav.helpGuide')}</span>
+            </button>
             <LanguageToggle size="sm" showIcon={false} />
           </div>
         </header>
@@ -319,6 +430,20 @@ export const SuperAdminLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Guided Walkthrough Modal */}
+      <FirstTimeGuideModal
+        isOpen={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        title={t('superAdminPortal.guideTour.guideTitle')}
+        subtitle={t('superAdminPortal.guideTour.guideSubtitle')}
+        steps={guideSteps}
+        storageKey="mediconnect_superadmin_tour_seen"
+        btnNextText={t('superAdminPortal.guideTour.btnNext')}
+        btnPrevText={t('superAdminPortal.guideTour.btnPrev')}
+        btnFinishText={t('superAdminPortal.guideTour.btnFinish')}
+        btnSkipText={t('superAdminPortal.guideTour.btnSkip')}
+      />
 
       <style>{`
         @media (min-width: 1024px) {

@@ -33,7 +33,26 @@ export const PatientPrescriptions = () => {
       setLoading(true);
       const res = await prescriptionService.getPatientPrescriptions();
       if (res.success) {
-        setPrescriptions(res.prescriptions || []);
+        // Defensive client-side deduplication preserving unique prescriptions
+        const rawList = res.prescriptions || [];
+        const seenIds = new Set();
+        const seenClinicalKeys = new Set();
+        const deduped = [];
+
+        for (const rx of rawList) {
+          if (!rx || seenIds.has(rx.id)) continue;
+          seenIds.add(rx.id);
+
+          const datePart = rx.created_at ? rx.created_at.split('T')[0] : '';
+          const diagPart = (rx.diagnosis || '').trim().toLowerCase();
+          const clinKey = `${rx.patient_id || ''}-${rx.doctor_id || ''}-${diagPart}-${datePart}`;
+
+          if (seenClinicalKeys.has(clinKey)) continue;
+          seenClinicalKeys.add(clinKey);
+          deduped.push(rx);
+        }
+
+        setPrescriptions(deduped);
       } else {
         toast.error(res.message || 'Failed to fetch prescriptions.');
       }

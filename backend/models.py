@@ -247,6 +247,8 @@ class Doctor(db.Model):
             'specialization_name': self.specialization.name if self.specialization else '',
             'hospital_id': self.hospital_id,
             'hospital_name': self.hospital.name if self.hospital else '',
+            'hospital_city': self.hospital.city if self.hospital else '',
+            'hospital_state': self.hospital.state if self.hospital else '',
             'hospital_image': self.hospital.image if self.hospital else '',
             'location': self.location,
             'phone': self.phone,

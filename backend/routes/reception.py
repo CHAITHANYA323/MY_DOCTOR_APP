@@ -96,13 +96,13 @@ def list_or_search_patients():
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 20))
 
-    # Select query: unique patient IDs who have appointments at this hospital
+    # Select query: unique patient IDs who have appointments at this hospital OR were registered at this hospital
     patient_ids_select = db.session.query(Appointment.user_id).filter_by(
         hospital_id=h_id
     ).distinct()
 
     query = User.query.filter(
-        User.id.in_(patient_ids_select),
+        (User.id.in_(patient_ids_select) | (User.hospital_id == h_id)),
         User.role.in_(['USER', 'PATIENT'])
     )
 
@@ -170,13 +170,13 @@ def get_patient_detail(patient_id):
         return jsonify({'success': False, 'message': 'Patient not found.'}), 404
 
     # Strict multi-tenant hospital privacy check:
-    # Does this patient have any appointment at the caller's hospital?
+    # Does this patient have any appointment at the caller's hospital OR were they registered at this hospital?
     hospital_appts = Appointment.query.filter_by(
         user_id=patient.id,
         hospital_id=h_id
     ).order_by(Appointment.created_at.desc()).all()
 
-    if not hospital_appts:
+    if not hospital_appts and patient.hospital_id != h_id:
         return jsonify({
             'success': False,
             'message': 'Access denied. You do not have permission to view patient records belonging to other hospitals.'
@@ -263,6 +263,7 @@ def register_walkin_patient():
         phone=phone,
         role='PATIENT',
         avatar=avatar,
+        hospital_id=user.hospital_id,
         is_active=True,
         must_change_password=True,
         temporary_password_expires_at=temp_expires_at

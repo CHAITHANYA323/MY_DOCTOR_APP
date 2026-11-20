@@ -30,7 +30,7 @@ import {
  */
 export const Welcome = () => {
   const navigate = useNavigate();
-  const { isTelugu } = useLanguage();
+  const { isTelugu, t } = useLanguage();
 
   // Core 4 Highlight Cards mapped to genuinely existing routes
   const highlightFeatures = [
@@ -289,9 +289,9 @@ export const Welcome = () => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = '0 8px 24px rgba(2, 132, 199, 0.42)';
               }}
-              aria-label="ప్రారంభించండి / Get Started - Navigate to Login"
+              aria-label={`${t('welcome.getStartedBtn') || (isTelugu ? 'ప్రారంభించండి' : 'Get Started')} - Navigate to Login`}
             >
-              <span>ప్రారంభించండి / Get Started</span>
+              <span>{t('welcome.getStartedBtn') || (isTelugu ? 'ప్రారంభించండి' : 'Get Started')}</span>
               <FaArrowRight size={18} aria-hidden="true" />
             </button>
 

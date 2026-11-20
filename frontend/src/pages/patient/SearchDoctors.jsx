@@ -81,11 +81,17 @@ export const SearchDoctors = () => {
         specialization: selectedSpec,
         hospital_id: selectedHosp,
         sort_by: sortBy,
+        region: 'AP_TS',
         limit: 50
       };
       const res = await doctorService.getDoctors(params);
       if (res.success) {
-        setDoctors(res.doctors || []);
+        // Display only intended AP & Telangana doctor profiles (exclude legacy Metropolis/NY records)
+        const apTsDoctors = (res.doctors || []).filter(doc => {
+          const hosp = doc.hospital_name || '';
+          return !hosp.includes('Reliability General') && !hosp.includes('Hospital Alpha') && !hosp.includes('Hospital Beta');
+        });
+        setDoctors(apTsDoctors);
       } else {
         toast.error(res.message || 'Failed to load doctors.');
       }
@@ -107,6 +113,87 @@ export const SearchDoctors = () => {
     }, 250);
     return () => clearTimeout(timer);
   }, [fetchDoctors]);
+
+  // Helper for generating consistent professional neutral doctor avatars
+  const getDoctorInitials = (name) => {
+    if (!name) return 'DR';
+    const clean = name.replace(/^Dr\.\s*|^డాక్టర్\s*/i, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return clean.slice(0, 2).toUpperCase() || 'DR';
+  };
+
+  const getDoctorAvatarColor = (id, name) => {
+    const palette = [
+      { bg: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)', text: '#FFFFFF', border: '#BAE6FD' },
+      { bg: 'linear-gradient(135deg, #0D9488 0%, #0F766E 100%)', text: '#FFFFFF', border: '#99F6E4' },
+      { bg: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)', text: '#FFFFFF', border: '#C7D2FE' },
+      { bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', text: '#FFFFFF', border: '#A7F3D0' },
+      { bg: 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)', text: '#FFFFFF', border: '#A5F3FC' },
+      { bg: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', text: '#FFFFFF', border: '#BFDBFE' }
+    ];
+    const key = (Number(id) || 0) + (name ? name.length : 0);
+    return palette[key % palette.length];
+  };
+
+  const renderDoctorAvatar = (doc, size = 64) => {
+    // Only use doc.image if it is a dedicated local project asset (not foreign stock photo)
+    const hasGenuineLocalAsset = doc.image && !doc.image.includes('unsplash.com') && !doc.image.includes('placeholder');
+    const colorTheme = getDoctorAvatarColor(doc.id, doc.name);
+    const initials = getDoctorInitials(doc.name);
+
+    if (hasGenuineLocalAsset) {
+      return (
+        <div style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: '16px',
+          overflow: 'hidden',
+          flexShrink: 0,
+          border: '2px solid rgba(22, 119, 200, 0.2)'
+        }}>
+          <img
+            src={doc.image}
+            alt={doc.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        </div>
+      );
+    }
+
+    // Professional Neutral Avatar
+    return (
+      <div
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: '16px',
+          background: colorTheme.bg,
+          color: colorTheme.text,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 800,
+          fontSize: size >= 60 ? '1.25rem' : '1rem',
+          letterSpacing: '0.04em',
+          flexShrink: 0,
+          boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
+          border: `2px solid ${colorTheme.border}`,
+          position: 'relative'
+        }}
+        title={`${doc.name} - Professional Neutral Avatar`}
+      >
+        <span style={{ lineHeight: 1 }}>{initials}</span>
+        <span style={{ fontSize: size >= 60 ? '0.62rem' : '0.52rem', opacity: 0.9, marginTop: '2px', fontWeight: 700, textTransform: 'uppercase' }}>
+          MD
+        </span>
+      </div>
+    );
+  };
 
   const minDateStr = useMemo(() => {
     const tomorrow = new Date();
@@ -384,34 +471,45 @@ export const SearchDoctors = () => {
               <div>
                 {/* Doctor Avatar & Basic Info */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '16px',
-                    backgroundColor: 'rgba(22, 119, 200, 0.1)',
-                    color: '#1677C8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '1.4rem',
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                    border: '2px solid rgba(22, 119, 200, 0.2)'
-                  }}>
-                    {doc.image ? (
-                      <img src={doc.image} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                    ) : (
-                      doc.name ? doc.name.replace(/^Dr\.\s*/i, '').charAt(0) : 'D'
-                    )}
-                  </div>
+                  {renderDoctorAvatar(doc, 64)}
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.15rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#102A43', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {doc.name}
                       </h3>
-                      <FaCheckCircle size={13} style={{ color: '#16A36A', flexShrink: 0 }} title="Verified Clinician" />
+                      {doc.is_verified || !doc.is_demo ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          backgroundColor: '#ECFDF5',
+                          color: '#16A36A',
+                          border: '1px solid #A7F3D0',
+                          padding: '0.12rem 0.45rem',
+                          borderRadius: '4px',
+                          fontSize: '0.68rem',
+                          fontWeight: 800
+                        }} title="Medical Council Verified Clinician">
+                          <FaCheckCircle size={10} />
+                          <span>Verified</span>
+                        </span>
+                      ) : (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          backgroundColor: '#FFFBEB',
+                          color: '#D97706',
+                          border: '1px solid #FDE68A',
+                          padding: '0.12rem 0.45rem',
+                          borderRadius: '4px',
+                          fontSize: '0.68rem',
+                          fontWeight: 700
+                        }} title="Demo Clinician Profile">
+                          <span>Demo</span>
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ fontSize: '0.78rem', color: '#13B8A6', fontWeight: 700, marginBottom: '0.2rem' }}>
@@ -564,24 +662,45 @@ export const SearchDoctors = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.86rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(22, 119, 200, 0.1)',
-                  color: '#1677C8',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: '1.3rem'
-                }}>
-                  {detailsDoctor.name ? detailsDoctor.name.charAt(0) : 'D'}
-                </div>
+                {renderDoctorAvatar(detailsDoctor, 56)}
                 <div>
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#102A43', margin: 0 }}>
-                    {detailsDoctor.name}
-                  </h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#102A43', margin: 0 }}>
+                      {detailsDoctor.name}
+                    </h4>
+                    {detailsDoctor.is_verified || !detailsDoctor.is_demo ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        backgroundColor: '#ECFDF5',
+                        color: '#16A36A',
+                        border: '1px solid #A7F3D0',
+                        padding: '0.12rem 0.45rem',
+                        borderRadius: '4px',
+                        fontSize: '0.68rem',
+                        fontWeight: 800
+                      }}>
+                        <FaCheckCircle size={10} />
+                        <span>Verified</span>
+                      </span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        backgroundColor: '#FFFBEB',
+                        color: '#D97706',
+                        border: '1px solid #FDE68A',
+                        padding: '0.12rem 0.45rem',
+                        borderRadius: '4px',
+                        fontSize: '0.68rem',
+                        fontWeight: 700
+                      }}>
+                        <span>Demo</span>
+                      </span>
+                    )}
+                  </div>
                   <div style={{ color: '#13B8A6', fontWeight: 700, fontSize: '0.82rem' }}>
                     {detailsDoctor.specialization_name} &bull; {detailsDoctor.qualification}
                   </div>

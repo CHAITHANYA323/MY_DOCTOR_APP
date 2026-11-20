@@ -7,14 +7,17 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaSearch,
-  FaHospital
+  FaHospital,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { ambulanceService } from '../../services/ambulanceService';
 import { getApiErrorMessage } from '../../services/api';
 
 export const SuperAdminAmbulances = () => {
   const { hospitalName } = useAuth();
+  const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('fleet'); // 'fleet' | 'requests'
   const [ambulances, setAmbulances] = useState([]);
@@ -103,7 +106,7 @@ export const SuperAdminAmbulances = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Ambulance & Emergency Services
+              {t('superAdminPortal.ambulances.title')}
             </h1>
             <span style={{
               display: 'inline-flex',
@@ -121,8 +124,29 @@ export const SuperAdminAmbulances = () => {
             </span>
           </div>
           <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-            Fleet readiness, active emergency transports, and emergency patient requests.
+            {t('superAdminPortal.ambulances.subtitle')}
           </p>
+        </div>
+      </div>
+
+      {/* Guidance Banner */}
+      <div style={{
+        padding: '1rem 1.25rem',
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem'
+      }}>
+        <FaInfoCircle color="#0284c7" size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0369a1', display: 'block' }}>
+            Emergency Vehicle Readiness & Dispatch
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.5, display: 'block', marginTop: '0.25rem' }}>
+            Vehicle readiness badges: Available (ready for immediate dispatch), On Duty (in transit with patient), Maintenance (under service).
+          </span>
         </div>
       </div>
 

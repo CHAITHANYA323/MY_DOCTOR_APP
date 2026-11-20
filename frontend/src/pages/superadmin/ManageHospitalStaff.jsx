@@ -12,9 +12,11 @@ import {
   FaCheck,
   FaBan,
   FaIdCard,
-  FaStethoscope
+  FaStethoscope,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { invitationService } from '../../services/invitationService';
 import { authService } from '../../services/authService';
 import { doctorService } from '../../services/doctorService';
@@ -24,6 +26,7 @@ import { Button } from '../../components/common/Button';
 
 export const ManageHospitalStaff = () => {
   const { user, hospitalName } = useAuth();
+  const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('ROSTER'); // 'ROSTER' | 'INVITATIONS' | 'APPROVALS'
   const [staffUsers, setStaffUsers] = useState([]);
@@ -42,6 +45,7 @@ export const ManageHospitalStaff = () => {
 
   // Approval action state
   const [processingApprovalId, setProcessingApprovalId] = useState(null);
+  const [approveModalApplicant, setApproveModalApplicant] = useState(null);
   const [rejectModalUser, setRejectModalUser] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectModalError, setRejectModalError] = useState('');
@@ -291,10 +295,10 @@ export const ManageHospitalStaff = () => {
       }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-            Hospital Staff Management
+            {t('superAdminPortal.staff.title')}
           </h1>
           <p style={{ fontSize: '0.88rem', color: 'var(--slate-500)', marginTop: '0.25rem', marginBottom: 0 }}>
-            Active staff directory, registration approval queue, and invitation onboarding for {hospitalName || 'your hospital'}
+            {t('superAdminPortal.staff.subtitle')} &bull; {hospitalName || 'Your Hospital'}
           </p>
         </div>
 
@@ -304,8 +308,29 @@ export const ManageHospitalStaff = () => {
           onClick={handleOpenInviteModal}
           icon={<FaUserPlus aria-hidden="true" />}
         >
-          Invite Staff Member
+          {t('superAdminPortal.staff.btnInvite')}
         </Button>
+      </div>
+
+      {/* Guidance Banner */}
+      <div style={{
+        padding: '1rem 1.25rem',
+        backgroundColor: '#f0f9ff',
+        border: '1px solid #bae6fd',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem'
+      }}>
+        <FaInfoCircle color="#0284c7" size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0369a1', display: 'block' }}>
+            Hospital Staff Roles & Multi-tenant Data Protection
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#0c4a6e', lineHeight: 1.5, display: 'block', marginTop: '0.25rem' }}>
+            {t('superAdminPortal.staff.guidanceNotice')} Receptionists manage patient intake and appointments. Doctors conduct consultations and write digital prescriptions.
+          </span>
+        </div>
       </div>
 
       {actionSuccess && (
@@ -391,7 +416,7 @@ export const ManageHospitalStaff = () => {
             }}
           >
             <FaUserFriends />
-            <span>Active Staff ({staffUsers.length})</span>
+            <span>{t('superAdminPortal.staff.tabRoster')} ({staffUsers.length})</span>
           </button>
 
           <button
@@ -412,7 +437,7 @@ export const ManageHospitalStaff = () => {
             }}
           >
             <FaClock />
-            <span>Invitations ({invitations.length})</span>
+            <span>{t('superAdminPortal.staff.tabInvitations')} ({invitations.length})</span>
           </button>
 
           <button
@@ -434,7 +459,7 @@ export const ManageHospitalStaff = () => {
             }}
           >
             <FaIdCard />
-            <span>Approval Queue</span>
+            <span>{t('superAdminPortal.staff.tabApprovals')}</span>
             {approvals.length > 0 && (
               <span style={{
                 backgroundColor: activeTab === 'APPROVALS' ? 'white' : '#ea580c',
@@ -746,7 +771,7 @@ export const ManageHospitalStaff = () => {
                             type="button"
                             variant="primary"
                             size="sm"
-                            onClick={() => handleApproveStaff(req)}
+                            onClick={() => setApproveModalApplicant(req)}
                             loading={isProcessing}
                             style={{
                               backgroundColor: '#059669',
@@ -1114,6 +1139,78 @@ export const ManageHospitalStaff = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Staff Approval */}
+      {approveModalApplicant && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 60,
+            padding: '1rem',
+            backdropFilter: 'blur(3px)'
+          }}
+        >
+          <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '1.75rem', backgroundColor: '#ffffff', borderRadius: '14px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaCheckCircle size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--slate-900)' }}>
+                  {t('superAdminPortal.staff.confirmApproveTitle')}
+                </h3>
+                <span style={{ fontSize: '0.76rem', color: 'var(--slate-500)' }}>Hospital Staff Provisioning</span>
+              </div>
+            </div>
+
+            <p style={{ color: 'var(--slate-600)', fontSize: '0.88rem', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+              {t('superAdminPortal.staff.confirmApproveText')}
+            </p>
+
+            <div style={{
+              padding: '0.85rem 1rem',
+              backgroundColor: 'var(--slate-50)',
+              borderRadius: '8px',
+              border: '1px solid var(--slate-200)',
+              marginBottom: '1.5rem',
+              fontSize: '0.84rem'
+            }}>
+              <div style={{ marginBottom: '0.25rem' }}><strong>Staff Member:</strong> {approveModalApplicant.name}</div>
+              <div style={{ marginBottom: '0.25rem' }}><strong>Target Role:</strong> {approveModalApplicant.role}</div>
+              <div><strong>Email:</strong> {approveModalApplicant.email}</div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setApproveModalApplicant(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+                onClick={async () => {
+                  const applicant = approveModalApplicant;
+                  setApproveModalApplicant(null);
+                  await handleApproveStaff(applicant);
+                }}
+              >
+                Confirm Approval
+              </Button>
+            </div>
           </div>
         </div>
       )}

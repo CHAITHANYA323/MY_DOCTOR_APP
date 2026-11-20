@@ -79,16 +79,20 @@ export const PatientDashboard = () => {
 
   const getStatusBadge = (status) => {
     const s = (status || '').toLowerCase();
+    const getVal = (key, fallback) => {
+      const val = t(key);
+      return !val || val === key ? fallback : val;
+    };
     if (s === 'confirmed') {
-      return { bg: '#ECFDF5', border: '#A7F3D0', text: '#16A36A', label: t('patientPortal.statusConfirmed') || 'Confirmed' };
+      return { bg: '#ECFDF5', border: '#A7F3D0', text: '#16A36A', label: getVal('patientPortal.statusConfirmed', 'Confirmed') };
     }
     if (s === 'completed') {
-      return { bg: '#EFF6FF', border: '#BFDBFE', text: '#1677C8', label: t('patientPortal.statusCompleted') || 'Completed' };
+      return { bg: '#EFF6FF', border: '#BFDBFE', text: '#1677C8', label: getVal('patientPortal.statusCompleted', 'Completed') };
     }
     if (s === 'cancelled') {
-      return { bg: '#FEF2F2', border: '#FECACA', text: '#DC5252', label: t('patientPortal.statusCancelled') || 'Cancelled' };
+      return { bg: '#FEF2F2', border: '#FECACA', text: '#DC5252', label: getVal('patientPortal.statusCancelled', 'Cancelled') };
     }
-    return { bg: '#FFFBEB', border: '#FDE68A', text: '#E9A23B', label: t('patientPortal.statusPending') || 'Pending' };
+    return { bg: '#FFFBEB', border: '#FDE68A', text: '#E9A23B', label: getVal('patientPortal.statusPending', 'Pending') };
   };
 
   return (
@@ -903,7 +907,7 @@ export const PatientDashboard = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #F0F4F8' }}>
                 <span style={{ color: '#718096', fontWeight: 600 }}>Status</span>
                 <span style={{ fontWeight: 800, color: getStatusBadge(selectedAppt.status).text }}>
-                  {selectedAppt.status}
+                  {getStatusBadge(selectedAppt.status).label}
                 </span>
               </div>
               {selectedAppt.reason && (

@@ -18,7 +18,7 @@ import { LanguageToggle } from '../../components/common/LanguageToggle';
 
 export const ReceptionLayout = () => {
   const { user, hospitalName, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, isTelugu } = useLanguage();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -30,31 +30,31 @@ export const ReceptionLayout = () => {
   const navItems = useMemo(() => [
     {
       to: '/admin',
-      label: t('portalNav.receptionDesk'),
+      label: t('receptionPortal.navDashboard') || (isTelugu ? 'డ్యాష్‌బోర్డ్' : 'Dashboard'),
       icon: <FaClipboardList size={16} />,
       end: true
     },
     {
       to: '/admin/check-in',
-      label: t('portalNav.checkIn'),
+      label: t('receptionPortal.navCheckIn') || (isTelugu ? 'రోగి చెక్-ఇన్' : 'Patient Check-In'),
       icon: <FaUserCheck size={16} />
     },
     {
       to: '/admin/appointments',
-      label: t('portalNav.appointments'),
+      label: t('receptionPortal.navAppointments') || (isTelugu ? 'అపాయింట్‌మెంట్‌లు' : 'Appointments'),
       icon: <FaCalendarAlt size={16} />
     },
     {
       to: '/admin/register-patient',
-      label: t('portalNav.registerPatient'),
+      label: t('receptionPortal.navRegisterPatient') || (isTelugu ? 'కొత్త రోగి నమోదు' : 'New Patient Registration'),
       icon: <FaUserPlus size={16} />
     },
     {
       to: '/admin/patients',
-      label: t('portalNav.patientDirectory'),
+      label: t('receptionPortal.navPatientList') || (isTelugu ? 'రోగుల జాబితా' : 'Patient List'),
       icon: <FaUsers size={16} />
     },
-  ], [t]);
+  ], [t, isTelugu]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
@@ -97,7 +97,7 @@ export const ReceptionLayout = () => {
               MEDICONNECT
             </div>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Hospital Front Desk
+              {t('receptionPortal.hospitalFrontDesk') || (isTelugu ? 'ఆసుపత్రి రిసెప్షన్ డెస్క్' : 'Hospital Front Desk')}
             </div>
           </div>
         </div>
@@ -111,7 +111,7 @@ export const ReceptionLayout = () => {
           border: '1px solid rgba(255, 255, 255, 0.08)'
         }}>
           <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Assigned Facility
+            {t('receptionPortal.assignedFacility') || (isTelugu ? 'కేటాయించిన ఆసుపత్రి' : 'Assigned Facility')}
           </div>
           <div style={{
             fontSize: '0.875rem',
@@ -126,14 +126,14 @@ export const ReceptionLayout = () => {
             gap: '0.4rem'
           }} title={hospitalName || 'Your Hospital'}>
             <FaHospital size={13} style={{ color: '#14b8a6', flexShrink: 0 }} />
-            {hospitalName || 'Hospital Unit'}
+            {hospitalName || (isTelugu ? 'ఆసుపత్రి విభాగం' : 'Hospital Unit')}
           </div>
         </div>
 
         {/* Navigation Links */}
         <nav style={{ padding: '0.75rem 1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem', overflowY: 'auto' }}>
           <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', padding: '0.5rem 0.75rem 0.25rem', letterSpacing: '0.05em' }}>
-            Daily Operations
+            {t('receptionPortal.dailyOperations') || (isTelugu ? 'రోజువారీ కార్యకలాపాలు' : 'Daily Operations')}
           </div>
           {navItems.map((item) => (
             <NavLink
@@ -185,10 +185,10 @@ export const ReceptionLayout = () => {
               </div>
               <div style={{ overflow: 'hidden' }}>
                 <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user?.name || 'Reception Staff'}
+                  {user?.name || (isTelugu ? 'రిసెప్షన్ సిబ్బంది' : 'Reception Staff')}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <FaIdCard size={10} /> Receptionist
+                  <FaIdCard size={10} /> {isTelugu ? 'రిసెప్షనిస్ట్' : 'Receptionist'}
                 </div>
               </div>
             </div>
@@ -196,7 +196,7 @@ export const ReceptionLayout = () => {
             <button
               type="button"
               onClick={handleLogout}
-              title={t('portalNav.signOut')}
+              title={t('receptionPortal.signOut') || (isTelugu ? 'లాగౌట్' : 'Sign Out')}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -210,6 +210,7 @@ export const ReceptionLayout = () => {
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+              aria-label={t('receptionPortal.signOut') || (isTelugu ? 'లాగౌట్' : 'Sign Out')}
             >
               <FaSignOutAlt size={16} />
             </button>
@@ -259,9 +260,9 @@ export const ReceptionLayout = () => {
 
             {/* Desktop breadcrumb / hospital indicator */}
             <div className="hidden md:flex items-center gap-2 text-sm text-slate-500">
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>Front Desk Operations</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>{t('receptionPortal.hospitalFrontDesk') || (isTelugu ? 'ఆసుపత్రి రిసెప్షన్ డెస్క్' : 'Hospital Front Desk')}</span>
               <span>•</span>
-              <span style={{ color: '#7c3aed', fontWeight: 600 }}>{hospitalName || 'Assigned Hospital'}</span>
+              <span style={{ color: '#7c3aed', fontWeight: 600 }}>{hospitalName || (isTelugu ? 'ఆసుపత్రి విభాగం' : 'Assigned Hospital')}</span>
             </div>
           </div>
 
@@ -280,7 +281,7 @@ export const ReceptionLayout = () => {
               color: '#6d28d9'
             }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed' }}></span>
-              Reception Desk Active
+              {isTelugu ? 'రిసెప్షన్ యాక్టివ్' : 'Reception Desk Active'}
             </span>
 
             <div style={{
@@ -306,10 +307,10 @@ export const ReceptionLayout = () => {
               </div>
               <div className="hidden sm:block">
                 <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
-                  {user?.name || 'Staff Member'}
+                  {user?.name || (isTelugu ? 'రిసెప్షన్ సిబ్బంది' : 'Staff Member')}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                  Receptionist
+                  {isTelugu ? 'రిసెప్షనిస్ట్' : 'Receptionist'}
                 </div>
               </div>
             </div>
