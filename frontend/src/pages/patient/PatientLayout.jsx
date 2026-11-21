@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
+import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const PatientLayout = () => {
   const { user, logout } = useAuth();
@@ -28,7 +29,7 @@ export const PatientLayout = () => {
   const location = useLocation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed, toggleCollapse, sidebarWidth } = useSidebarCollapse();
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -109,8 +110,6 @@ export const PatientLayout = () => {
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   }, [user]);
 
-  const sidebarWidth = collapsed ? '80px' : '270px';
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F8FC' }}>
       {/* Mobile Drawer Backdrop */}
@@ -129,7 +128,7 @@ export const PatientLayout = () => {
         />
       )}
 
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar (240px Expanded <-> 70px Collapsed) */}
       <aside
         style={{
           width: sidebarWidth,
@@ -142,20 +141,20 @@ export const PatientLayout = () => {
           top: 0,
           height: '100vh',
           zIndex: 40,
-          transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
           boxShadow: '4px 0 20px rgba(16, 42, 67, 0.12)',
           borderRight: '1px solid rgba(255, 255, 255, 0.08)'
         }}
-        className="hidden md:flex"
+        className={`portal-desktop-sidebar hidden md:flex ${isCollapsed ? 'portal-sidebar-is-collapsed' : ''}`}
       >
         {/* Brand Header */}
         <div style={{
-          padding: collapsed ? '1.25rem 0.75rem' : '1.25rem 1.25rem',
+          padding: isCollapsed ? '1rem 0.5rem' : '1.15rem 1.15rem',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          minHeight: '70px'
+          justifyContent: isCollapsed ? 'center' : 'space-between',
+          minHeight: '66px'
         }}>
           <Link
             to="/patient"
@@ -166,11 +165,12 @@ export const PatientLayout = () => {
               textDecoration: 'none',
               overflow: 'hidden'
             }}
+            title="Patient Health Portal"
           >
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, #13B8A6 0%, #1677C8 100%)',
               display: 'flex',
               alignItems: 'center',
@@ -179,12 +179,12 @@ export const PatientLayout = () => {
               boxShadow: '0 4px 12px rgba(19, 184, 166, 0.35)',
               flexShrink: 0
             }}>
-              <FaHeartbeat size={20} />
+              <FaHeartbeat size={19} />
             </div>
-            {!collapsed && (
+            {!isCollapsed && (
               <div style={{ whiteSpace: 'nowrap' }}>
                 <div style={{
-                  fontSize: '1.15rem',
+                  fontSize: '1.05rem',
                   fontWeight: 800,
                   letterSpacing: '-0.02em',
                   color: '#FFFFFF'
@@ -192,7 +192,7 @@ export const PatientLayout = () => {
                   MEDICONNECT
                 </div>
                 <div style={{
-                  fontSize: '0.68rem',
+                  fontSize: '0.66rem',
                   fontWeight: 700,
                   color: '#13B8A6',
                   letterSpacing: '0.08em',
@@ -204,23 +204,11 @@ export const PatientLayout = () => {
             )}
           </Link>
 
-          {!collapsed && (
+          {!isCollapsed && (
             <button
               type="button"
-              onClick={() => setCollapsed(true)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#9FB3C8',
-                width: '28px',
-                height: '28px',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
+              onClick={toggleCollapse}
+              className="sidebar-edge-toggle-btn"
               title="Collapse Sidebar"
               aria-label="Collapse Sidebar"
             >
@@ -229,46 +217,35 @@ export const PatientLayout = () => {
           )}
         </div>
 
-        {/* Collapsed Expand Trigger */}
-        {collapsed && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
+        {/* Collapsed Expand Trigger in Header */}
+        {isCollapsed && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
             <button
               type="button"
-              onClick={() => setCollapsed(false)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: 'none',
-                color: '#13B8A6',
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
+              onClick={toggleCollapse}
+              className="sidebar-edge-toggle-btn"
               title="Expand Sidebar"
               aria-label="Expand Sidebar"
             >
-              <FaChevronRight size={12} />
+              <FaChevronRight size={11} />
             </button>
           </div>
         )}
 
         {/* Patient Account Section */}
-        {!collapsed ? (
+        {!isCollapsed ? (
           <div style={{
-            padding: '1.15rem 1.25rem',
+            padding: '1rem 1.15rem',
             background: 'rgba(255, 255, 255, 0.03)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.85rem'
+            gap: '0.75rem'
           }}>
             <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '12px',
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, #1677C8, #102A43)',
               border: '2px solid rgba(19, 184, 166, 0.6)',
               color: '#FFFFFF',
@@ -276,7 +253,7 @@ export const PatientLayout = () => {
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
-              fontSize: '1rem',
+              fontSize: '0.92rem',
               flexShrink: 0,
               boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)'
             }}>
@@ -284,7 +261,7 @@ export const PatientLayout = () => {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 fontWeight: 700,
                 color: '#FFFFFF',
                 whiteSpace: 'nowrap',
@@ -294,12 +271,12 @@ export const PatientLayout = () => {
                 {user?.name || 'Registered Patient'}
               </div>
               <div style={{
-                fontSize: '0.72rem',
+                fontSize: '0.7rem',
                 color: '#829AB1',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                marginBottom: '0.25rem'
+                marginBottom: '0.2rem'
               }}>
                 {user?.email || 'patient@mediconnect.com'}
               </div>
@@ -307,11 +284,11 @@ export const PatientLayout = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.3rem',
-                padding: '0.15rem 0.5rem',
+                padding: '0.12rem 0.45rem',
                 backgroundColor: 'rgba(19, 184, 166, 0.15)',
                 border: '1px solid rgba(19, 184, 166, 0.35)',
                 borderRadius: '999px',
-                fontSize: '0.68rem',
+                fontSize: '0.65rem',
                 fontWeight: 700,
                 color: '#13B8A6'
               }}>
@@ -322,7 +299,7 @@ export const PatientLayout = () => {
           </div>
         ) : (
           <div style={{
-            padding: '0.85rem 0',
+            padding: '0.75rem 0',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             justifyContent: 'center'
@@ -330,8 +307,8 @@ export const PatientLayout = () => {
             <div
               title={`${user?.name || 'Patient'} (${user?.email || ''})`}
               style={{
-                width: '40px',
-                height: '40px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '10px',
                 background: 'linear-gradient(135deg, #1677C8, #102A43)',
                 border: '2px solid rgba(19, 184, 166, 0.6)',
@@ -351,11 +328,11 @@ export const PatientLayout = () => {
 
         {/* Navigation Items */}
         <nav style={{
-          padding: collapsed ? '1rem 0.5rem' : '1rem 0.75rem',
+          padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 0.75rem',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.35rem',
+          gap: '0.3rem',
           overflowY: 'auto'
         }}>
           {navItems.map((item) => (
@@ -363,81 +340,86 @@ export const PatientLayout = () => {
               key={item.to}
               to={item.to}
               end={item.end}
-              title={collapsed ? item.label : undefined}
+              title={isCollapsed ? item.label : undefined}
+              className="portal-sidebar-nav-item"
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: collapsed ? 'center' : 'space-between',
-                gap: '0.85rem',
-                padding: collapsed ? '0.75rem 0' : '0.7rem 0.95rem',
-                borderRadius: '10px',
-                fontSize: '0.88rem',
+                justifyContent: isCollapsed ? 'center' : 'space-between',
+                gap: '0.75rem',
+                padding: isCollapsed ? '0.7rem 0' : '0.65rem 0.85rem',
+                borderRadius: '9px',
+                fontSize: '0.86rem',
                 fontWeight: isActive ? 700 : 500,
                 color: isActive ? '#FFFFFF' : '#9FB3C8',
                 backgroundColor: isActive ? 'rgba(22, 119, 200, 0.25)' : 'transparent',
-                borderLeft: isActive ? '4px solid #13B8A6' : '4px solid transparent',
+                borderLeft: isActive ? '3px solid #13B8A6' : '3px solid transparent',
                 textDecoration: 'none',
                 transition: 'all 0.18s ease'
               })}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: isCollapsed ? 'center' : 'flex-start', width: isCollapsed ? '100%' : 'auto' }}>
                 <span style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: location.pathname === item.to || (!item.end && location.pathname.startsWith(item.to)) ? '#13B8A6' : '#829AB1'
+                  color: location.pathname === item.to || (!item.end && location.pathname.startsWith(item.to)) ? '#13B8A6' : '#829AB1',
+                  flexShrink: 0
                 }}>
                   {item.icon}
                 </span>
-                {!collapsed && <span>{item.label}</span>}
+                {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
               </div>
 
-              {!collapsed && item.badge && (
+              {!isCollapsed && item.badge && (
                 <span style={{
                   backgroundColor: '#DC5252',
                   color: '#FFFFFF',
                   fontSize: '0.65rem',
                   fontWeight: 800,
-                  padding: '0.15rem 0.45rem',
+                  padding: '0.12rem 0.42rem',
                   borderRadius: '999px',
                   letterSpacing: '0.04em'
                 }}>
                   {item.badge}
                 </span>
               )}
+
+              {/* Floating Tooltip in Collapsed Mode */}
+              <span className="portal-nav-tooltip">{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
         {/* Sidebar Footer with Single Functional Sign Out */}
         <div style={{
-          padding: collapsed ? '1rem 0.5rem' : '1rem 1.25rem',
+          padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 1.15rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           backgroundColor: 'rgba(10, 25, 41, 0.7)'
         }}>
           <button
             type="button"
             onClick={handleLogout}
-            title={collapsed ? (t('portalNav.signOut') || 'Sign Out') : undefined}
+            title={isCollapsed ? (t('portalNav.signOut') || 'Sign Out') : undefined}
             style={{
               width: '100%',
-              padding: collapsed ? '0.65rem 0' : '0.65rem 1rem',
+              padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.85rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.6rem',
+              gap: '0.5rem',
               backgroundColor: 'rgba(220, 82, 82, 0.12)',
               border: '1px solid rgba(220, 82, 82, 0.28)',
-              borderRadius: '10px',
+              borderRadius: '8px',
               color: '#F87171',
-              fontSize: '0.84rem',
+              fontSize: '0.82rem',
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.18s ease'
             }}
           >
-            <FaSignOutAlt size={14} />
-            {!collapsed && <span>{t('portalNav.signOut') || 'Sign Out'}</span>}
+            <FaSignOutAlt size={13} />
+            {!isCollapsed && <span>{t('portalNav.signOut') || 'Sign Out'}</span>}
           </button>
         </div>
       </aside>

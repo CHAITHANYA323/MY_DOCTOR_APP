@@ -10,13 +10,16 @@ import {
   FaTimes,
   FaHospital,
   FaStethoscope,
-  FaCircle
+  FaCircle,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
 import { formatDoctorDisplayName, getDoctorInitials } from '../../utils/doctorNameUtils';
+import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const DoctorLayout = () => {
   const { user, hospitalName, logout } = useAuth();
@@ -25,6 +28,7 @@ export const DoctorLayout = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState(null);
+  const { isCollapsed, toggleCollapse, sidebarWidth } = useSidebarCollapse();
 
   const getLabel = useCallback((key, fallback) => {
     const val = t(key);
@@ -124,11 +128,11 @@ export const DoctorLayout = () => {
         />
       )}
 
-      {/* Desktop Dedicated Clinical Navigation Sidebar */}
+      {/* Desktop Dedicated Clinical Navigation Sidebar (240px Expanded <-> 70px Collapsed) */}
       <aside
         style={{
-          width: '275px',
-          minWidth: '275px',
+          width: sidebarWidth,
+          minWidth: sidebarWidth,
           backgroundColor: '#0C2328',
           color: '#E2E8F0',
           display: 'flex',
@@ -137,71 +141,197 @@ export const DoctorLayout = () => {
           top: 0,
           height: '100vh',
           zIndex: 40,
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
           borderRight: '1px solid rgba(255, 255, 255, 0.08)',
           boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)'
         }}
-        className="hidden md:flex"
+        className={`portal-desktop-sidebar hidden md:flex ${isCollapsed ? 'portal-sidebar-is-collapsed' : ''}`}
       >
         {/* Brand Header */}
         <div style={{
-          padding: '1.25rem 1.4rem',
+          padding: isCollapsed ? '1rem 0.5rem' : '1.15rem 1.15rem',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.85rem'
+          justifyContent: isCollapsed ? 'center' : 'space-between',
+          minHeight: '66px'
         }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #0D9488 0%, #059669 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#FFFFFF',
-            boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)',
-            flexShrink: 0
-          }}>
-            <FaStethoscope size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#FFFFFF' }}>
-              MEDICONNECT
-            </div>
+          <Link
+            to="/doctor"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              textDecoration: 'none',
+              overflow: 'hidden'
+            }}
+            title="Doctor Clinical Workstation"
+          >
             <div style={{
-              fontSize: '0.64rem',
-              fontWeight: 800,
-              color: '#34D399',
-              letterSpacing: '0.09em',
-              textTransform: 'uppercase'
-            }}>
-              Clinical Workstation
-            </div>
-          </div>
-        </div>
-
-        {/* Doctor Identity & Hospital Affiliation Banner */}
-        <div style={{
-          padding: '1rem 1.25rem',
-          backgroundColor: 'rgba(255, 255, 255, 0.03)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.07)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
+              width: '38px',
+              height: '38px',
               borderRadius: '10px',
-              backgroundColor: '#134E4A',
-              border: '2px solid #2DD4BF',
+              background: 'linear-gradient(135deg, #0D9488 0%, #059669 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#FFFFFF',
-              fontWeight: 800,
-              fontSize: '0.95rem',
-              overflow: 'hidden',
+              boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)',
               flexShrink: 0
             }}>
+              <FaStethoscope size={19} />
+            </div>
+            {!isCollapsed && (
+              <div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#FFFFFF' }}>
+                  MEDICONNECT
+                </div>
+                <div style={{
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  color: '#34D399',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase'
+                }}>
+                  Clinical Workstation
+                </div>
+              </div>
+            )}
+          </Link>
+
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              className="sidebar-edge-toggle-btn"
+              title="Collapse Sidebar"
+              aria-label="Collapse Sidebar"
+            >
+              <FaChevronLeft size={11} />
+            </button>
+          )}
+        </div>
+
+        {/* Collapsed Expand Trigger in Header */}
+        {isCollapsed && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              className="sidebar-edge-toggle-btn"
+              title="Expand Sidebar"
+              aria-label="Expand Sidebar"
+            >
+              <FaChevronRight size={11} />
+            </button>
+          </div>
+        )}
+
+        {/* Doctor Identity & Hospital Affiliation Banner */}
+        {!isCollapsed ? (
+          <div style={{
+            padding: '0.9rem 1.15rem',
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.07)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.45rem' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: '#134E4A',
+                border: '2px solid #2DD4BF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                overflow: 'hidden',
+                flexShrink: 0
+              }}>
+                {doctorProfile?.image ? (
+                  <img
+                    src={doctorProfile.image}
+                    alt={doctorProfile.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  doctorInitials
+                )}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  fontSize: '0.88rem',
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {formattedDoctorName}
+                </div>
+                <div style={{
+                  fontSize: '0.72rem',
+                  color: '#2DD4BF',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}>
+                  <FaCircle size={5} style={{ color: '#10B981' }} />
+                  <span>{doctorProfile?.specialization_name || doctorProfile?.specialization || 'Specialist'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              fontSize: '0.72rem',
+              color: '#94A3B8',
+              backgroundColor: 'rgba(0, 0, 0, 0.25)',
+              padding: '0.35rem 0.55rem',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}>
+              <FaHospital size={10} style={{ color: '#2DD4BF', flexShrink: 0 }} />
+              <span style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                color: '#CBD5E1',
+                fontWeight: 600
+              }}>
+                {doctorProfile?.hospital_name || doctorProfile?.hospital || hospitalName || 'Medical Center'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            padding: '0.75rem 0',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <div
+              title={`${formattedDoctorName} - ${doctorProfile?.specialization_name || 'Specialist'}`}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                backgroundColor: '#134E4A',
+                border: '2px solid #2DD4BF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                fontWeight: 800,
+                fontSize: '0.9rem',
+                overflow: 'hidden',
+                cursor: 'pointer'
+              }}
+            >
               {doctorProfile?.image ? (
                 <img
                   src={doctorProfile.image}
@@ -212,79 +342,41 @@ export const DoctorLayout = () => {
                 doctorInitials
               )}
             </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{
-                fontSize: '0.92rem',
-                fontWeight: 800,
-                color: '#FFFFFF',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {formattedDoctorName}
-              </div>
-              <div style={{
-                fontSize: '0.74rem',
-                color: '#2DD4BF',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem'
-              }}>
-                <FaCircle size={6} style={{ color: '#10B981' }} />
-                <span>{doctorProfile?.specialization_name || doctorProfile?.specialization || 'Specialist'}</span>
-              </div>
-            </div>
           </div>
-
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#94A3B8',
-            backgroundColor: 'rgba(0, 0, 0, 0.25)',
-            padding: '0.4rem 0.65rem',
-            borderRadius: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.45rem'
-          }}>
-            <FaHospital size={11} style={{ color: '#2DD4BF', flexShrink: 0 }} />
-            <span style={{
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              color: '#CBD5E1',
-              fontWeight: 600
-            }}>
-              {doctorProfile?.hospital_name || doctorProfile?.hospital || hospitalName || 'Medical Center'}
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Grouped Clinical Navigation */}
-        <div style={{ flex: 1, padding: '1rem 0.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ flex: 1, padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 0.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: isCollapsed ? '0.75rem' : '1.15rem' }}>
           {clinicalNavGroups.map((group, gIdx) => (
             <div key={gIdx}>
-              <div style={{
-                fontSize: '0.66rem',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                color: '#64748B',
-                textTransform: 'uppercase',
-                padding: '0 0.75rem 0.4rem 0.75rem'
-              }}>
-                {group.groupTitle}
-              </div>
+              {!isCollapsed ? (
+                <div style={{
+                  fontSize: '0.64rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  color: '#64748B',
+                  textTransform: 'uppercase',
+                  padding: '0 0.75rem 0.35rem 0.75rem'
+                }}>
+                  {group.groupTitle}
+                </div>
+              ) : (
+                gIdx > 0 && <div style={{ height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)', margin: '0 0.5rem 0.5rem' }} />
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {group.items.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
                     end={item.end}
+                    title={isCollapsed ? item.label : undefined}
+                    className="portal-sidebar-nav-item"
                     style={({ isActive }) => ({
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: isCollapsed ? 'center' : 'flex-start',
                       gap: '0.75rem',
-                      padding: '0.65rem 0.85rem',
+                      padding: isCollapsed ? '0.7rem 0' : '0.6rem 0.85rem',
                       borderRadius: '8px',
                       fontSize: '0.86rem',
                       fontWeight: isActive ? 700 : 500,
@@ -295,10 +387,19 @@ export const DoctorLayout = () => {
                       transition: 'all 0.15s ease'
                     })}
                   >
-                    <span style={{ color: location.pathname === item.to || (item.end && location.pathname === item.to) ? '#2DD4BF' : '#64748B' }}>
+                    <span style={{
+                      color: location.pathname === item.to || (item.end && location.pathname === item.to) ? '#2DD4BF' : '#64748B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
                       {item.icon}
                     </span>
-                    <span>{item.label}</span>
+                    {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+
+                    {/* Floating Tooltip in Collapsed Mode */}
+                    <span className="portal-nav-tooltip">{item.label}</span>
                   </NavLink>
                 ))}
               </div>
@@ -308,16 +409,17 @@ export const DoctorLayout = () => {
 
         {/* Sidebar Footer with Sign Out */}
         <div style={{
-          padding: '1.25rem',
+          padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 1.15rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           backgroundColor: 'rgba(0, 0, 0, 0.25)'
         }}>
           <button
             type="button"
             onClick={handleLogout}
+            title={isCollapsed ? getLabel('portalNav.signOut', 'Sign Out') : undefined}
             style={{
               width: '100%',
-              padding: '0.65rem 1rem',
+              padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.85rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -326,14 +428,14 @@ export const DoctorLayout = () => {
               border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: '8px',
               color: '#FCA5A5',
-              fontSize: '0.84rem',
+              fontSize: '0.82rem',
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'background 0.15s ease'
             }}
           >
-            <FaSignOutAlt size={14} />
-            <span>{getLabel('portalNav.signOut', 'Sign Out')}</span>
+            <FaSignOutAlt size={13} />
+            {!isCollapsed && <span>{getLabel('portalNav.signOut', 'Sign Out')}</span>}
           </button>
         </div>
       </aside>

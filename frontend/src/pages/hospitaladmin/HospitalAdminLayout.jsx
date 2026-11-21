@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
 import { ecosystemService } from '../../services/ecosystemService';
+import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const HospitalAdminLayout = () => {
   const { user, logout } = useAuth();
@@ -29,7 +30,7 @@ export const HospitalAdminLayout = () => {
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleCollapse, sidebarWidth } = useSidebarCollapse();
   const [hospitalData, setHospitalData] = useState(null);
 
   useEffect(() => {
@@ -108,8 +109,6 @@ export const HospitalAdminLayout = () => {
   const hospitalDisplayName = hospitalData?.name || user?.hospital_name || (isTelugu ? 'ఆసుపత్రి పరిపాలన' : 'Hospital Administration');
   const hospitalCity = hospitalData?.city || '';
 
-  const sidebarWidth = isCollapsed ? 70 : 240;
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       {/* Mobile Backdrop */}
@@ -144,9 +143,9 @@ export const HospitalAdminLayout = () => {
           transition: 'width 0.22s ease, transform 0.25s ease',
           boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
           overflowY: 'auto',
-          overflowX: 'hidden'
+          overflowX: isCollapsed ? 'visible' : 'hidden'
         }}
-        className={`hospital-admin-sidebar ${isCollapsed ? 'is-collapsed' : ''}`}
+        className={`portal-desktop-sidebar hospital-admin-sidebar ${isCollapsed ? 'is-collapsed portal-sidebar-is-collapsed' : ''}`}
       >
         {/* Brand Header */}
         <div style={{
@@ -188,25 +187,53 @@ export const HospitalAdminLayout = () => {
             )}
           </Link>
 
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="md-hidden"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '6px',
-              display: 'flex'
-            }}
-            aria-label="Close navigation menu"
-          >
-            <FaTimes size={18} />
-          </button>
+          {!isCollapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                className="sidebar-edge-toggle-btn"
+                title="Collapse Sidebar"
+                aria-label="Collapse Sidebar"
+              >
+                <FaChevronLeft size={11} />
+              </button>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="md-hidden"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex'
+                }}
+                aria-label="Close navigation menu"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Collapsed Expand Trigger in Header */}
+        {isCollapsed && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              className="sidebar-edge-toggle-btn"
+              title="Expand Sidebar"
+              aria-label="Expand Sidebar"
+            >
+              <FaChevronRight size={11} />
+            </button>
+          </div>
+        )}
+
         {/* Dynamic Hospital Badge in Sidebar (Hidden when collapsed) */}
-        {!isCollapsed && (
+        {!isCollapsed ? (
           <div style={{
             margin: '0.85rem 1rem',
             padding: '0.75rem 0.85rem',
@@ -229,6 +256,24 @@ export const HospitalAdminLayout = () => {
               </span>
             )}
           </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.6rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div
+              title={hospitalDisplayName}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '8px',
+                background: 'rgba(30, 58, 138, 0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#38bdf8'
+              }}
+            >
+              <FaBuilding size={14} />
+            </div>
+          </div>
         )}
 
         {/* Navigation Links */}
@@ -239,7 +284,8 @@ export const HospitalAdminLayout = () => {
               to={item.to}
               end={item.end}
               onClick={() => setSidebarOpen(false)}
-              title={item.label}
+              title={isCollapsed ? item.label : undefined}
+              className="portal-sidebar-nav-item"
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
@@ -259,6 +305,9 @@ export const HospitalAdminLayout = () => {
             >
               <span style={{ fontSize: '1rem', display: 'flex', flexShrink: 0 }}>{item.icon}</span>
               {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
+
+              {/* Floating Tooltip in Collapsed Mode */}
+              <span className="portal-nav-tooltip">{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -267,7 +316,7 @@ export const HospitalAdminLayout = () => {
         <div className="desktop-collapse-control" style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           <button
             type="button"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={toggleCollapse}
             style={{
               width: '100%',
               display: 'flex',
@@ -284,7 +333,7 @@ export const HospitalAdminLayout = () => {
               fontWeight: 600,
               transition: 'all 0.15s ease'
             }}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={isCollapsed ? (isTelugu ? 'మెనూ విస్తరించు' : 'Expand Sidebar') : (isTelugu ? 'మెనూ కుదించు' : 'Collapse Sidebar')}
           >
             {isCollapsed ? <FaChevronRight size={13} /> : <FaChevronLeft size={13} />}
             {!isCollapsed && <span>{isTelugu ? 'మెనూ కుదించు' : 'Collapse Sidebar'}</span>}

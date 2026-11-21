@@ -13,7 +13,10 @@ import {
   FaHospital,
   FaCheckCircle,
   FaInfoCircle,
-  FaUserTie
+  FaUserTie,
+  FaArrowLeft,
+  FaEye,
+  FaEyeSlash
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -42,6 +45,8 @@ export const Register = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Doctor Specific Fields
   const [hospitalId, setHospitalId] = useState('');
@@ -394,13 +399,45 @@ export const Register = () => {
       padding: '2.5rem 1rem'
     }}>
       <div className="card" style={{
-        maxWidth: selectedRole === 'PATIENT' ? '540px' : '660px',
+        maxWidth: selectedRole === 'PATIENT' ? '520px' : '660px',
         width: '100%',
-        padding: 'clamp(1.75rem, 4.5vw, 2.75rem) clamp(1rem, 3.5vw, 2rem)',
+        padding: 'clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3.5vw, 2rem)',
         boxShadow: 'var(--shadow-xl)',
         border: '1px solid var(--slate-200)',
         transition: 'all 0.25s ease'
       }}>
+        {/* Prominent Back to Login Navigation & Step Indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
+        }}>
+          <button
+            type="button"
+            onClick={() => navigate('/login', { state: { suggestedRole: selectedRole } })}
+            className="register-back-btn"
+            style={{ margin: 0 }}
+            title={isTelugu ? 'లాగిన్‌కు తిరిగి వెళ్ళండి' : 'Back to Login'}
+            aria-label={isTelugu ? 'లాగిన్‌కు తిరిగి వెళ్ళండి' : 'Back to Login'}
+          >
+            <FaArrowLeft size={11} />
+            <span>{isTelugu ? 'లాగిన్‌కు తిరిగి వెళ్ళండి' : 'Back to Login'}</span>
+          </button>
+          <span style={{
+            fontSize: '0.74rem',
+            color: '#64748b',
+            fontWeight: 700,
+            backgroundColor: '#f1f5f9',
+            padding: '0.2rem 0.55rem',
+            borderRadius: '6px'
+          }}>
+            {selectedRole === 'PATIENT' ? (isTelugu ? 'రోగి ఖాతా నమోదు' : 'New Patient Account') : (isTelugu ? 'ప్రొఫెషనల్ దరఖాస్తు' : 'Professional Application')}
+          </span>
+        </div>
+
         {/* Role Selection Tabs */}
         <div style={{
           display: 'grid',
@@ -820,22 +857,45 @@ export const Register = () => {
                 </>
               )}
 
-              {/* Password & Confirm Password */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              {/* Password & Confirm Password with Show/Hide Eye Toggles & Validation */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.5rem' }}>
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>{t('register.password')} *</label>
                   <div style={{ position: 'relative' }}>
                     <FaLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder={t('register.passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       className="form-input"
-                      style={{ paddingLeft: '2.5rem' }}
+                      style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--slate-400)',
+                        cursor: 'pointer',
+                        padding: '6px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
+                    </button>
                   </div>
+                  <span style={{ fontSize: '0.74rem', color: password.length > 0 && password.length < 6 ? '#dc2626' : '#64748b', display: 'block', marginTop: '0.25rem' }}>
+                    {isTelugu ? 'కనీసం 6 అక్షరాలు ఉండాలి' : 'Must be at least 6 characters'}
+                  </span>
                 </div>
 
                 <div className="form-group">
@@ -843,15 +903,50 @@ export const Register = () => {
                   <div style={{ position: 'relative' }}>
                     <FaLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }} />
                     <input
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       placeholder={t('register.confirmPasswordPlaceholder')}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       className="form-input"
-                      style={{ paddingLeft: '2.5rem' }}
+                      style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--slate-400)',
+                        cursor: 'pointer',
+                        padding: '6px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
+                    </button>
                   </div>
+                  {confirmPassword && (
+                    <span style={{
+                      fontSize: '0.74rem',
+                      color: password === confirmPassword ? '#16a34a' : '#d97706',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      marginTop: '0.25rem',
+                      fontWeight: 600
+                    }}>
+                      {password === confirmPassword
+                        ? (isTelugu ? '✓ పాస్‌వర్డ్‌లు సరిపోలాయి' : '✓ Passwords match')
+                        : (isTelugu ? '⚠ పాస్‌వర్డ్‌లు సరిపోలడం లేదు' : '⚠ Passwords do not match')}
+                    </span>
+                  )}
                 </div>
               </div>
 

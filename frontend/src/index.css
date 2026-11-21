@@ -1332,3 +1332,134 @@ button, input, select, textarea {
     padding: 1rem !important;
   }
 }
+
+/* ==========================================================
+   COMMON SIDEBAR COLLAPSE / EXPAND SYSTEM (ALL SIX PORTALS)
+   Standardized 240px expanded <-> 70px collapsed icon-only mode
+   ========================================================== */
+.portal-desktop-sidebar {
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.portal-sidebar-is-collapsed {
+  width: 70px !important;
+  min-width: 70px !important;
+  overflow-x: visible !important;
+}
+
+.portal-sidebar-is-collapsed nav {
+  overflow-x: visible !important;
+}
+
+.portal-sidebar-nav-item {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: all 0.18s ease !important;
+}
+
+/* Floating Hover Tooltip for Collapsed Sidebar Items */
+.portal-sidebar-nav-item .portal-nav-tooltip {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 12px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 99999;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  line-height: 1.3;
+}
+
+.portal-sidebar-nav-item .portal-nav-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent #0f172a transparent transparent;
+}
+
+/* Trigger tooltip on hover when parent sidebar is collapsed */
+.portal-sidebar-is-collapsed .portal-sidebar-nav-item:hover .portal-nav-tooltip {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(-50%) translateX(2px) !important;
+}
+
+/* Sidebar Edge Collapse Toggle Button */
+.sidebar-edge-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-edge-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+/* Main Content Wrapper Transitions across all Portals */
+.portal-main-content-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 900px) {
+  .portal-main-content-wrap {
+    margin-left: 0 !important;
+  }
+}
+
+/* Registration Page Polish */
+.register-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  margin-bottom: 1.25rem;
+  text-decoration: none;
+}
+
+.register-back-btn:hover {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #7dd3fc;
+  transform: translateX(-2px);
+}
+

@@ -723,6 +723,7 @@ export const Login = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.45rem' }}>
             <button
               type="button"
+              data-demo-role="PATIENT"
               onClick={() => handleDemoFill('PATIENT')}
               style={{
                 display: 'flex',
@@ -747,6 +748,7 @@ export const Login = () => {
             </button>
             <button
               type="button"
+              data-demo-role="DOCTOR"
               onClick={() => handleDemoFill('DOCTOR')}
               style={{
                 display: 'flex',
@@ -771,6 +773,7 @@ export const Login = () => {
             </button>
             <button
               type="button"
+              data-demo-role="HOSPITAL_ADMIN"
               onClick={() => handleDemoFill('HOSPITAL_ADMIN')}
               style={{
                 display: 'flex',
@@ -795,6 +798,7 @@ export const Login = () => {
             </button>
             <button
               type="button"
+              data-demo-role="RECEPTIONIST"
               onClick={() => handleDemoFill('RECEPTIONIST')}
               style={{
                 display: 'flex',
@@ -819,6 +823,7 @@ export const Login = () => {
             </button>
             <button
               type="button"
+              data-demo-role="HOSPITAL_SUPER_ADMIN"
               onClick={() => handleDemoFill('HOSPITAL_SUPER_ADMIN')}
               style={{
                 display: 'flex',
@@ -843,6 +848,7 @@ export const Login = () => {
             </button>
             <button
               type="button"
+              data-demo-role="PLATFORM_OWNER"
               onClick={() => handleDemoFill('PLATFORM_OWNER')}
               style={{
                 display: 'flex',
