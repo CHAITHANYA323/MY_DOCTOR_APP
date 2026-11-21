@@ -31,8 +31,10 @@ BACKUP_DIR = BASE_DIR / "backups" / "mysql"
 
 # Canonical table processing order adhering to foreign key dependencies
 ORDERED_TABLES = [
-    "hospitals",
+    "schema_migrations",
+    "migration_managed_objects",
     "specializations",
+    "hospitals",
     "users",
     "doctors",
     "ambulances",
@@ -42,7 +44,9 @@ ORDERED_TABLES = [
     "favorites",
     "invitations",
     "prescriptions",
-    "audit_logs"
+    "audit_logs",
+    "superadmin_hospital_assignments",
+    "hospital_admin_assignments"
 ]
 
 
@@ -230,8 +234,8 @@ def list_backups():
     print("=" * 75 + "\n")
 
 
-def restore_backup(backup_path: Path, force_yes: bool = False):
-    """Safely restores a verified backup into the active MySQL database with explicit confirmation."""
+def restore_backup(backup_path: Path, force_yes: bool = False, target_uri: str = None):
+    """Safely restores a verified backup into the active or target MySQL database with explicit confirmation."""
     print(f"\n--- Pre-Restore Verification ---")
     info = verify_backup(backup_path)
     print(f"Backup file verified: {backup_path.name}")
@@ -239,7 +243,7 @@ def restore_backup(backup_path: Path, force_yes: bool = False):
     print(f"Total records:       {info['total_records']}")
     print(f"SHA-256:             {info['sha256']}")
 
-    db_uri = Config.get_database_uri()
+    db_uri = target_uri if target_uri else Config.get_database_uri()
     masked_url = get_safe_masked_url(db_uri)
     print(f"\nTarget Database:     {masked_url}")
 
@@ -266,15 +270,41 @@ def restore_backup(backup_path: Path, force_yes: bool = False):
 
     tables_data = snapshot.get("tables", {})
     engine = create_engine(db_uri)
+    inspector = inspect(engine)
+    existing_target_tables = set(inspector.get_table_names())
 
     print("\n--- Executing Safe Database Restore ---")
     with engine.begin() as conn:
         # 1. Temporarily disable foreign key checks for clean truncation and insertion
         conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
 
-        # 2. Truncate tables in reverse dependency order
+        # 1b. Ensure migration tracking tables exist if present in backup
+        if "schema_migrations" in tables_data:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS `schema_migrations` (
+                    `version` VARCHAR(100) PRIMARY KEY,
+                    `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            existing_target_tables.add("schema_migrations")
+
+        if "migration_managed_objects" in tables_data:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS `migration_managed_objects` (
+                    `migration_version` VARCHAR(64) NOT NULL,
+                    `object_type` VARCHAR(32) NOT NULL,
+                    `table_name` VARCHAR(64) NOT NULL,
+                    `object_name` VARCHAR(64) NOT NULL,
+                    `status` VARCHAR(32) NOT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`migration_version`, `object_type`, `table_name`, `object_name`)
+                );
+            """))
+            existing_target_tables.add("migration_managed_objects")
+
+        # 2. Truncate tables in reverse dependency order (only if table exists in target)
         for table_name in reversed(ORDERED_TABLES):
-            if table_name in tables_data:
+            if table_name in tables_data and table_name in existing_target_tables:
                 conn.execute(text(f"TRUNCATE TABLE `{table_name}`;"))
                 print(f"  [Truncated] Table '{table_name}' cleared.")
 
@@ -292,14 +322,41 @@ def restore_backup(backup_path: Path, force_yes: bool = False):
                 print(f"  [Restored]  Table '{table_name}': 0 records (empty table).")
                 continue
 
-            # Batch insert rows
-            col_list = ", ".join(f"`{col}`" for col in columns)
-            param_placeholders = ", ".join(f":{col}" for col in columns)
+            # Detect and exclude STORED GENERATED columns in MySQL (e.g., appointments.active_slot_key)
+            gen_cols = set()
+            try:
+                if engine.name == "mysql":
+                    g_res = conn.execute(text(
+                        f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                        f"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table_name}' AND EXTRA LIKE '%STORED GENERATED%'"
+                    ))
+                    gen_cols = {r[0] for r in g_res.fetchall()}
+            except Exception:
+                pass
+
+            # Defensive fallback for known generated columns
+            if table_name == "appointments":
+                gen_cols.add("active_slot_key")
+
+            insert_columns = [col for col in columns if col not in gen_cols]
+            insertable_rows = []
+            for r in rows:
+                insertable_rows.append({col: r.get(col) for col in insert_columns})
+
+            col_list = ", ".join(f"`{col}`" for col in insert_columns)
+            param_placeholders = ", ".join(f":{col}" for col in insert_columns)
             insert_stmt = text(f"INSERT INTO `{table_name}` ({col_list}) VALUES ({param_placeholders})")
 
-            conn.execute(insert_stmt, rows)
+            try:
+                conn.execute(insert_stmt, insertable_rows)
+            except Exception as ins_err:
+                raise RuntimeError(
+                    f"CRITICAL RESTORE FAILURE: Failed inserting records into table '{table_name}': {ins_err}"
+                ) from ins_err
+
             restored_total += len(rows)
-            print(f"  [Restored]  Table '{table_name}': {len(rows)} records restored.")
+            gen_notice = f" (excluded {len(gen_cols)} generated cols: {list(gen_cols)})" if gen_cols else ""
+            print(f"  [Restored]  Table '{table_name}': {len(rows)} records restored{gen_notice}.")
 
         # 4. Re-enable foreign key checks
         conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
@@ -309,6 +366,7 @@ def restore_backup(backup_path: Path, force_yes: bool = False):
     with engine.connect() as conn:
         actual_total = 0
         mismatch = False
+        mismatched_tables = []
         for table_name in ORDERED_TABLES:
             if table_name in tables_data:
                 expected_count = tables_data[table_name]["count"]
@@ -317,12 +375,14 @@ def restore_backup(backup_path: Path, force_yes: bool = False):
                 if current_count != expected_count:
                     print(f"  [MISMATCH] Table '{table_name}': expected {expected_count}, got {current_count}")
                     mismatch = True
+                    mismatched_tables.append((table_name, expected_count, current_count))
                 else:
                     print(f"  [OK] Table '{table_name}': {current_count} records verified.")
 
         if mismatch or actual_total != info["total_records"]:
             raise RuntimeError(
-                f"RESTORE PARITY ERROR: Restored {actual_total} records, but backup had {info['total_records']}."
+                f"RESTORE PARITY ERROR: Restored {actual_total} records, but backup had {info['total_records']}. "
+                f"Mismatches: {mismatched_tables}"
             )
 
     print(f"\n[SUCCESS] Restoration completed flawlessly!")
@@ -349,6 +409,7 @@ def main():
     restore_parser = subparsers.add_parser("restore", help="Restore active MySQL database from backup")
     restore_parser.add_argument("--file", required=True, help="Backup filename or path to restore from")
     restore_parser.add_argument("--yes", action="store_true", help="Bypass interactive confirmation prompt")
+    restore_parser.add_argument("--target-uri", default=None, help="Optional target database URI to restore into")
 
     args = parser.parse_args()
 
@@ -370,7 +431,7 @@ def main():
         target = Path(args.file)
         if not target.is_absolute() and not target.exists():
             target = BACKUP_DIR / args.file
-        restore_backup(target, force_yes=args.yes)
+        restore_backup(target, force_yes=args.yes, target_uri=args.target_uri)
 
 
 if __name__ == "__main__":

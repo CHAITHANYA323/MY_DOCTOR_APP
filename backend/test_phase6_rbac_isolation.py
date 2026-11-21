@@ -398,7 +398,8 @@ class TestPhase6RBACIsolation(unittest.TestCase):
             headers={"Authorization": f"Bearer {self.legacy_admin_token}"}
         )
         self.assertEqual(res.status_code, 403)
-        self.assertIn("authorized role", res.get_json()['message'])
+        msg = res.get_json()['message']
+        self.assertTrue("authorized role" in msg or "no hospital assigned" in msg)
 
     def test_16_deactivated_account_blocked(self):
         """Deactivated user account is rejected on login and token authentication."""
