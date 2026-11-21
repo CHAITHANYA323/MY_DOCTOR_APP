@@ -548,8 +548,8 @@ export const Welcome = () => {
             <Link to="/contact" style={{ color: '#cbd5e1', textDecoration: 'none' }}>
               {isTelugu ? 'సంప్రదించండి' : 'Contact'}
             </Link>
-            <Link to="/ambulance" style={{ color: '#f87171', textDecoration: 'none', fontWeight: 600 }}>
-              {isTelugu ? 'అంబులెన్స్ (108)' : 'Ambulance (108)'}
+            <Link to="/ambulance" style={{ color: '#f87171', textDecoration: 'none', fontWeight: 600 }} title="24/7 Emergency Medical Response - Call 108" aria-label="Ambulance 108">
+              {isTelugu ? 'అంబులెన్స్ 108' : 'Ambulance 108'}
             </Link>
           </div>
         </div>

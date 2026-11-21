@@ -29,7 +29,7 @@ import {
  */
 export const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, isTelugu } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef(null);
@@ -225,10 +225,15 @@ export const Navbar = () => {
               <NavLink 
                 to="/ambulance" 
                 className="navbar-emergency-badge"
-                title="24/7 Emergency Medical Response"
+                title="24/7 Emergency Medical Response - Call 108"
+                aria-label="24/7 Emergency Medical Response - Call 108"
               >
-                <FaAmbulance size={12} aria-hidden="true" />
-                <span>{t('nav.ambulance')} (108)</span>
+                <span className="ambulance-beacon-indicator" aria-hidden="true">
+                  <span className="ambulance-beacon-dot" />
+                  <span className="ambulance-beacon-ring" />
+                </span>
+                <FaAmbulance size={13} aria-hidden="true" />
+                <span>{isTelugu ? 'అంబులెన్స్ 108' : 'Ambulance 108'}</span>
               </NavLink>
             </>
           )}
@@ -375,8 +380,18 @@ export const Navbar = () => {
               <NavLink to="/contact" onClick={closeMobile} className="navbar-mobile-link">
                 <FaEnvelope color="var(--slate-500)" aria-hidden="true" /> {t('nav.contact')}
               </NavLink>
-              <NavLink to="/ambulance" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--emergency)' }}>
-                <FaAmbulance color="var(--emergency)" aria-hidden="true" /> {t('nav.ambulance')}
+              <NavLink 
+                to="/ambulance" 
+                onClick={closeMobile} 
+                className="navbar-mobile-link" 
+                style={{ color: '#dc2626', fontWeight: 700, backgroundColor: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}
+                title="24/7 Emergency Medical Response - Call 108"
+                aria-label="24/7 Emergency Medical Response - Call 108"
+              >
+                <span className="ambulance-beacon-indicator" aria-hidden="true" style={{ marginRight: '4px' }}>
+                  <span className="ambulance-beacon-dot" style={{ backgroundColor: '#dc2626', boxShadow: '0 0 6px #ef4444' }} />
+                </span>
+                <FaAmbulance color="#dc2626" aria-hidden="true" /> {isTelugu ? 'అంబులెన్స్ 108' : 'Ambulance 108'}
               </NavLink>
               <NavLink to="/profile" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--primary-dark)' }}>
                 <FaUser color="var(--primary)" aria-hidden="true" /> {t('nav.myProfile')} ({user?.name})
@@ -418,8 +433,18 @@ export const Navbar = () => {
               <NavLink to="/contact" onClick={closeMobile} className="navbar-mobile-link">
                 <FaEnvelope color="var(--slate-500)" aria-hidden="true" /> {t('nav.contact')}
               </NavLink>
-              <NavLink to="/ambulance" onClick={closeMobile} className="navbar-mobile-link" style={{ color: 'var(--emergency)' }}>
-                <FaAmbulance color="var(--emergency)" aria-hidden="true" /> {t('nav.ambulance')}
+              <NavLink 
+                to="/ambulance" 
+                onClick={closeMobile} 
+                className="navbar-mobile-link" 
+                style={{ color: '#dc2626', fontWeight: 700, backgroundColor: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}
+                title="24/7 Emergency Medical Response - Call 108"
+                aria-label="24/7 Emergency Medical Response - Call 108"
+              >
+                <span className="ambulance-beacon-indicator" aria-hidden="true" style={{ marginRight: '4px' }}>
+                  <span className="ambulance-beacon-dot" style={{ backgroundColor: '#dc2626', boxShadow: '0 0 6px #ef4444' }} />
+                </span>
+                <FaAmbulance color="#dc2626" aria-hidden="true" /> {isTelugu ? 'అంబులెన్స్ 108' : 'Ambulance 108'}
               </NavLink>
 
               <div style={{ borderTop: '1px solid var(--slate-200)', paddingTop: '1rem', marginTop: '0.5rem' }}>

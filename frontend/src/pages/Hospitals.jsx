@@ -53,7 +53,7 @@ export const Hospitals = () => {
   };
 
   return (
-    <div style={{ padding: '2.5rem 0 4rem' }}>
+    <div className="directory-page-container" style={{ padding: '2.5rem 0 4rem', backgroundColor: 'var(--bg-main)', minHeight: '88vh' }}>
       <div className="container">
         {/* Page Header */}
         <div style={{ marginBottom: '2rem' }}>

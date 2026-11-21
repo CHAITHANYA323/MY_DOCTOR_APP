@@ -73,7 +73,8 @@ export const Footer = () => {
               href="tel:108" 
               className="footer-link" 
               style={{ color: '#f87171', fontWeight: 700 }}
-              aria-label="Dial 108 Free Emergency Ambulance Hotline"
+              title="24/7 Emergency Medical Response - Call 108"
+              aria-label="Call Ambulance 108 Free Emergency Hotline"
             >
               <FaPhoneAlt size={11} aria-hidden="true" /> {t('footer.hotlineDial108')}
             </a>

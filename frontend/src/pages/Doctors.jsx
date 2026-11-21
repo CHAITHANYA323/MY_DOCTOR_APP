@@ -146,12 +146,18 @@ export const Doctors = () => {
         limit: 9
       };
 
-      // Sync with browser URL
+      // Sync with browser URL safely without redundant pushes if already matching
       const newParams = new URLSearchParams();
       Object.entries(params).forEach(([k, v]) => {
-        if (v) newParams.set(k, v);
+        if (v && !(k === 'page' && Number(v) === 1) && !(k === 'limit' && Number(v) === 9) && !(k === 'sort_by' && v === 'rating_desc')) {
+          newParams.set(k, v);
+        }
       });
-      setSearchParams(newParams, { replace: true });
+      const newQuery = newParams.toString();
+      const currentQuery = window.location.search.replace(/^\?/, '');
+      if (newQuery !== currentQuery && (newQuery.length > 0 || currentQuery.length > 0)) {
+        setSearchParams(newParams, { replace: true });
+      }
 
       const res = await doctorService.getDoctors(params);
       if (res.success) {

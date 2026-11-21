@@ -43,7 +43,7 @@ export const Specializations = () => {
   });
 
   return (
-    <div style={{ padding: '2.5rem 0 4rem', backgroundColor: 'var(--bg-main)' }}>
+    <div className="directory-page-container" style={{ padding: '2.5rem 0 4rem', backgroundColor: 'var(--bg-main)', minHeight: '88vh' }}>
       <div className="container">
         {/* Page Header */}
         <div style={{ marginBottom: '2rem', textAlign: 'center', maxWidth: '750px', margin: '0 auto 2.5rem' }}>

@@ -206,7 +206,7 @@ export const PatientEmergency = () => {
         >
           <FaPhoneAlt size={18} />
           <div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 900, lineHeight: 1 }}>DIAL 108</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 900, lineHeight: 1 }}>AMBULANCE 108</div>
             <div style={{ fontSize: '0.7rem', color: '#991B1B', fontWeight: 700 }}>Free Emergency Helpline</div>
           </div>
         </a>

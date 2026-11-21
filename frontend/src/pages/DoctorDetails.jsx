@@ -1359,15 +1359,17 @@ export const DoctorDetails = () => {
                   Medical Emergency?
                 </strong>
                 <span style={{ fontSize: '0.8rem', color: '#7f1d1d' }}>
-                  Call 108 ambulance or visit emergency OPD immediately.
+                  Call Ambulance 108 or visit emergency OPD immediately.
                 </span>
               </div>
               <a 
                 href="tel:108" 
                 className="btn btn-danger btn-sm"
                 style={{ flexShrink: 0 }}
+                title="24/7 Emergency Medical Response - Call 108"
+                aria-label="Call Ambulance 108"
               >
-                108
+                Ambulance 108
               </a>
             </div>
           </div>

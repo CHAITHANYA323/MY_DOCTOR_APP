@@ -524,7 +524,7 @@ export const PatientLayout = () => {
               className="hidden sm:flex"
             >
               <FaPhoneAlt size={10} />
-              <span>108 Emergency</span>
+              <span>Ambulance 108</span>
             </Link>
 
             {/* Language Switcher */}

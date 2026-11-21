@@ -120,8 +120,13 @@ export const Contact = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <a href="tel:108" className="btn btn-emergency btn-sm">
-              <FaPhoneAlt /> Call 108
+            <a 
+              href="tel:108" 
+              className="btn btn-emergency btn-sm"
+              title="24/7 Emergency Medical Response - Call 108"
+              aria-label="Call Ambulance 108"
+            >
+              <FaPhoneAlt /> Ambulance 108
             </a>
             <Link to="/emergency" className="btn btn-secondary btn-sm">
               Ambulance Portal

@@ -26,7 +26,7 @@ import { NotFound } from './pages/NotFound';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// Hospital Reception / Admin Portal Pages
+// Hospital Reception / Staff Portal Pages
 const ReceptionLayout = React.lazy(() => import('./pages/admin/ReceptionLayout').then(m => ({ default: m.ReceptionLayout })));
 const ReceptionDashboard = React.lazy(() => import('./pages/admin/ReceptionDashboard').then(m => ({ default: m.ReceptionDashboard })));
 const PatientCheckIn = React.lazy(() => import('./pages/admin/PatientCheckIn').then(m => ({ default: m.PatientCheckIn })));
@@ -35,17 +35,30 @@ const RegisterPatient = React.lazy(() => import('./pages/admin/RegisterPatient')
 const PatientSearch = React.lazy(() => import('./pages/admin/PatientSearch').then(m => ({ default: m.PatientSearch })));
 const DoctorForm = React.lazy(() => import('./pages/admin/DoctorForm').then(m => ({ default: m.DoctorForm })));
 
+// Dedicated Hospital Administrator Portal Pages
+const HospitalAdminLayout = React.lazy(() => import('./pages/hospitaladmin/HospitalAdminLayout').then(m => ({ default: m.HospitalAdminLayout })));
+const HospitalAdminDashboard = React.lazy(() => import('./pages/hospitaladmin/HospitalAdminDashboard').then(m => ({ default: m.HospitalAdminDashboard })));
+const HospitalProfileManagement = React.lazy(() => import('./pages/hospitaladmin/HospitalProfileManagement').then(m => ({ default: m.HospitalProfileManagement })));
+const HospitalDoctorsManagement = React.lazy(() => import('./pages/hospitaladmin/HospitalDoctorsManagement').then(m => ({ default: m.HospitalDoctorsManagement })));
+const HospitalReceptionistManagement = React.lazy(() => import('./pages/hospitaladmin/HospitalReceptionistManagement').then(m => ({ default: m.HospitalReceptionistManagement })));
+const HospitalAppointmentsManagement = React.lazy(() => import('./pages/hospitaladmin/HospitalAppointmentsManagement').then(m => ({ default: m.HospitalAppointmentsManagement })));
+const HospitalReports = React.lazy(() => import('./pages/hospitaladmin/HospitalReports').then(m => ({ default: m.HospitalReports })));
+const HospitalAdminProfile = React.lazy(() => import('./pages/hospitaladmin/HospitalAdminProfile').then(m => ({ default: m.HospitalAdminProfile })));
+
 // Platform Owner Portal Pages
 const OwnerLayout = React.lazy(() => import('./pages/owner/OwnerLayout').then(m => ({ default: m.OwnerLayout })));
 const OwnerDashboard = React.lazy(() => import('./pages/owner/OwnerDashboard').then(m => ({ default: m.OwnerDashboard })));
 const ManagePlatformHospitals = React.lazy(() => import('./pages/owner/ManagePlatformHospitals').then(m => ({ default: m.ManagePlatformHospitals })));
 const ManagePlatformInvitations = React.lazy(() => import('./pages/owner/ManagePlatformInvitations').then(m => ({ default: m.ManagePlatformInvitations })));
 const PlatformAuditLogs = React.lazy(() => import('./pages/owner/PlatformAuditLogs').then(m => ({ default: m.PlatformAuditLogs })));
+const ManageSuperadmins = React.lazy(() => import('./pages/owner/ManageSuperadmins').then(m => ({ default: m.ManageSuperadmins })));
+const ManagePlatformHospitalAdmins = React.lazy(() => import('./pages/owner/ManagePlatformHospitalAdmins').then(m => ({ default: m.ManagePlatformHospitalAdmins })));
 
 // Hospital Super Admin Portal Pages
 const SuperAdminLayout = React.lazy(() => import('./pages/superadmin/SuperAdminLayout').then(m => ({ default: m.SuperAdminLayout })));
 const SuperAdminDashboard = React.lazy(() => import('./pages/superadmin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
 const ManageHospitalStaff = React.lazy(() => import('./pages/superadmin/ManageHospitalStaff').then(m => ({ default: m.ManageHospitalStaff })));
+const ManageHospitalAdmins = React.lazy(() => import('./pages/superadmin/ManageHospitalAdmins').then(m => ({ default: m.ManageHospitalAdmins })));
 const HospitalDoctors = React.lazy(() => import('./pages/superadmin/HospitalDoctors').then(m => ({ default: m.HospitalDoctors })));
 const HospitalDepartments = React.lazy(() => import('./pages/superadmin/HospitalDepartments').then(m => ({ default: m.HospitalDepartments })));
 const SuperAdminAppointments = React.lazy(() => import('./pages/superadmin/SuperAdminAppointments').then(m => ({ default: m.SuperAdminAppointments })));
@@ -97,10 +110,13 @@ const PortalLoadingFallback = () => (
 export const App = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') ||
+                       location.pathname.startsWith('/hospital-admin') ||
                        location.pathname.startsWith('/superadmin') ||
                        location.pathname.startsWith('/owner') ||
-                       location.pathname.startsWith('/doctor') ||
-                       location.pathname.startsWith('/patient');
+                       location.pathname.startsWith('/doctor/') ||
+                       location.pathname === '/doctor' ||
+                       location.pathname.startsWith('/patient/') ||
+                       location.pathname === '/patient';
   const isWelcomeRoute = location.pathname === '/' || location.pathname === '/welcome';
 
   return (
@@ -127,23 +143,9 @@ export const App = () => {
           <Route path="/ambulance" element={<Ambulance />} />
           <Route path="/emergency" element={<Emergency />} />
 
-          {/* Protected Specialist & Healthcare Directory Routes */}
-          <Route
-            path="/doctors"
-            element={
-              <ProtectedRoute>
-                <Doctors />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/doctors/:id"
-            element={
-              <ProtectedRoute>
-                <DoctorDetails />
-              </ProtectedRoute>
-            }
-          />
+          {/* Public Specialist & Healthcare Directory Routes */}
+          <Route path="/doctors" element={<Doctors />} />
+          <Route path="/doctors/:id" element={<DoctorDetails />} />
           <Route
             path="/appointments/book/:doctorId"
             element={
@@ -152,38 +154,10 @@ export const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/hospitals"
-            element={
-              <ProtectedRoute>
-                <Hospitals />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/hospitals/:id"
-            element={
-              <ProtectedRoute>
-                <HospitalDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/specializations"
-            element={
-              <ProtectedRoute>
-                <Specializations />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/specializations/:name"
-            element={
-              <ProtectedRoute>
-                <SpecializationDoctors />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/hospitals" element={<Hospitals />} />
+          <Route path="/hospitals/:id" element={<HospitalDetails />} />
+          <Route path="/specializations" element={<Specializations />} />
+          <Route path="/specializations/:name" element={<SpecializationDoctors />} />
 
           {/* Standalone Add/Edit Doctor (Admin Only) */}
           <Route
@@ -238,6 +212,8 @@ export const App = () => {
             }
           >
             <Route index element={<OwnerDashboard />} />
+            <Route path="superadmins" element={<ManageSuperadmins />} />
+            <Route path="hospital-admins" element={<ManagePlatformHospitalAdmins />} />
             <Route path="hospitals" element={<ManagePlatformHospitals />} />
             <Route path="invitations" element={<ManagePlatformInvitations />} />
             <Route path="audit-logs" element={<PlatformAuditLogs />} />
@@ -253,6 +229,7 @@ export const App = () => {
             }
           >
             <Route index element={<SuperAdminDashboard />} />
+            <Route path="hospital-admins" element={<ManageHospitalAdmins />} />
             <Route path="staff" element={<ManageHospitalStaff />} />
             <Route path="doctors" element={<HospitalDoctors />} />
             <Route path="departments" element={<HospitalDepartments />} />
@@ -262,7 +239,25 @@ export const App = () => {
             <Route path="settings" element={<HospitalSettings />} />
           </Route>
 
-          {/* Hospital Admin / Reception Protected Routes */}
+          {/* Dedicated Hospital Admin Protected Routes */}
+          <Route
+            path="/hospital-admin"
+            element={
+              <RoleRoute allowedRoles={['ADMIN', 'HOSPITAL_ADMIN']} requireHospital={true}>
+                <HospitalAdminLayout />
+              </RoleRoute>
+            }
+          >
+            <Route index element={<HospitalAdminDashboard />} />
+            <Route path="hospital" element={<HospitalProfileManagement />} />
+            <Route path="doctors" element={<HospitalDoctorsManagement />} />
+            <Route path="receptionists" element={<HospitalReceptionistManagement />} />
+            <Route path="appointments" element={<HospitalAppointmentsManagement />} />
+            <Route path="reports" element={<HospitalReports />} />
+            <Route path="profile" element={<HospitalAdminProfile />} />
+          </Route>
+
+          {/* Hospital Reception / Staff Protected Routes */}
           <Route
             path="/admin"
             element={

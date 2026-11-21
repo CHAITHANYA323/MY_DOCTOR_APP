@@ -64,12 +64,12 @@ export const Home = () => {
     },
     {
       icon: <FaAmbulance size={26} color="var(--emergency)" aria-hidden="true" />,
-      badge: '24/7 Hotline 108',
+      badge: '24/7 Ambulance 108',
       badgeVariant: 'danger',
       title: 'Emergency Ambulance Network',
       description: 'Rapid GPS-tracked emergency ambulance dispatch. Immediate coordination with regional trauma centers for critical patient transport.',
       linkTo: '/ambulance',
-      linkText: 'Request Ambulance (108)'
+      linkText: 'Request Ambulance 108'
     }
   ];
 
@@ -131,7 +131,7 @@ export const Home = () => {
             margin: '0 auto 2.25rem',
             lineHeight: 1.6
           }}>
-            Find certified doctors, book priority clinic appointments, explore accredited hospitals, and request 24/7 emergency 108 ambulance dispatch in seconds.
+            Find certified doctors, book priority clinic appointments, explore accredited hospitals, and access 24/7 Ambulance 108 emergency support in seconds.
           </p>
 
           {/* Search Form */}
@@ -240,7 +240,7 @@ export const Home = () => {
               </div>
               <div>
                 <span style={{ display: 'block', fontWeight: 800, color: 'var(--slate-900)', fontSize: '0.95rem' }}>
-                  Medical Emergency? Call 108 Immediate Response
+                  Medical Emergency? Call Ambulance 108 Immediate Response
                 </span>
                 <span style={{ color: 'var(--slate-500)', fontSize: '0.82rem' }}>
                   24/7 dedicated dispatch network with real-time GPS fleet routing.
@@ -251,6 +251,8 @@ export const Home = () => {
               <a 
                 href="tel:108"
                 className="btn btn-emergency btn-sm"
+                title="24/7 Emergency Medical Response - Call 108"
+                aria-label="Call Ambulance 108"
                 style={{
                   backgroundColor: 'var(--emergency)',
                   color: 'var(--white)',
@@ -263,7 +265,7 @@ export const Home = () => {
                   borderRadius: 'var(--radius-md)'
                 }}
               >
-                <FaPhoneAlt size={11} aria-hidden="true" /> Dial 108 Free
+                <FaPhoneAlt size={11} aria-hidden="true" /> Call Ambulance 108 (Free)
               </a>
               <Link 
                 to="/ambulance"
@@ -429,7 +431,7 @@ export const Home = () => {
           </div>
           <div>
             <span style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--emergency)', display: 'block', lineHeight: 1 }}>24/7</span>
-            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--slate-600)', marginTop: '0.4rem', display: 'block' }}>Hotline 108 Dispatch</span>
+            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--slate-600)', marginTop: '0.4rem', display: 'block' }}>Ambulance 108 Support</span>
           </div>
         </div>
       </section>
