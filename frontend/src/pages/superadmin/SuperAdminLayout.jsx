@@ -328,7 +328,7 @@ export const SuperAdminLayout = () => {
         )}
 
         {/* Navigation Items */}
-        <nav style={{ flex: 1, padding: isCollapsed ? '0.75rem 0.4rem' : '0.75rem 0.65rem', overflowY: 'auto' }}>
+        <nav style={{ flex: 1, padding: isCollapsed ? '0.75rem 0.4rem' : '0.75rem 0.65rem', overflowY: 'auto', overflowX: isCollapsed ? 'visible' : 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             {navItems.map((item) => (
               <NavLink
@@ -356,7 +356,7 @@ export const SuperAdminLayout = () => {
                 <span style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {item.icon}
                 </span>
-                {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+                {!isCollapsed && <span className="portal-nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
 
                 {/* Floating Tooltip in Collapsed Mode */}
                 <span className="portal-nav-tooltip">{item.label}</span>
@@ -369,7 +369,7 @@ export const SuperAdminLayout = () => {
         <div style={{
           padding: isCollapsed ? '0.75rem 0.4rem' : '1.15rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          backgroundColor: '#07161e'
+          backgroundColor: 'transparent'
         }}>
           {!isCollapsed ? (
             <>

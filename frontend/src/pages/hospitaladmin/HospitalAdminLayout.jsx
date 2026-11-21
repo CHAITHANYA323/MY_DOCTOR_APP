@@ -277,7 +277,7 @@ export const HospitalAdminLayout = () => {
         )}
 
         {/* Navigation Links */}
-        <nav style={{ padding: isCollapsed ? '0.5rem 0.35rem' : '0.5rem 0.75rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        <nav style={{ padding: isCollapsed ? '0.5rem 0.35rem' : '0.5rem 0.65rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem', overflowY: 'auto', overflowX: isCollapsed ? 'visible' : 'hidden' }}>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -304,7 +304,7 @@ export const HospitalAdminLayout = () => {
               })}
             >
               <span style={{ fontSize: '1rem', display: 'flex', flexShrink: 0 }}>{item.icon}</span>
-              {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
+              {!isCollapsed && <span className="portal-nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
 
               {/* Floating Tooltip in Collapsed Mode */}
               <span className="portal-nav-tooltip">{item.label}</span>
@@ -312,39 +312,11 @@ export const HospitalAdminLayout = () => {
           ))}
         </nav>
 
-        {/* Desktop Collapse/Expand Toggle Button at Sidebar Bottom */}
-        <div className="desktop-collapse-control" style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          <button
-            type="button"
-            onClick={toggleCollapse}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
-              gap: '0.6rem',
-              padding: '0.55rem',
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              transition: 'all 0.15s ease'
-            }}
-            title={isCollapsed ? (isTelugu ? 'మెనూ విస్తరించు' : 'Expand Sidebar') : (isTelugu ? 'మెనూ కుదించు' : 'Collapse Sidebar')}
-          >
-            {isCollapsed ? <FaChevronRight size={13} /> : <FaChevronLeft size={13} />}
-            {!isCollapsed && <span>{isTelugu ? 'మెనూ కుదించు' : 'Collapse Sidebar'}</span>}
-          </button>
-        </div>
-
         {/* Footer / User Profile & Logout */}
         <div style={{
-          padding: isCollapsed ? '0.75rem 0.35rem' : '1rem',
+          padding: isCollapsed ? '0.75rem 0.35rem' : '0.9rem 1rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: 'rgba(15, 23, 42, 0.85)'
+          backgroundColor: 'transparent'
         }}>
           {!isCollapsed ? (
             <>

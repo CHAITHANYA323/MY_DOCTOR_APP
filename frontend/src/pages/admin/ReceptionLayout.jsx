@@ -200,7 +200,7 @@ export const ReceptionLayout = () => {
         )}
 
         {/* Navigation Links */}
-        <nav style={{ padding: isCollapsed ? '0.75rem 0.4rem' : '0.75rem 0.75rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem', overflowY: 'auto' }}>
+        <nav style={{ padding: isCollapsed ? '0.75rem 0.4rem' : '0.75rem 0.65rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem', overflowY: 'auto', overflowX: isCollapsed ? 'visible' : 'hidden' }}>
           {!isCollapsed && (
             <div style={{ fontSize: '0.64rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', padding: '0.35rem 0.65rem 0.2rem', letterSpacing: '0.05em' }}>
               {t('receptionPortal.dailyOperations') || (isTelugu ? 'రోజువారీ కార్యకలాపాలు' : 'Daily Operations')}
@@ -231,7 +231,7 @@ export const ReceptionLayout = () => {
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {item.icon}
               </span>
-              {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+              {!isCollapsed && <span className="portal-nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
 
               {/* Floating Tooltip in Collapsed Mode */}
               <span className="portal-nav-tooltip">{item.label}</span>
@@ -243,7 +243,7 @@ export const ReceptionLayout = () => {
         <div style={{
           padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 1.15rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(0, 0, 0, 0.15)'
+          background: 'transparent'
         }}>
           {!isCollapsed ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

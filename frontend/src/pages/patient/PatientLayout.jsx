@@ -333,7 +333,8 @@ export const PatientLayout = () => {
           display: 'flex',
           flexDirection: 'column',
           gap: '0.3rem',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          overflowX: isCollapsed ? 'visible' : 'hidden'
         }}>
           {navItems.map((item) => (
             <NavLink
@@ -358,7 +359,7 @@ export const PatientLayout = () => {
                 transition: 'all 0.18s ease'
               })}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: isCollapsed ? 'center' : 'flex-start', width: isCollapsed ? '100%' : 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: isCollapsed ? 'center' : 'flex-start', width: isCollapsed ? '100%' : 'auto', minWidth: 0, flex: 1 }}>
                 <span style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -368,7 +369,7 @@ export const PatientLayout = () => {
                 }}>
                   {item.icon}
                 </span>
-                {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+                {!isCollapsed && <span className="portal-nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
               </div>
 
               {!isCollapsed && item.badge && (
@@ -395,7 +396,7 @@ export const PatientLayout = () => {
         <div style={{
           padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 1.15rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: 'rgba(10, 25, 41, 0.7)'
+          backgroundColor: 'transparent'
         }}>
           <button
             type="button"

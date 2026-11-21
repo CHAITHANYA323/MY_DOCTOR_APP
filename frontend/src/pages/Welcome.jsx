@@ -468,7 +468,7 @@ export const Welcome = () => {
 
       {/* 4. VERIFIED HEALTHCARE ACCREDITATIONS (EXISTING FUNCTIONALITY ONLY) */}
       <section style={{
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f8fafc',
         borderTop: '1px solid #e2e8f0',
         borderBottom: '1px solid #e2e8f0',
         padding: '3.5rem 1.25rem'

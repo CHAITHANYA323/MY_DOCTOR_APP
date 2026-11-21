@@ -436,7 +436,7 @@ export const Home = () => {
 
       {/* 5. BOTTOM HEALTHCARE ACTION CARD */}
       <section style={{
-        backgroundColor: '#ffffff',
+        backgroundColor: 'transparent',
         borderTop: '1px solid var(--slate-200)',
         padding: '3.5rem 1rem',
         textAlign: 'center'

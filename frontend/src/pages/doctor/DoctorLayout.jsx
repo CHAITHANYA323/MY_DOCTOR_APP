@@ -346,7 +346,7 @@ export const DoctorLayout = () => {
         )}
 
         {/* Grouped Clinical Navigation */}
-        <div style={{ flex: 1, padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 0.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: isCollapsed ? '0.75rem' : '1.15rem' }}>
+        <div style={{ flex: 1, padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 0.75rem', overflowY: 'auto', overflowX: isCollapsed ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column', gap: isCollapsed ? '0.75rem' : '1.15rem' }}>
           {clinicalNavGroups.map((group, gIdx) => (
             <div key={gIdx}>
               {!isCollapsed ? (
@@ -396,7 +396,7 @@ export const DoctorLayout = () => {
                     }}>
                       {item.icon}
                     </span>
-                    {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+                    {!isCollapsed && <span className="portal-nav-label" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
 
                     {/* Floating Tooltip in Collapsed Mode */}
                     <span className="portal-nav-tooltip">{item.label}</span>
@@ -411,7 +411,7 @@ export const DoctorLayout = () => {
         <div style={{
           padding: isCollapsed ? '0.75rem 0.4rem' : '0.85rem 1.15rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: 'rgba(0, 0, 0, 0.25)'
+          backgroundColor: 'transparent'
         }}>
           <button
             type="button"
