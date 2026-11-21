@@ -135,8 +135,8 @@ export const OwnerLayout = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            zIndex: 40,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            zIndex: 998,
             backdropFilter: 'blur(2px)'
           }}
         />
@@ -154,14 +154,14 @@ export const OwnerLayout = () => {
           top: 0,
           bottom: 0,
           left: 0,
-          zIndex: 50,
+          zIndex: 999,
           transform: sidebarOpen ? 'translateX(0)' : undefined,
-          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'width 0.22s ease, transform 0.25s ease',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
           overflowY: 'auto',
           overflowX: isCollapsed ? 'visible' : 'hidden'
         }}
-        className={`portal-desktop-sidebar admin-sidebar ${isCollapsed ? 'portal-sidebar-is-collapsed' : ''}`}
+        className={`portal-desktop-sidebar owner-sidebar ${isCollapsed ? 'portal-sidebar-is-collapsed' : ''}`}
       >
         {/* Brand Header */}
         <div style={{
@@ -219,7 +219,7 @@ export const OwnerLayout = () => {
                   cursor: 'pointer',
                   padding: '0.35rem'
                 }}
-                className="mobile-close-btn"
+                className="mobile-close-btn owner-mobile-close-btn"
                 aria-label="Close navigation sidebar"
               >
                 <FaTimes size={18} />
@@ -469,7 +469,7 @@ export const OwnerLayout = () => {
           marginLeft: sidebarWidth,
           transition: 'margin-left 0.22s ease'
         }}
-        className="portal-main-content-wrap admin-main-wrap"
+        className="portal-main-content-wrap owner-main-wrap"
       >
         {/* Top Header */}
         <header style={{
@@ -497,7 +497,7 @@ export const OwnerLayout = () => {
                 display: 'flex',
                 alignItems: 'center'
               }}
-              className="mobile-menu-trigger"
+              className="mobile-menu-trigger owner-mobile-trigger"
               aria-label="Open navigation menu"
             >
               <FaBars />
@@ -569,8 +569,20 @@ export const OwnerLayout = () => {
       />
 
       <style>{`
-        @media (min-width: 1024px) {
-          .admin-sidebar {
+        @media (max-width: 900px) {
+          .owner-sidebar {
+            transform: translateX(-100%);
+            width: 240px !important;
+          }
+          .owner-main-wrap {
+            margin-left: 0 !important;
+          }
+          .mobile-menu-trigger, .mobile-close-btn {
+            display: flex !important;
+          }
+        }
+        @media (min-width: 901px) {
+          .owner-sidebar {
             transform: translateX(0) !important;
           }
           .mobile-close-btn, .mobile-menu-trigger {
@@ -578,11 +590,6 @@ export const OwnerLayout = () => {
           }
           .owner-welcome {
             display: inline-block !important;
-          }
-        }
-        @media (max-width: 1023px) {
-          .admin-main-wrap {
-            margin-left: 0 !important;
           }
         }
       `}</style>

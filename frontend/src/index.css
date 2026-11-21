@@ -1119,7 +1119,6 @@ button, input, select, textarea {
 
   /* Admin Desktop Sidebar */
   .admin-sidebar {
-    position: sticky !important;
     left: 0 !important;
   }
   .admin-sidebar-backdrop {
@@ -1318,7 +1317,7 @@ button, input, select, textarea {
     display: flex !important;
   }
   .portal-desktop-sidebar {
-    display: none !important;
+    display: flex !important;
   }
   .portal-mobile-header {
     display: flex !important;

@@ -200,7 +200,7 @@ export const HospitalAdminLayout = () => {
               </button>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="md-hidden"
+                className="md-hidden hospital-admin-mobile-close-btn"
                 style={{
                   background: 'none',
                   border: 'none',
@@ -421,7 +421,7 @@ export const HospitalAdminLayout = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md-hidden"
+              className="md-hidden hospital-admin-mobile-trigger"
               style={{
                 background: 'none',
                 border: 'none',

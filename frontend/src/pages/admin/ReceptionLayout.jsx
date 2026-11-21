@@ -62,21 +62,43 @@ export const ReceptionLayout = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
-      {/* Sidebar for Desktop (240px Expanded <-> 70px Collapsed) */}
-      <aside style={{
-        width: sidebarWidth,
-        minWidth: sidebarWidth,
-        background: '#0f172a',
-        color: '#f8fafc',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'sticky',
-        top: 0,
-        height: '100vh',
-        boxShadow: '4px 0 10px rgba(0, 0, 0, 0.05)',
-        zIndex: 40,
-        transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
-      }} className={`portal-desktop-sidebar hidden md:flex ${isCollapsed ? 'portal-sidebar-is-collapsed' : ''}`}>
+      {/* Mobile Drawer Backdrop */}
+      {mobileOpen && (
+        <div
+          role="presentation"
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            zIndex: 998,
+            backdropFilter: 'blur(2px)'
+          }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Reception Desktop & Mobile Off-Canvas Sidebar (240px Expanded <-> 70px Collapsed) */}
+      <aside
+        style={{
+          width: sidebarWidth,
+          background: '#0f172a',
+          color: '#f8fafc',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          zIndex: 999,
+          transform: mobileOpen ? 'translateX(0)' : undefined,
+          transition: 'width 0.22s ease, transform 0.25s ease',
+          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.15)',
+          overflowY: 'auto',
+          overflowX: isCollapsed ? 'visible' : 'hidden'
+        }}
+        className={`portal-desktop-sidebar reception-sidebar ${isCollapsed ? 'is-collapsed portal-sidebar-is-collapsed' : ''}`}
+      >
         {/* Brand Header */}
         <div style={{
           padding: isCollapsed ? '1rem 0.5rem' : '1.15rem 1.15rem',
@@ -124,21 +146,39 @@ export const ReceptionLayout = () => {
           </Link>
 
           {!isCollapsed && (
-            <button
-              type="button"
-              onClick={toggleCollapse}
-              className="sidebar-edge-toggle-btn"
-              title="Collapse Sidebar"
-              aria-label="Collapse Sidebar"
-            >
-              <FaChevronLeft size={11} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                className="sidebar-edge-toggle-btn desktop-collapse-control"
+                title="Collapse Sidebar"
+                aria-label="Collapse Sidebar"
+              >
+                <FaChevronLeft size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="reception-mobile-close-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex'
+                }}
+                aria-label="Close navigation menu"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
           )}
         </div>
 
         {/* Collapsed Expand Trigger in Header */}
         {isCollapsed && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <div className="desktop-collapse-control" style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
             <button
               type="button"
               onClick={toggleCollapse}
@@ -211,6 +251,7 @@ export const ReceptionLayout = () => {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={() => setMobileOpen(false)}
               title={isCollapsed ? item.label : undefined}
               className="portal-sidebar-nav-item"
               style={({ isActive }) => ({
@@ -340,7 +381,17 @@ export const ReceptionLayout = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div
+        style={{
+          flex: 1,
+          marginLeft: sidebarWidth,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          transition: 'margin-left 0.22s ease'
+        }}
+        className="portal-main-content-wrap reception-main-wrap"
+      >
         {/* Top Header */}
         <header style={{
           height: '64px',
@@ -359,6 +410,7 @@ export const ReceptionLayout = () => {
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
+              className="reception-mobile-trigger"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -368,7 +420,6 @@ export const ReceptionLayout = () => {
                 display: 'flex',
                 alignItems: 'center'
               }}
-              className="md:hidden"
               aria-label="Open navigation menu"
             >
               <FaBars size={20} />
@@ -438,101 +489,40 @@ export const ReceptionLayout = () => {
           </div>
         </header>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileOpen && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
-            zIndex: 50,
-            backdropFilter: 'blur(2px)'
-          }}>
-            <div style={{
-              width: '280px',
-              height: '100%',
-              background: '#0f172a',
-              color: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '4px 0 15px rgba(0,0,0,0.2)'
-            }}>
-              <div style={{
-                padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <FaClipboardList size={20} style={{ color: '#a78bfa' }} />
-                  <span style={{ fontWeight: 800 }}>MEDICONNECT</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}
-                >
-                  <FaTimes />
-                </button>
-              </div>
-
-              <nav style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    onClick={() => setMobileOpen(false)}
-                    style={({ isActive }) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '8px',
-                      fontSize: '0.875rem',
-                      fontWeight: isActive ? 700 : 500,
-                      color: isActive ? '#ffffff' : '#94a3b8',
-                      background: isActive ? '#7c3aed' : 'transparent',
-                      textDecoration: 'none'
-                    })}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </NavLink>
-                ))}
-              </nav>
-
-              <div style={{ padding: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    borderRadius: '8px',
-                    border: '1px solid #ef4444',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <FaSignOutAlt /> {t('portalNav.signOut')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Page Content Viewport */}
         <main style={{ flex: 1, padding: '1.75rem', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
           <Outlet />
         </main>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .reception-sidebar {
+            transform: translateX(-100%);
+            width: 240px !important;
+          }
+          .reception-main-wrap {
+            margin-left: 0 !important;
+          }
+          .reception-mobile-close-btn, .reception-mobile-trigger {
+            display: flex !important;
+          }
+          .desktop-collapse-control {
+            display: none !important;
+          }
+        }
+        @media (min-width: 901px) {
+          .reception-sidebar {
+            transform: translateX(0) !important;
+          }
+          .reception-mobile-close-btn, .reception-mobile-trigger {
+            display: none !important;
+          }
+          .desktop-collapse-control {
+            display: block !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

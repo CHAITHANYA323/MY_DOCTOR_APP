@@ -120,32 +120,35 @@ export const DoctorLayout = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(12, 35, 40, 0.65)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 45
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            zIndex: 998,
+            backdropFilter: 'blur(2px)'
           }}
-          className="md:hidden"
+          aria-hidden="true"
         />
       )}
 
-      {/* Desktop Dedicated Clinical Navigation Sidebar (240px Expanded <-> 70px Collapsed) */}
+      {/* Doctor Desktop & Mobile Off-Canvas Clinical Navigation Sidebar (240px Expanded <-> 70px Collapsed) */}
       <aside
         style={{
           width: sidebarWidth,
-          minWidth: sidebarWidth,
           backgroundColor: '#0C2328',
           color: '#E2E8F0',
           display: 'flex',
           flexDirection: 'column',
-          position: 'sticky',
+          position: 'fixed',
           top: 0,
-          height: '100vh',
-          zIndex: 40,
-          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+          bottom: 0,
+          left: 0,
+          zIndex: 999,
+          transform: mobileOpen ? 'translateX(0)' : undefined,
+          transition: 'width 0.22s ease, transform 0.25s ease',
           borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)'
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+          overflowY: 'auto',
+          overflowX: isCollapsed ? 'visible' : 'hidden'
         }}
-        className={`portal-desktop-sidebar hidden md:flex ${isCollapsed ? 'portal-sidebar-is-collapsed' : ''}`}
+        className={`portal-desktop-sidebar doctor-sidebar ${isCollapsed ? 'is-collapsed portal-sidebar-is-collapsed' : ''}`}
       >
         {/* Brand Header */}
         <div style={{
@@ -200,21 +203,39 @@ export const DoctorLayout = () => {
           </Link>
 
           {!isCollapsed && (
-            <button
-              type="button"
-              onClick={toggleCollapse}
-              className="sidebar-edge-toggle-btn"
-              title="Collapse Sidebar"
-              aria-label="Collapse Sidebar"
-            >
-              <FaChevronLeft size={11} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                className="sidebar-edge-toggle-btn desktop-collapse-control"
+                title="Collapse Sidebar"
+                aria-label="Collapse Sidebar"
+              >
+                <FaChevronLeft size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="doctor-mobile-close-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex'
+                }}
+                aria-label="Close navigation menu"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
           )}
         </div>
 
         {/* Collapsed Expand Trigger in Header */}
         {isCollapsed && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <div className="desktop-collapse-control" style={{ display: 'flex', justifyContent: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
             <button
               type="button"
               onClick={toggleCollapse}
@@ -369,6 +390,7 @@ export const DoctorLayout = () => {
                     key={item.to}
                     to={item.to}
                     end={item.end}
+                    onClick={() => setMobileOpen(false)}
                     title={isCollapsed ? item.label : undefined}
                     className="portal-sidebar-nav-item"
                     style={({ isActive }) => ({
@@ -441,7 +463,17 @@ export const DoctorLayout = () => {
       </aside>
 
       {/* Main Clinical Workstation Column */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div
+        style={{
+          flex: 1,
+          marginLeft: sidebarWidth,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          transition: 'margin-left 0.22s ease'
+        }}
+        className="portal-main-content-wrap doctor-main-wrap"
+      >
         {/* Top Crisp Clinical Header */}
         <header style={{
           height: '66px',
@@ -460,8 +492,8 @@ export const DoctorLayout = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
             <button
               type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden"
+              onClick={() => setMobileOpen(true)}
+              className="doctor-mobile-trigger"
               style={{
                 background: 'none',
                 border: 'none',
@@ -472,9 +504,9 @@ export const DoctorLayout = () => {
                 alignItems: 'center',
                 flexShrink: 0
               }}
-              aria-label="Toggle Navigation Drawer"
+              aria-label="Open Navigation Drawer"
             >
-              {mobileOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
+              <FaBars size={20} />
             </button>
 
             {/* Authenticated Doctor Name Display */}
@@ -586,113 +618,40 @@ export const DoctorLayout = () => {
           </div>
         </header>
 
-        {/* Mobile Slide-in Drawer */}
-        {mobileOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              top: '66px',
-              left: 0,
-              bottom: 0,
-              width: '280px',
-              backgroundColor: '#0C2328',
-              color: '#FFFFFF',
-              zIndex: 50,
-              padding: '1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              boxShadow: '4px 0 20px rgba(0,0,0,0.25)'
-            }}
-            className="md:hidden"
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '8px',
-                backgroundColor: '#134E4A',
-                color: '#2DD4BF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800
-              }}>
-                {doctorInitials}
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#FFFFFF' }}>
-                  {formattedDoctorName}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#34D399' }}>
-                  {doctorProfile?.specialization || 'Physician'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {clinicalNavGroups.map((group, gIdx) => (
-                <div key={gIdx}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                    {group.groupTitle}
-                  </div>
-                  {group.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end={item.end}
-                      onClick={() => setMobileOpen(false)}
-                      style={({ isActive }) => ({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.6rem 0.75rem',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        fontWeight: isActive ? 700 : 500,
-                        color: isActive ? '#FFFFFF' : '#94A3B8',
-                        backgroundColor: isActive ? 'rgba(13, 148, 136, 0.25)' : 'transparent',
-                        textDecoration: 'none'
-                      })}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </NavLink>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                width: '100%',
-                padding: '0.65rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: '6px',
-                color: '#F87171',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              <FaSignOutAlt size={14} />
-              <span>{getLabel('portalNav.signOut', 'Sign Out')}</span>
-            </button>
-          </div>
-        )}
-
         {/* Clinical Page Main Outlet */}
         <main style={{ flex: 1, padding: '1.75rem', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
           <Outlet />
         </main>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .doctor-sidebar {
+            transform: translateX(-100%);
+            width: 240px !important;
+          }
+          .doctor-main-wrap {
+            margin-left: 0 !important;
+          }
+          .doctor-mobile-close-btn, .doctor-mobile-trigger {
+            display: flex !important;
+          }
+          .desktop-collapse-control {
+            display: none !important;
+          }
+        }
+        @media (min-width: 901px) {
+          .doctor-sidebar {
+            transform: translateX(0) !important;
+          }
+          .doctor-mobile-close-btn, .doctor-mobile-trigger {
+            display: none !important;
+          }
+          .desktop-collapse-control {
+            display: block !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
