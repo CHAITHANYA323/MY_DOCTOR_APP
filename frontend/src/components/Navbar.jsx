@@ -89,25 +89,25 @@ export const Navbar = () => {
           <div 
             className="navbar-brand-logo"
             style={{
-              width: isLoginPage ? 42 : 54,
-              height: isLoginPage ? 42 : 54,
-              borderRadius: isLoginPage ? '12px' : '15px',
+              width: 38,
+              height: 38,
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, var(--primary, #0284c7), var(--primary-hover, #0369a1))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
-              boxShadow: isLoginPage ? '0 4px 12px rgba(2, 132, 199, 0.3)' : '0 4px 16px rgba(2, 132, 199, 0.38)',
+              boxShadow: '0 3px 10px rgba(2, 132, 199, 0.3)',
               flexShrink: 0
             }}
           >
-            <FaHospitalSymbol size={isLoginPage ? 22 : 30} aria-hidden="true" />
+            <FaHospitalSymbol size={20} aria-hidden="true" />
           </div>
           <div>
             <span 
               className="navbar-brand-title"
               style={{ 
-                fontSize: isLoginPage ? '1.35rem' : '1.6rem', 
+                fontSize: '1.35rem', 
                 fontWeight: 900, 
                 letterSpacing: '-0.025em', 
                 color: 'var(--slate-900)', 
@@ -120,10 +120,10 @@ export const Navbar = () => {
               className="navbar-brand-sub"
               style={{ 
                 display: 'block', 
-                fontSize: isLoginPage ? '0.7rem' : '0.8rem', 
+                fontSize: '0.68rem', 
                 fontWeight: 700, 
                 color: 'var(--slate-500)', 
-                marginTop: isLoginPage ? '-3px' : '-1px', 
+                marginTop: '-2px', 
                 letterSpacing: '0.04em' 
               }}
             >
@@ -267,30 +267,31 @@ export const Navbar = () => {
               </NavLink>
               <NavLink 
                 to="/ambulance" 
-                className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
-                style={{ color: 'var(--emergency)' }}
+                className="navbar-emergency-badge"
+                title="24/7 Emergency Medical Response"
               >
-                {t('nav.ambulance')}
+                <FaAmbulance size={12} aria-hidden="true" />
+                <span>{t('nav.ambulance')} (108)</span>
               </NavLink>
             </>
           )}
         </nav>
 
         {/* Right Section: Actions / Auth / Profile */}
-        <div className={`flex items-center ${isLoginPage ? 'gap-2.5' : 'gap-3.5'}`}>
+        <div className="flex items-center gap-2">
           {/* Universal Language Switcher */}
-          <LanguageToggle size={isLoginPage ? "sm" : "md"} showIcon={false} />
+          <LanguageToggle size="sm" showIcon={false} />
 
           {isAuthenticated ? (
             /* Logged in User Pill & Logout */
-            <div className="navbar-user-actions flex items-center gap-2.5">
+            <div className="navbar-user-actions flex items-center gap-2">
               <Link 
                 to="/profile"
                 className="flex items-center gap-2"
                 onClick={closeMobile}
                 style={{
                   textDecoration: 'none',
-                  padding: '0.45rem 0.95rem',
+                  padding: '0.35rem 0.8rem',
                   backgroundColor: 'var(--slate-100)',
                   border: '1px solid var(--slate-200)',
                   borderRadius: 'var(--radius-full)',
@@ -301,9 +302,9 @@ export const Navbar = () => {
                 <img 
                   src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=0284c7&color=fff`} 
                   alt={user?.name || 'User'}
-                  style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} 
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} 
                 />
-                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--slate-800)' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--slate-800)' }}>
                   Hi, {user?.name?.split(' ')[0] || 'User'}
                 </span>
               </Link>
@@ -316,9 +317,10 @@ export const Navbar = () => {
                 style={{
                   color: 'var(--emergency)',
                   borderColor: 'var(--slate-200)',
-                  gap: '0.35rem',
-                  minHeight: '44px',
-                  padding: '0.45rem 0.95rem'
+                  gap: '0.3rem',
+                  minHeight: '36px',
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.82rem'
                 }}
                 title="Log out of your account"
                 icon={<FaSignOutAlt aria-hidden="true" />}
@@ -327,19 +329,19 @@ export const Navbar = () => {
               </Button>
             </div>
           ) : (
-            /* Guest Register CTA Button (Login removed) */
+            /* Guest Register CTA Button */
             <div className="navbar-guest-actions flex items-center">
               <Button 
                 variant="primary" 
-                size={isLoginPage ? "md" : "lg"} 
+                size="sm" 
                 onClick={() => navigate('/register')}
                 style={{
                   fontWeight: 800,
-                  fontSize: isLoginPage ? '0.94rem' : '1.02rem',
-                  padding: isLoginPage ? '0.5rem 1.35rem' : '0.65rem 1.6rem',
+                  fontSize: '0.88rem',
+                  padding: '0.42rem 1.15rem',
                   borderRadius: 'var(--radius-full)',
-                  boxShadow: isLoginPage ? '0 4px 12px rgba(2, 132, 199, 0.3)' : '0 4px 14px rgba(2, 132, 199, 0.35)',
-                  minHeight: isLoginPage ? '42px' : '48px',
+                  boxShadow: '0 3px 10px rgba(2, 132, 199, 0.3)',
+                  minHeight: '38px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   whiteSpace: 'nowrap'
@@ -361,8 +363,8 @@ export const Navbar = () => {
               display: 'none',
               alignItems: 'center',
               justifyContent: 'center',
-              width: isLoginPage ? 42 : 48,
-              height: isLoginPage ? 42 : 48,
+              width: 38,
+              height: 38,
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--slate-200)',
               backgroundColor: 'var(--white)',
@@ -371,9 +373,9 @@ export const Navbar = () => {
             }}
           >
             {mobileOpen ? (
-              <FaTimes size={isLoginPage ? 19 : 22} aria-hidden="true" />
+              <FaTimes size={18} aria-hidden="true" />
             ) : (
-              <FaBars size={isLoginPage ? 19 : 22} aria-hidden="true" />
+              <FaBars size={18} aria-hidden="true" />
             )}
           </button>
         </div>

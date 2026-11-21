@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FaHospitalSymbol,
+  FaHospital,
   FaEnvelope,
   FaLock,
   FaEye,
@@ -77,6 +78,48 @@ export const Login = () => {
       registrationLabel: t('auth.roles.doctor.registrationLabel'),
       navPrompt: t('auth.roles.doctor.navPrompt'),
       navNotice: t('auth.roles.doctor.navNotice'),
+    },
+    [ROLES.HOSPITAL_ADMIN]: {
+      id: ROLES.HOSPITAL_ADMIN,
+      tabLabel: t('auth.roles.admin.tabLabel'),
+      heading: t('auth.roles.admin.heading'),
+      subtitle: t('auth.roles.admin.subtitle'),
+      description: t('auth.roles.admin.description'),
+      buttonLabel: t('auth.roles.admin.buttonLabel'),
+      themeColor: '#1d4ed8', // Royal / Navy Blue
+      accentGradient: 'linear-gradient(135deg, #1d4ed8, #1e3a8a)',
+      badgeBg: '#eff6ff',
+      badgeText: '#1e3a8a',
+      badgeBorder: '#bfdbfe',
+      icon: <FaHospital />,
+      emailLabel: t('auth.roles.admin.emailLabel'),
+      emailPlaceholder: t('auth.roles.admin.emailPlaceholder'),
+      hasPublicRegistration: true,
+      registrationLink: '/register?role=ADMIN',
+      registrationLabel: t('auth.roles.admin.registrationLabel'),
+      navPrompt: t('auth.roles.admin.navPrompt'),
+      navNotice: t('auth.roles.admin.navNotice'),
+    },
+    [ROLES.ADMIN]: {
+      id: ROLES.ADMIN,
+      tabLabel: t('auth.roles.admin.tabLabel'),
+      heading: t('auth.roles.admin.heading'),
+      subtitle: t('auth.roles.admin.subtitle'),
+      description: t('auth.roles.admin.description'),
+      buttonLabel: t('auth.roles.admin.buttonLabel'),
+      themeColor: '#1d4ed8',
+      accentGradient: 'linear-gradient(135deg, #1d4ed8, #1e3a8a)',
+      badgeBg: '#eff6ff',
+      badgeText: '#1e3a8a',
+      badgeBorder: '#bfdbfe',
+      icon: <FaHospital />,
+      emailLabel: t('auth.roles.admin.emailLabel'),
+      emailPlaceholder: t('auth.roles.admin.emailPlaceholder'),
+      hasPublicRegistration: true,
+      registrationLink: '/register?role=ADMIN',
+      registrationLabel: t('auth.roles.admin.registrationLabel'),
+      navPrompt: t('auth.roles.admin.navPrompt'),
+      navNotice: t('auth.roles.admin.navNotice'),
     },
     [ROLES.RECEPTIONIST]: {
       id: ROLES.RECEPTIONIST,
@@ -176,13 +219,14 @@ export const Login = () => {
   const currentPortal = portalConfigs[selectedRole] || portalConfigs[ROLES.PATIENT];
 
   // Role selector configuration for the portal tabs
-  // Visible Login roles: Patient, Doctor, Receptionist, Super Admin, Platform Owner
+  // Visible Login roles: Patient, Doctor, Hospital Admin, Receptionist, Super Admin, Platform Owner
   const roleTabs = useMemo(() => [
-    { id: ROLES.PATIENT, label: portalConfigs[ROLES.PATIENT].tabLabel, icon: <FaUser aria-hidden="true" /> },
-    { id: ROLES.DOCTOR, label: portalConfigs[ROLES.DOCTOR].tabLabel, icon: <FaUserMd aria-hidden="true" /> },
-    { id: ROLES.RECEPTIONIST, label: portalConfigs[ROLES.RECEPTIONIST].tabLabel, icon: <FaClipboardList aria-hidden="true" /> },
-    { id: ROLES.HOSPITAL_SUPER_ADMIN, label: portalConfigs[ROLES.HOSPITAL_SUPER_ADMIN].tabLabel, icon: <FaHospitalSymbol aria-hidden="true" /> },
-    { id: ROLES.PLATFORM_OWNER, label: portalConfigs[ROLES.PLATFORM_OWNER].tabLabel, icon: <FaShieldAlt aria-hidden="true" /> },
+    { id: ROLES.PATIENT, label: portalConfigs[ROLES.PATIENT]?.tabLabel || 'Patient', icon: <FaUser aria-hidden="true" /> },
+    { id: ROLES.DOCTOR, label: portalConfigs[ROLES.DOCTOR]?.tabLabel || 'Doctor', icon: <FaUserMd aria-hidden="true" /> },
+    { id: ROLES.HOSPITAL_ADMIN, label: portalConfigs[ROLES.HOSPITAL_ADMIN]?.tabLabel || 'Hospital Admin', icon: <FaHospital aria-hidden="true" /> },
+    { id: ROLES.RECEPTIONIST, label: portalConfigs[ROLES.RECEPTIONIST]?.tabLabel || 'Receptionist', icon: <FaClipboardList aria-hidden="true" /> },
+    { id: ROLES.HOSPITAL_SUPER_ADMIN, label: portalConfigs[ROLES.HOSPITAL_SUPER_ADMIN]?.tabLabel || 'SuperAdmin', icon: <FaHospitalSymbol aria-hidden="true" /> },
+    { id: ROLES.PLATFORM_OWNER, label: portalConfigs[ROLES.PLATFORM_OWNER]?.tabLabel || 'Platform Owner', icon: <FaShieldAlt aria-hidden="true" /> },
   ], [portalConfigs]);
 
   const handleRoleChange = (roleId) => {
@@ -272,6 +316,12 @@ export const Login = () => {
         setEmail('admin.hosp1@medicare.com');
         setPassword('Admin@123');
         break;
+      case 'HOSPITAL_ADMIN':
+      case 'ADMIN':
+        setSelectedRole(ROLES.HOSPITAL_ADMIN);
+        setEmail('legacy.admin@medicare.com');
+        setPassword('Admin@123');
+        break;
       case 'RECEPTIONIST':
         setSelectedRole(ROLES.RECEPTIONIST);
         setEmail('reception.hosp1@medicare.com');
@@ -298,54 +348,54 @@ export const Login = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '3rem 1.25rem',
+      padding: '1.75rem 1rem',
       background: 'radial-gradient(ellipse at top, #f0fdfa 0%, #f8fafc 65%, #f1f5f9 100%)'
     }}>
       <div className="card login-page-card" style={{
-        maxWidth: '620px',
+        maxWidth: '500px',
         width: '100%',
-        padding: 'clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4.5vw, 2.75rem)',
-        boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.12), 0 8px 24px -6px rgba(15, 23, 42, 0.08)',
+        padding: 'clamp(1.5rem, 3.5vw, 2.25rem) clamp(1.15rem, 3.5vw, 1.85rem)',
+        boxShadow: '0 16px 36px -10px rgba(15, 23, 42, 0.1), 0 6px 16px -4px rgba(15, 23, 42, 0.06)',
         border: '1px solid var(--slate-200)',
-        borderRadius: '20px',
+        borderRadius: '18px',
         backgroundColor: 'var(--white)',
         transition: 'all 0.25s ease',
         boxSizing: 'border-box'
       }}>
         {/* Dynamic Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.35rem' }}>
           <div style={{
-            width: 62,
-            height: 62,
-            borderRadius: '16px',
+            width: 48,
+            height: 48,
+            borderRadius: '13px',
             background: currentPortal.accentGradient,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            margin: '0 auto 0.9rem',
-            boxShadow: `0 6px 18px ${currentPortal.themeColor}40`,
+            margin: '0 auto 0.65rem',
+            boxShadow: `0 4px 14px ${currentPortal.themeColor}38`,
             transition: 'all 0.25s ease'
           }}>
-            <span style={{ fontSize: '1.85rem', display: 'flex' }}>
+            <span style={{ fontSize: '1.4rem', display: 'flex' }}>
               {currentPortal.icon}
             </span>
           </div>
           <h1 style={{
-            fontSize: 'clamp(1.75rem, 3.5vw, 2.15rem)',
+            fontSize: 'clamp(1.4rem, 2.8vw, 1.7rem)',
             fontWeight: 800,
             color: 'var(--slate-900)',
             transition: 'all 0.2s ease',
             letterSpacing: '-0.025em',
-            margin: '0 0 0.45rem',
-            lineHeight: 1.25
+            margin: '0 0 0.3rem',
+            lineHeight: 1.2
           }}>
             {currentPortal.heading}
           </h1>
           <p style={{
-            fontSize: 'clamp(0.95rem, 1.8vw, 1.05rem)',
+            fontSize: 'clamp(0.85rem, 1.6vw, 0.92rem)',
             color: 'var(--slate-600)',
-            lineHeight: 1.55,
+            lineHeight: 1.45,
             margin: 0,
             transition: 'all 0.2s ease'
           }}>
@@ -354,13 +404,13 @@ export const Login = () => {
         </div>
 
         {/* Account Type Selector Tabs */}
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.15rem' }}>
           <label style={{
-            fontSize: '0.88rem',
+            fontSize: '0.8rem',
             fontWeight: 800,
             color: 'var(--slate-700)',
             display: 'block',
-            marginBottom: '0.65rem',
+            marginBottom: '0.5rem',
             textTransform: 'uppercase',
             letterSpacing: '0.04em'
           }}>
@@ -379,12 +429,12 @@ export const Login = () => {
                   style={{
                     border: isSelected ? `2px solid ${tabConfig?.themeColor || 'var(--primary)'}` : '2px solid transparent',
                     fontWeight: isSelected ? 800 : 600,
-                    backgroundColor: isSelected ? 'white' : 'transparent',
+                    backgroundColor: isSelected ? (tabConfig?.badgeBg || '#ffffff') : '#ffffff',
                     color: isSelected ? (tabConfig?.themeColor || 'var(--primary-dark)') : 'var(--slate-600)',
-                    boxShadow: isSelected ? '0 4px 10px rgba(0,0,0,0.08)' : 'none'
+                    boxShadow: isSelected ? `0 3px 10px ${tabConfig?.themeColor || 'rgba(0,0,0,0.1)'}25` : '0 1px 3px rgba(0,0,0,0.04)'
                   }}
                 >
-                  <span style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center' }}>{tab.icon}</span>
+                  <span style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center' }}>{tab.icon}</span>
                   <span>{tab.label}</span>
                 </button>
               );
@@ -395,35 +445,35 @@ export const Login = () => {
         {/* Dynamic Role Context Description Badge */}
         <div style={{
           backgroundColor: currentPortal.badgeBg,
-          borderLeft: `5px solid ${currentPortal.themeColor}`,
+          borderLeft: `4px solid ${currentPortal.themeColor}`,
           borderTop: `1px solid ${currentPortal.badgeBorder}`,
           borderRight: `1px solid ${currentPortal.badgeBorder}`,
           borderBottom: `1px solid ${currentPortal.badgeBorder}`,
-          padding: '1.1rem 1.35rem',
-          borderRadius: '0 12px 12px 0',
+          padding: '0.75rem 1rem',
+          borderRadius: '0 10px 10px 0',
           color: 'var(--slate-800)',
-          marginBottom: '1.5rem',
+          marginBottom: '1.25rem',
           display: 'flex',
-          alignItems: 'flex-start',
-          gap: '0.85rem',
+          alignItems: 'center',
+          gap: '0.75rem',
           transition: 'all 0.25s ease'
         }}>
-          <span style={{ color: currentPortal.themeColor, marginTop: '0.15rem', flexShrink: 0, fontSize: '1.25rem', display: 'flex' }}>
+          <span style={{ color: currentPortal.themeColor, flexShrink: 0, fontSize: '1.15rem', display: 'flex' }}>
             {currentPortal.icon}
           </span>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <strong style={{
               color: currentPortal.badgeText,
               display: 'block',
-              fontSize: '0.85rem',
+              fontSize: '0.78rem',
               fontWeight: 800,
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
-              marginBottom: '0.3rem'
+              marginBottom: '0.15rem'
             }}>
               {currentPortal.tabLabel} {t('auth.portalSuffix')}
             </strong>
-            <span style={{ fontSize: '0.96rem', lineHeight: 1.6, display: 'block', color: 'var(--slate-700)' }}>
+            <span style={{ fontSize: '0.85rem', lineHeight: 1.4, display: 'block', color: 'var(--slate-700)' }}>
               {currentPortal.description}
             </span>
           </div>
@@ -635,14 +685,14 @@ export const Login = () => {
             fullWidth
             loading={loading}
             style={{
-              marginTop: '0.85rem',
-              minHeight: '52px',
-              fontSize: '1.08rem',
+              marginTop: '0.65rem',
+              minHeight: '48px',
+              fontSize: '1.02rem',
               fontWeight: 800,
               borderRadius: '10px',
               background: currentPortal.accentGradient,
               border: 'none',
-              boxShadow: `0 6px 16px ${currentPortal.themeColor}38`,
+              boxShadow: `0 4px 14px ${currentPortal.themeColor}38`,
               transition: 'all 0.2s ease',
               letterSpacing: '0.01em'
             }}
@@ -651,68 +701,170 @@ export const Login = () => {
           </Button>
         </form>
 
-        {/* 1-Click Quick Demo Sign-In (5 Roles) */}
+        {/* 1-Click Quick Demo Sign-In (6 Roles) */}
         <div style={{
-          marginTop: '1.75rem',
-          padding: '1rem',
-          backgroundColor: 'var(--slate-50)',
-          border: '1px dashed var(--slate-300)',
-          borderRadius: '12px'
+          marginTop: '1.25rem',
+          padding: '0.85rem 1rem',
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '14px'
         }}>
-          <span style={{ fontSize: '0.82rem', color: 'var(--slate-700)', fontWeight: 800, display: 'block', marginBottom: '0.65rem' }}>
-            {t('auth.demoAccounts')}
-          </span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
-            <Button
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+            <span style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span>⚡</span> {t('auth.demoAccounts') || 'Quick Demo Sign-In'}
+            </span>
+            <span style={{ fontSize: '0.68rem', color: '#0369a1', backgroundColor: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '100px', fontWeight: 700 }}>
+              1-Click Auto-Fill
+            </span>
+          </div>
+          <p style={{ margin: '0 0 0.65rem', fontSize: '0.76rem', color: '#64748b', lineHeight: 1.4 }}>
+            {isTelugu ? 'పరిశీలన కోసం డెమో ఖాతాలు. ఒకే క్లిక్‌తో క్రెడెన్షియల్స్ నింపబడతాయి మరియు పోర్టల్ ఎంపికవుతుంది.' : 'Demonstration accounts for evaluation. One click auto-fills credentials and selects portal.'}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.45rem' }}>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => handleDemoFill('PATIENT')}
-              icon={<FaUser aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.55rem',
+                borderRadius: '8px',
+                border: '1px solid #bae6fd',
+                backgroundColor: selectedRole === ROLES.PATIENT ? '#e0f2fe' : '#ffffff',
+                color: '#0369a1',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
             >
-              {t('auth.demoPatient')}
-            </Button>
-            <Button
+              <FaUser size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('auth.demoPatient') || 'Patient'}</span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => handleDemoFill('DOCTOR')}
-              icon={<FaUserMd aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.55rem',
+                borderRadius: '8px',
+                border: '1px solid #99f6e4',
+                backgroundColor: selectedRole === ROLES.DOCTOR ? '#ccfbf1' : '#ffffff',
+                color: '#0f766e',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
             >
-              {t('auth.demoDoctor')}
-            </Button>
-            <Button
+              <FaUserMd size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('auth.demoDoctor') || 'Doctor'}</span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
+              onClick={() => handleDemoFill('HOSPITAL_ADMIN')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.55rem',
+                borderRadius: '8px',
+                border: '1px solid #bfdbfe',
+                backgroundColor: (selectedRole === ROLES.HOSPITAL_ADMIN || selectedRole === ROLES.ADMIN) ? '#dbeafe' : '#ffffff',
+                color: '#1e40af',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
+              <FaHospital size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isTelugu ? 'హాస్పిటల్ అడ్మిన్' : 'Hosp Admin'}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleDemoFill('RECEPTIONIST')}
-              icon={<FaClipboardList aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.55rem',
+                borderRadius: '8px',
+                border: '1px solid #ddd6fe',
+                backgroundColor: selectedRole === ROLES.RECEPTIONIST ? '#ede9fe' : '#ffffff',
+                color: '#6d28d9',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
             >
-              {t('auth.demoReceptionist')}
-            </Button>
-            <Button
+              <FaClipboardList size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('auth.demoReceptionist') || 'Receptionist'}</span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => handleDemoFill('HOSPITAL_SUPER_ADMIN')}
-              icon={<FaHospitalSymbol aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.55rem',
+                borderRadius: '8px',
+                border: '1px solid #fed7aa',
+                backgroundColor: selectedRole === ROLES.HOSPITAL_SUPER_ADMIN ? '#ffedd5' : '#ffffff',
+                color: '#c2410c',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
             >
-              {t('auth.demoSuperAdmin')}
-            </Button>
-            <Button
+              <FaHospitalSymbol size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('auth.demoSuperAdmin') || 'SuperAdmin'}</span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => handleDemoFill('PLATFORM_OWNER')}
-              icon={<FaShieldAlt aria-hidden="true" />}
-              style={{ backgroundColor: 'white', borderColor: 'var(--slate-300)', fontSize: '0.82rem', fontWeight: 600, minHeight: '40px', padding: '0.45rem 0.65rem', justifyContent: 'flex-start' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.55rem',
+                borderRadius: '8px',
+                border: '1px solid #fecaca',
+                backgroundColor: selectedRole === ROLES.PLATFORM_OWNER ? '#fee2e2' : '#ffffff',
+                color: '#991b1b',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
             >
-              {t('auth.demoOwner')}
-            </Button>
+              <FaShieldAlt size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('auth.demoOwner') || 'Owner'}</span>
+            </button>
           </div>
         </div>
 

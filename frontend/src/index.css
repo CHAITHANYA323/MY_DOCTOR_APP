@@ -756,46 +756,66 @@ button, input, select, textarea {
 }
 
 .navbar-main {
-  height: 100px;
-  min-height: 100px;
+  height: 68px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .navbar-link {
-  font-weight: 700;
-  font-size: 1.1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
   color: var(--slate-700);
-  padding: 0.65rem 0.9rem;
+  padding: 0.42rem 0.75rem;
   border-radius: var(--radius-sm);
   border-bottom: 2.5px solid transparent;
   transition: var(--transition);
   display: inline-flex;
   align-items: center;
-  min-height: 48px;
+  min-height: 38px;
   white-space: nowrap;
+}
+
+.navbar-emergency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.7rem;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-weight: 800;
+  font-size: 0.82rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.navbar-emergency-badge:hover {
+  background-color: #fecaca;
+  color: #991b1b;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15);
 }
 
 /* ==========================================================
    SCOPED COMPACT NAVBAR FOR LOGIN PAGE
-   Restores previous 74px height, prevents link wrapping,
-   and keeps all navigation links in a single horizontal row.
    ========================================================== */
 .navbar-login-compact .navbar-main {
-  height: 74px !important;
-  min-height: 74px !important;
+  height: 68px !important;
+  min-height: 68px !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
 
 .navbar-login-compact .navbar-link {
-  font-size: 0.95rem !important;
-  font-weight: 700 !important;
-  padding: 0.4rem 0.55rem !important;
-  min-height: 40px !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  padding: 0.35rem 0.55rem !important;
+  min-height: 36px !important;
   white-space: nowrap !important;
 }
 
@@ -809,15 +829,15 @@ button, input, select, textarea {
     gap: 0.85rem !important;
   }
   .navbar-login-compact .navbar-link {
-    font-size: 0.92rem !important;
-    padding: 0.35rem 0.45rem !important;
+    font-size: 0.9rem !important;
+    padding: 0.3rem 0.45rem !important;
   }
 }
 
 @media (max-width: 480px) {
   .navbar-login-compact .navbar-main {
-    height: 68px !important;
-    min-height: 68px !important;
+    height: 64px !important;
+    min-height: 64px !important;
   }
   .navbar-login-compact .navbar-main .gap-2\.5 {
     gap: 0.35rem !important;
@@ -1163,8 +1183,8 @@ button, input, select, textarea {
   }
 
   .navbar-main {
-    min-height: 90px !important;
-    height: auto !important;
+    min-height: 64px !important;
+    height: 64px !important;
   }
 
   .navbar-main .gap-3 {
@@ -1172,56 +1192,72 @@ button, input, select, textarea {
   }
 
   .navbar-main .language-toggle-group button {
-    padding: 0.28rem 0.5rem !important;
-    font-size: 0.76rem !important;
+    padding: 0.25rem 0.45rem !important;
+    font-size: 0.74rem !important;
   }
 
   .login-page-card {
-    padding: 1.5rem 1.15rem !important;
+    padding: 1.5rem 1rem !important;
   }
 }
 
 /* ==========================================================
    LOGIN ROLE SELECTOR RESPONSIVE GRID
-   Enforces comfortable, accessible tap targets & responsive wrapping
+   Enforces comfortable, accessible tap targets & clean 3x2 grid
    ========================================================== */
 .login-page-card {
-  max-width: 620px;
+  max-width: 500px !important;
   width: 100%;
   box-sizing: border-box;
 }
 
 .login-role-tabs-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  background-color: var(--slate-100);
-  padding: 0.5rem;
-  border-radius: var(--radius-lg, 14px);
-  box-sizing: border-box;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 0.5rem !important;
+  background-color: #f1f5f9 !important;
+  padding: 0.45rem !important;
+  border-radius: 12px !important;
+  box-sizing: border-box !important;
 }
 
 .login-role-tab-btn {
-  flex: 1 1 calc(20% - 0.5rem);
-  min-width: 95px;
-  min-height: 48px;
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--radius-md, 10px);
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.25rem !important;
+  padding: 0.55rem 0.35rem !important;
+  min-height: 54px !important;
+  border-radius: 9px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.login-role-tab-btn span:first-child {
+  font-size: 1.15rem !important;
+}
+
+.login-role-tab-btn span:last-child {
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
 }
 
 .login-form-input {
   width: 100%;
-  min-height: 52px !important;
-  font-size: 1.02rem !important;
+  min-height: 48px !important;
+  font-size: 0.98rem !important;
   border-radius: 10px !important;
   border: 1.5px solid var(--slate-300) !important;
   transition: all 0.2s ease !important;
@@ -1235,26 +1271,13 @@ button, input, select, textarea {
 
 @media (max-width: 640px) {
   .login-role-tabs-grid {
-    display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.5rem !important;
-    padding: 0.45rem !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    gap: 0.45rem !important;
   }
 
   .login-role-tab-btn {
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 48px !important; /* WCAG comfortable tap target */
-    padding: 0.65rem 0.5rem !important;
-    font-size: 0.86rem !important;
-    line-height: 1.25 !important;
-  }
-
-  /* 5th role tab (Platform Owner) spans across both columns for clean symmetry */
-  .login-role-tab-btn:nth-child(5):last-child {
-    grid-column: span 2 !important;
+    min-height: 48px !important;
+    padding: 0.45rem 0.3rem !important;
   }
 }
 
