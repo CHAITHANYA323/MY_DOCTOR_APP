@@ -18,6 +18,18 @@ export const TRANSLATIONS = {
       switchPrompt: 'భాషను మార్చండి'
     },
 
+    // Healthcare Platform Brand & Taglines
+    brand: {
+      name: 'MediConnect',
+      platform: 'హెల్త్‌కేర్ ప్లాట్‌ఫామ్',
+      liveStatus: 'ఆరోగ్య సంరక్షణ క్రియాశీలం',
+      taglines: [
+        'మీ ఆరోగ్యం, మా ప్రాధాన్యత',
+        'అనుసంధానిత సంరక్షణ, మెరుగైన ఆరోగ్యం',
+        'విశ్వసనీయ డిజిటల్ ఆరోగ్య సంరక్షణ'
+      ]
+    },
+
     // Welcome Page (Exact user-mandated Telugu strings)
     welcome: {
       bannerTitle: 'WELCOME TO MEDICONNECT HEALTHCARE PLATFORM',
@@ -1313,6 +1325,18 @@ export const TRANSLATIONS = {
       en: 'English',
       label: 'Language',
       switchPrompt: 'Switch Language'
+    },
+
+    // Healthcare Platform Brand & Taglines
+    brand: {
+      name: 'MediConnect',
+      platform: 'Healthcare Platform',
+      liveStatus: 'Connected Care Active',
+      taglines: [
+        'Your Health, Our Priority',
+        'Connected Care, Better Health',
+        'Trusted Digital Healthcare'
+      ]
     },
 
     // Welcome Page

@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
+import { MediConnectBrand } from '../../components/common/MediConnectBrand';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const PatientLayout = () => {
@@ -159,53 +160,16 @@ export const PatientLayout = () => {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: '66px'
         }}>
-          <Link
+          <MediConnectBrand
             to="/patient"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              textDecoration: 'none',
-              overflow: 'hidden'
-            }}
-            title="Patient Health Portal"
-          >
-            <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #13B8A6 0%, #1677C8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 12px rgba(19, 184, 166, 0.35)',
-              flexShrink: 0
-            }}>
-              <FaHeartbeat size={19} />
-            </div>
-            {!isCollapsed && (
-              <div style={{ whiteSpace: 'nowrap' }}>
-                <div style={{
-                  fontSize: '1.05rem',
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  color: '#FFFFFF'
-                }}>
-                  MEDICONNECT
-                </div>
-                <div style={{
-                  fontSize: '0.66rem',
-                  fontWeight: 700,
-                  color: '#13B8A6',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase'
-                }}>
-                  Patient Portal
-                </div>
-              </div>
-            )}
-          </Link>
+            theme="dark"
+            size="sm"
+            variant="sidebar"
+            isCollapsed={isCollapsed}
+            subtitle={isTelugu ? 'రోగి పోర్టల్' : 'Patient Portal'}
+            badgeGradient="linear-gradient(135deg, #13B8A6 0%, #1677C8 100%)"
+            badgeIcon={<FaHeartbeat size={18} />}
+          />
 
           {!isCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

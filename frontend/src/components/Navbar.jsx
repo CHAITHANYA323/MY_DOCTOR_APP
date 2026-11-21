@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from './common/LanguageToggle';
 import { Button } from './common/Button';
+import { MediConnectBrand } from './common/MediConnectBrand';
 import { 
   FaHospitalSymbol, 
   FaBars, 
@@ -78,59 +79,15 @@ export const Navbar = () => {
     <header className={`navbar-header ${isLoginPage ? 'navbar-login-compact' : ''}`}>
       {/* Main Navbar Bar */}
       <div className="container flex items-center justify-between navbar-main">
-        {/* Logo / Brand Link */}
-        <Link 
+        {/* Animated Healthcare Brand Identity */}
+        <MediConnectBrand 
           to={isAuthenticated ? "/doctors" : "/"} 
-          className="flex items-center gap-2" 
+          theme="light"
+          size="md"
+          variant="navbar"
           onClick={closeMobile} 
-          style={{ textDecoration: 'none' }}
-          aria-label="MediConnect Healthcare Platform Home"
-        >
-          <div 
-            className="navbar-brand-logo"
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, var(--primary, #0284c7), var(--primary-hover, #0369a1))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              boxShadow: '0 3px 10px rgba(2, 132, 199, 0.3)',
-              flexShrink: 0
-            }}
-          >
-            <FaHospitalSymbol size={20} aria-hidden="true" />
-          </div>
-          <div>
-            <span 
-              className="navbar-brand-title"
-              style={{ 
-                fontSize: '1.35rem', 
-                fontWeight: 900, 
-                letterSpacing: '-0.025em', 
-                color: 'var(--slate-900)', 
-                lineHeight: 1.15 
-              }}
-            >
-              Medi<span style={{ color: 'var(--primary, #0284c7)' }}>Connect</span>
-            </span>
-            <span 
-              className="navbar-brand-sub"
-              style={{ 
-                display: 'block', 
-                fontSize: '0.68rem', 
-                fontWeight: 700, 
-                color: 'var(--slate-500)', 
-                marginTop: '-2px', 
-                letterSpacing: '0.04em' 
-              }}
-            >
-              Healthcare Platform
-            </span>
-          </div>
-        </Link>
+          ariaLabel="MediConnect Healthcare Platform Home"
+        />
 
         {/* Desktop Navigation Links */}
         <nav 

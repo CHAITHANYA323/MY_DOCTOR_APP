@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
+import { MediConnectBrand } from '../../components/common/MediConnectBrand';
 import { ecosystemService } from '../../services/ecosystemService';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
@@ -156,36 +157,15 @@ export const HospitalAdminLayout = () => {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: '66px'
         }}>
-          <Link
+          <MediConnectBrand
             to="/hospital-admin"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none' }}
-            title="Hospital Admin Overview"
-          >
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '9px',
-              background: 'linear-gradient(135deg, #1d4ed8, #0d9488)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              boxShadow: '0 3px 10px rgba(29, 78, 216, 0.35)',
-              flexShrink: 0
-            }}>
-              <FaHospitalSymbol size={18} />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <span style={{ fontSize: '1rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.15 }}>
-                  Medi<span style={{ color: '#38bdf8' }}>Connect</span>
-                </span>
-                <span style={{ fontSize: '0.65rem', color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
-                  {isTelugu ? 'హాస్పిటల్ అడ్మిన్' : 'HOSPITAL ADMIN'}
-                </span>
-              </div>
-            )}
-          </Link>
+            theme="dark"
+            size="sm"
+            variant="sidebar"
+            isCollapsed={isCollapsed}
+            subtitle={isTelugu ? 'హాస్పిటల్ అడ్మిన్' : 'HOSPITAL ADMIN'}
+            badgeGradient="linear-gradient(135deg, #1d4ed8, #0d9488)"
+          />
 
           {!isCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

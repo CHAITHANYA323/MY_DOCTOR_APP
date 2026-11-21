@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
 import { FirstTimeGuideModal } from '../../components/common/FirstTimeGuideModal';
+import { MediConnectBrand } from '../../components/common/MediConnectBrand';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const OwnerLayout = () => {
@@ -172,31 +173,15 @@ export const OwnerLayout = () => {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: '66px'
         }}>
-          <Link to="/owner" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none', color: 'white', overflow: 'hidden' }} title="Platform Owner Master Control">
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '9px',
-              backgroundColor: '#0284c7',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              flexShrink: 0
-            }}>
-              <FaShieldAlt size={18} />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <span style={{ fontWeight: 800, fontSize: '1.02rem', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.15 }}>
-                  MEDICONNECT
-                </span>
-                <span style={{ fontSize: '0.66rem', color: '#38bdf8', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  {t('ownerPortal.nav.badge')}
-                </span>
-              </div>
-            )}
-          </Link>
+          <MediConnectBrand
+            to="/owner"
+            theme="dark"
+            size="sm"
+            variant="sidebar"
+            isCollapsed={isCollapsed}
+            subtitle={t('ownerPortal.nav.badge') || 'Platform Owner'}
+            badgeIcon={<FaShieldAlt size={18} />}
+          />
 
           {!isCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

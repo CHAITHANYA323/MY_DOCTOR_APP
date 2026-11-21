@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
+import { MediConnectBrand } from '../../components/common/MediConnectBrand';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const ReceptionLayout = () => {
@@ -108,42 +109,16 @@ export const ReceptionLayout = () => {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: '66px'
         }}>
-          <Link
+          <MediConnectBrand
             to="/admin"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              textDecoration: 'none',
-              overflow: 'hidden'
-            }}
-            title="Hospital Front Desk Portal"
-          >
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.3)',
-              flexShrink: 0
-            }}>
-              <FaClipboardList size={18} />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
-                  MEDICONNECT
-                </div>
-                <div style={{ fontSize: '0.64rem', fontWeight: 700, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  {t('receptionPortal.hospitalFrontDesk') || (isTelugu ? 'ఆసుపత్రి రిసెప్షన్ డెస్క్' : 'Hospital Front Desk')}
-                </div>
-              </div>
-            )}
-          </Link>
+            theme="dark"
+            size="sm"
+            variant="sidebar"
+            isCollapsed={isCollapsed}
+            subtitle={t('receptionPortal.hospitalFrontDesk') || (isTelugu ? 'ఆసుపత్రి రిసెప్షన్ డెస్క్' : 'Hospital Front Desk')}
+            badgeGradient="linear-gradient(135deg, #7c3aed, #8b5cf6)"
+            badgeIcon={<FaClipboardList size={18} />}
+          />
 
           {!isCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

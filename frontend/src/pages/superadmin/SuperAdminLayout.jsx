@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
 import { FirstTimeGuideModal } from '../../components/common/FirstTimeGuideModal';
+import { MediConnectBrand } from '../../components/common/MediConnectBrand';
 import { ecosystemService } from '../../services/ecosystemService';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
@@ -214,31 +215,14 @@ export const SuperAdminLayout = () => {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: '66px'
         }}>
-          <Link to="/superadmin" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none', color: 'white', overflow: 'hidden' }} title="Hospital SuperAdmin Portal">
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '9px',
-              backgroundColor: '#0284c7',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              flexShrink: 0
-            }}>
-              <FaHospitalSymbol size={18} />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <span style={{ fontWeight: 800, fontSize: '1.02rem', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.15 }}>
-                  MEDICONNECT
-                </span>
-                <span style={{ fontSize: '0.66rem', color: '#7dd3fc', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  {t('superAdminPortal.nav.badge')}
-                </span>
-              </div>
-            )}
-          </Link>
+          <MediConnectBrand
+            to="/superadmin"
+            theme="dark"
+            size="sm"
+            variant="sidebar"
+            isCollapsed={isCollapsed}
+            subtitle={t('superAdminPortal.nav.badge') || 'Hospital SuperAdmin'}
+          />
 
           {!isCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

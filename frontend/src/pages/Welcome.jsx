@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from '../components/common/LanguageToggle';
+import { MediConnectBrand } from '../components/common/MediConnectBrand';
 import {
   FaHospitalSymbol,
   FaUserMd,
@@ -114,35 +115,14 @@ export const Welcome = () => {
           flexWrap: 'wrap',
           gap: '0.75rem'
         }}>
-          {/* MediConnect Brand Identity */}
-          <Link
+          {/* Animated Healthcare Brand Identity */}
+          <MediConnectBrand
             to="/"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', textDecoration: 'none' }}
-            aria-label="MediConnect Home"
-          >
-            <div style={{
-              width: '54px',
-              height: '54px',
-              borderRadius: '15px',
-              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 16px rgba(2, 132, 199, 0.38)',
-              flexShrink: 0
-            }}>
-              <FaHospitalSymbol size={30} aria-hidden="true" />
-            </div>
-            <div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
-                Medi<span style={{ color: '#0284c7' }}>Connect</span>
-              </div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Healthcare Platform
-              </div>
-            </div>
-          </Link>
+            theme="light"
+            size="lg"
+            variant="welcome"
+            ariaLabel="MediConnect Home"
+          />
 
           {/* Right Section: Language Switcher + Register Action (Login removed) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>

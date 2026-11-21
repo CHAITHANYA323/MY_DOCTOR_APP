@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { doctorService } from '../../services/doctorService';
 import { LanguageToggle } from '../../components/common/LanguageToggle';
+import { MediConnectBrand } from '../../components/common/MediConnectBrand';
 import { formatDoctorDisplayName, getDoctorInitials } from '../../utils/doctorNameUtils';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
@@ -159,48 +160,16 @@ export const DoctorLayout = () => {
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: '66px'
         }}>
-          <Link
+          <MediConnectBrand
             to="/doctor"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              textDecoration: 'none',
-              overflow: 'hidden'
-            }}
-            title="Doctor Clinical Workstation"
-          >
-            <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #0D9488 0%, #059669 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)',
-              flexShrink: 0
-            }}>
-              <FaStethoscope size={19} />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#FFFFFF' }}>
-                  MEDICONNECT
-                </div>
-                <div style={{
-                  fontSize: '0.62rem',
-                  fontWeight: 800,
-                  color: '#34D399',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase'
-                }}>
-                  Clinical Workstation
-                </div>
-              </div>
-            )}
-          </Link>
+            theme="dark"
+            size="sm"
+            variant="sidebar"
+            isCollapsed={isCollapsed}
+            subtitle={getLabel('doctorPortal.clinicalWorkstation', 'Clinical Workstation')}
+            badgeGradient="linear-gradient(135deg, #0D9488 0%, #059669 100%)"
+            badgeIcon={<FaStethoscope size={18} />}
+          />
 
           {!isCollapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
