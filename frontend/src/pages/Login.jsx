@@ -199,7 +199,11 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
 
   // Redirection metadata
-  const from = location.state?.from?.pathname || (typeof location.state?.from === 'string' ? location.state.from : null);
+  const from = location.state?.from
+    ? (typeof location.state.from === 'string'
+        ? location.state.from
+        : (location.state.from.pathname || '') + (location.state.from.search || ''))
+    : null;
   const redirectMessage = location.state?.message || '';
 
   // Synchronize state if navigation passes a new suggestedRole

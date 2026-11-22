@@ -143,9 +143,23 @@ export const App = () => {
           <Route path="/ambulance" element={<Ambulance />} />
           <Route path="/emergency" element={<Emergency />} />
 
-          {/* Public Specialist & Healthcare Directory Routes */}
-          <Route path="/doctors" element={<Doctors />} />
-          <Route path="/doctors/:id" element={<DoctorDetails />} />
+          {/* Protected Specialist & Healthcare Directory Routes */}
+          <Route
+            path="/doctors"
+            element={
+              <ProtectedRoute>
+                <Doctors />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctors/:id"
+            element={
+              <ProtectedRoute>
+                <DoctorDetails />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/appointments/book/:doctorId"
             element={
@@ -154,10 +168,38 @@ export const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/hospitals" element={<Hospitals />} />
-          <Route path="/hospitals/:id" element={<HospitalDetails />} />
-          <Route path="/specializations" element={<Specializations />} />
-          <Route path="/specializations/:name" element={<SpecializationDoctors />} />
+          <Route
+            path="/hospitals"
+            element={
+              <ProtectedRoute>
+                <Hospitals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hospitals/:id"
+            element={
+              <ProtectedRoute>
+                <HospitalDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/specializations"
+            element={
+              <ProtectedRoute>
+                <Specializations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/specializations/:name"
+            element={
+              <ProtectedRoute>
+                <SpecializationDoctors />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Standalone Add/Edit Doctor (Admin Only) */}
           <Route

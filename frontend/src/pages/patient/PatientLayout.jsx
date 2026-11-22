@@ -25,7 +25,7 @@ import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 
 export const PatientLayout = () => {
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, isTelugu } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
