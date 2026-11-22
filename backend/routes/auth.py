@@ -301,8 +301,8 @@ def register_request():
             'user': user.to_dict()
         }), 201
 
-    # 6. Handle ADMIN (Hospital Admin) role registration request
-    if role == 'ADMIN':
+    # 6. Handle ADMIN / HOSPITAL_ADMIN role registration request
+    if role in ('ADMIN', 'HOSPITAL_ADMIN'):
         hospital_id = data.get('hospital_id')
         if not hospital_id:
             return jsonify({'success': False, 'message': 'Please select an associated hospital.'}), 400
@@ -310,10 +310,14 @@ def register_request():
         if not hospital:
             return jsonify({'success': False, 'message': 'Selected hospital does not exist.'}), 404
 
+        designation = (data.get('designation') or data.get('department') or 'Primary Hospital Administrator').strip()
         notes_payload = {
             'hospital_id': hospital_id,
             'hospital_name': hospital.name,
-            'department': data.get('department', 'Hospital Administration / Management'),
+            'hospital_city': hospital.city,
+            'hospital_state': hospital.state,
+            'department': designation,
+            'designation': designation,
             'employee_id': data.get('employee_id', '')
         }
 

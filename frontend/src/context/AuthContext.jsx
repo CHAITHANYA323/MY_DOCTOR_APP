@@ -8,6 +8,7 @@ import {
   hasRole as checkHasRole,
   isPlatformOwnerRole,
   isHospitalSuperAdminRole,
+  isHospitalAdminRole,
   isReceptionistRole,
   isDoctorRole,
   isPatientRole,
@@ -54,15 +55,14 @@ export const AuthProvider = ({ children }) => {
       if (expectedRole) {
         const normalizedExpected = normalizeRole(expectedRole);
 
-        // Explicit handling for ADMIN accounts:
-        // Do NOT automatically convert ADMIN to PLATFORM_OWNER, HOSPITAL_SUPER_ADMIN, or RECEPTIONIST
-        if (rawUserRole === ROLES.ADMIN) {
-          if (expectedRole !== ROLES.ADMIN) {
+        // Explicit handling for Hospital Admin (ADMIN / HOSPITAL_ADMIN) accounts:
+        if (rawUserRole === ROLES.ADMIN || rawUserRole === ROLES.HOSPITAL_ADMIN) {
+          if (expectedRole !== ROLES.ADMIN && expectedRole !== ROLES.HOSPITAL_ADMIN) {
             authService.logout();
             return {
               success: false,
               roleMismatch: true,
-              authenticatedRole: ROLES.ADMIN,
+              authenticatedRole: ROLES.HOSPITAL_ADMIN,
               rawRole: rawUserRole,
               message: `Hospital Administrator account detected. This account cannot access the ${ROLE_LABELS[normalizedExpected] || expectedRole} portal. Please switch to the Hospital Admin portal to sign in.`,
             };
@@ -110,6 +110,7 @@ export const AuthProvider = ({ children }) => {
   // Multi-role capability flags
   const isPlatformOwner = isPlatformOwnerRole(rawRole);
   const isHospitalSuperAdmin = isHospitalSuperAdminRole(rawRole);
+  const isHospitalAdmin = isHospitalAdminRole(rawRole);
   const isReceptionist = isReceptionistRole(rawRole);
   const isDoctor = isDoctorRole(rawRole);
   const isPatient = isPatientRole(rawRole);
@@ -151,6 +152,7 @@ export const AuthProvider = ({ children }) => {
     rawRole,
     isPlatformOwner,
     isHospitalSuperAdmin,
+    isHospitalAdmin,
     isReceptionist,
     isDoctor,
     isPatient,
@@ -174,6 +176,7 @@ export const AuthProvider = ({ children }) => {
     rawRole,
     isPlatformOwner,
     isHospitalSuperAdmin,
+    isHospitalAdmin,
     isReceptionist,
     isDoctor,
     isPatient,

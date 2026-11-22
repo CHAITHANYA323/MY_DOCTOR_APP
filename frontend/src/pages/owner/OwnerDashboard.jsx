@@ -10,6 +10,8 @@ import {
   FaPlusCircle,
   FaExclamationTriangle,
   FaShieldAlt,
+  FaUserShield,
+  FaUserTie,
   FaArrowRight,
   FaHistory,
   FaBuilding,
@@ -22,14 +24,16 @@ import { useLanguage } from '../../context/LanguageContext';
 import { dashboardService } from '../../services/dashboardService';
 import { invitationService } from '../../services/invitationService';
 import { hospitalService } from '../../services/hospitalService';
+import { ecosystemService } from '../../services/ecosystemService';
 import { getApiErrorMessage } from '../../services/api';
 import { Button } from '../../components/common/Button';
 
 export const OwnerDashboard = () => {
-  const { t } = useLanguage();
+  const { t, isTelugu } = useLanguage();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
+  const [overview, setOverview] = useState(null);
   const [invitations, setInvitations] = useState([]);
   const [allHospitals, setAllHospitals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,8 +54,12 @@ export const OwnerDashboard = () => {
     setError('');
 
     try {
-      const [statsRes, invRes, hospRes] = await Promise.all([
+      const [statsRes, overviewRes, invRes, hospRes] = await Promise.all([
         dashboardService.getAdminStats(),
+        ecosystemService.getPlatformOverview().catch((err) => {
+          console.warn('Overview API fetch error:', err);
+          return { success: false, metrics: {} };
+        }),
         invitationService.listInvitations().catch((err) => {
           console.warn('Invitations API fetch error:', err);
           return { success: false, invitations: [] };
@@ -66,6 +74,10 @@ export const OwnerDashboard = () => {
         setStats(statsRes);
       } else {
         setError(statsRes.message || t('ownerPortal.dashboard.statsUnavailable'));
+      }
+
+      if (overviewRes.success && overviewRes.metrics) {
+        setOverview(overviewRes.metrics);
       }
 
       if (invRes.success && Array.isArray(invRes.invitations)) {
@@ -90,6 +102,7 @@ export const OwnerDashboard = () => {
   }, [fetchDashboardData]);
 
   const metrics = stats?.metrics || {};
+  const overviewMetrics = overview || {};
   const pendingInvitations = invitations.filter((i) => i.status === 'Pending').length;
   const recentAppointments = stats?.recent_appointments || [];
 
@@ -97,56 +110,72 @@ export const OwnerDashboard = () => {
   const statCards = [
     {
       title: t('ownerPortal.dashboard.statHospitalsInNetwork'),
-      value: allHospitals.length || metrics.total_hospitals || 24,
+      value: allHospitals.length || overviewMetrics.total_hospitals || metrics.total_hospitals || 24,
       subtitle: t('ownerPortal.dashboard.statHospitalsInNetworkSub'),
       icon: <FaHospital />,
       bg: '#e0f2fe',
       fg: '#0284c7'
     },
     {
-      title: t('ownerPortal.dashboard.statRequestsWaiting'),
-      value: metrics.pending_hospitals ?? 0,
-      subtitle: t('ownerPortal.dashboard.statRequestsWaitingSub'),
-      icon: <FaBuilding />,
+      title: isTelugu ? 'సూపర్ అడ్మిన్లు' : 'Active SuperAdmins',
+      value: overviewMetrics.active_superadmins || overviewMetrics.total_superadmins || 7,
+      subtitle: isTelugu ? 'ప్రాంతీయ పరిపాలకులు' : 'Regional governing administrators',
+      icon: <FaUserShield />,
       bg: '#fef3c7',
       fg: '#b45309'
     },
     {
-      title: t('ownerPortal.dashboard.statRegisteredDoctors'),
-      value: metrics.total_doctors ?? 0,
-      subtitle: t('ownerPortal.dashboard.statRegisteredDoctorsSub'),
-      icon: <FaUserMd />,
+      title: isTelugu ? 'ఆసుపత్రి నిర్వాహకులు' : 'Hospital Administrators',
+      value: overviewMetrics.total_hospital_admins || 24,
+      subtitle: isTelugu ? 'స్థానిక ఆసుపత్రి అడ్మిన్లు' : 'Primary & secondary facility admins',
+      icon: <FaUserTie />,
       bg: '#f3e8ff',
       fg: '#7e22ce'
     },
     {
-      title: t('ownerPortal.dashboard.statRegisteredPatients'),
-      value: metrics.total_users ?? 0,
-      subtitle: t('ownerPortal.dashboard.statRegisteredPatientsSub'),
-      icon: <FaUsers />,
+      title: t('ownerPortal.dashboard.statRegisteredDoctors'),
+      value: overviewMetrics.total_doctors || metrics.total_doctors || 0,
+      subtitle: t('ownerPortal.dashboard.statRegisteredDoctorsSub'),
+      icon: <FaUserMd />,
       bg: '#dcfce7',
       fg: '#15803d'
     },
     {
       title: t('ownerPortal.dashboard.statTotalAppointments'),
-      value: metrics.total_appointments ?? 0,
+      value: overviewMetrics.total_appointments || metrics.total_appointments || 0,
       subtitle: t('ownerPortal.dashboard.statTotalAppointmentsSub'),
       icon: <FaCalendarCheck />,
       bg: '#ccfbf1',
       fg: '#0f766e'
     },
     {
-      title: t('ownerPortal.dashboard.statPendingInvites'),
-      value: pendingInvitations,
-      subtitle: t('ownerPortal.dashboard.statPendingInvitesSub'),
+      title: isTelugu ? 'పరిశీలనలో ఉన్నవి' : 'Pending Approvals & Invites',
+      value: (overviewMetrics.pending_hospitals || 0) + (overviewMetrics.pending_admin_applications || 0) + pendingInvitations,
+      subtitle: isTelugu ? 'ఆమోదం కోసం వేచివున్నవి' : 'Awaiting review or acceptance',
       icon: <FaEnvelopeOpenText />,
       bg: '#fee2e2',
       fg: '#b91c1c'
     }
   ];
 
-  // 4 Focused Quick Action Cards
+  // Focused Quick Action Cards
   const quickActions = [
+    {
+      title: isTelugu ? 'సూపర్ అడ్మిన్ల నిర్వహణ' : 'SuperAdmins Governance',
+      desc: isTelugu ? 'రీజినల్ సూపర్ అడ్మిన్లను నియమించండి మరియు బహుళ ఆసుపత్రులను కేటాయించండి.' : 'Appoint regional SuperAdmins and configure multi-hospital governance assignments.',
+      to: '/owner/superadmins',
+      icon: <FaUserShield />,
+      bg: '#e0f2fe',
+      fg: '#0284c7'
+    },
+    {
+      title: isTelugu ? 'ఆసుపత్రి అడ్మిన్ల డైరెక్టరీ' : 'Hospital Admins Directory',
+      desc: isTelugu ? 'అన్ని ఆసుపత్రుల ప్రధాన నిర్వాహకులను మరియు ఖాళీలను పర్యవేక్షించండి.' : 'Directory of all facility administrators and institutions lacking primary oversight.',
+      to: '/owner/hospital-admins',
+      icon: <FaUserTie />,
+      bg: '#f3e8ff',
+      fg: '#7e22ce'
+    },
     {
       title: t('ownerPortal.dashboard.actionOnboard'),
       desc: t('ownerPortal.dashboard.actionOnboardDesc'),
@@ -156,28 +185,12 @@ export const OwnerDashboard = () => {
       fg: '#b45309'
     },
     {
-      title: t('ownerPortal.dashboard.actionInvite'),
-      desc: t('ownerPortal.dashboard.actionInviteDesc'),
-      to: '/owner/invitations',
-      icon: <FaEnvelopeOpenText />,
-      bg: '#f3e8ff',
-      fg: '#7e22ce'
-    },
-    {
       title: t('ownerPortal.dashboard.actionAudit'),
       desc: t('ownerPortal.dashboard.actionAuditDesc'),
       to: '/owner/audit-logs',
       icon: <FaHistory />,
       bg: '#fee2e2',
       fg: '#b91c1c'
-    },
-    {
-      title: t('ownerPortal.dashboard.actionHospitals'),
-      desc: t('ownerPortal.dashboard.actionHospitalsDesc'),
-      to: '/owner/hospitals',
-      icon: <FaBuilding />,
-      bg: '#e0f2fe',
-      fg: '#0284c7'
     }
   ];
 
@@ -324,6 +337,56 @@ export const OwnerDashboard = () => {
           </span>
         </div>
       </div>
+
+      {/* Missing Primary Admin Alert Banner */}
+      {(overviewMetrics.hospitals_without_primary_admin > 0) && (
+        <div style={{
+          backgroundColor: '#fffbeb',
+          border: '1px solid #fef3c7',
+          borderLeft: '5px solid #d97706',
+          borderRadius: '12px',
+          padding: '1.25rem 1.5rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <FaExclamationTriangle color="#d97706" size={24} style={{ flexShrink: 0 }} />
+            <div>
+              <strong style={{ fontSize: '0.96rem', color: '#92400e', display: 'block' }}>
+                {isTelugu
+                  ? `${overviewMetrics.hospitals_without_primary_admin} ఆసుపత్రులలో ప్రధాన నిర్వాహకుడు లేరు`
+                  : `Administrative Notice: ${overviewMetrics.hospitals_without_primary_admin} Institution(s) Currently Lack a Primary Administrator`}
+              </strong>
+              <span style={{ fontSize: '0.82rem', color: '#78350f', display: 'block', marginTop: '0.15rem' }}>
+                {isTelugu
+                  ? 'ప్రధాన నిర్వాహకులు లేని సంస్థలను పర్యవేక్షించి, వెంటనే నియామకాలను పూర్తి చేయండి.'
+                  : 'Institutions without designated primary administrative leadership require attention for operational compliance.'}
+              </span>
+            </div>
+          </div>
+          <Link
+            to="/owner/hospital-admins"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.55rem 1rem',
+              backgroundColor: '#d97706',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              textDecoration: 'none'
+            }}
+          >
+            <span>{isTelugu ? 'అడ్మిన్లను సమీక్షించండి' : 'Review & Assign'}</span>
+            <FaArrowRight size={11} />
+          </Link>
+        </div>
+      )}
 
       {/* 3. Important Platform Statistics (KPI Cards Grid) */}
       <div>

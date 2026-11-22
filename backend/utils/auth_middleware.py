@@ -187,14 +187,42 @@ def platform_owner_required(f):
     return roles_required('PLATFORM_OWNER')(f)
 
 
+def superadmin_required(f):
+    """Permits PLATFORM_OWNER or HOSPITAL_SUPER_ADMIN / SUPERADMIN."""
+    return roles_required('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN', 'SUPERADMIN')(f)
+
+
 def hospital_admin_required(f):
-    """Permits PLATFORM_OWNER or HOSPITAL_SUPER_ADMIN."""
-    return roles_required('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN')(f)
+    """Permits PLATFORM_OWNER, HOSPITAL_SUPER_ADMIN, or HOSPITAL_ADMIN / ADMIN."""
+    return roles_required(
+        'PLATFORM_OWNER',
+        'HOSPITAL_SUPER_ADMIN',
+        'SUPERADMIN',
+        'HOSPITAL_ADMIN',
+        'ADMIN'
+    )(f)
+
+
+def only_hospital_admin_required(f):
+    """Permits PLATFORM_OWNER or assigned HOSPITAL_ADMIN / ADMIN."""
+    return roles_required(
+        'PLATFORM_OWNER',
+        'HOSPITAL_ADMIN',
+        'ADMIN',
+        custom_message='Access denied. Hospital Administrator privileges required.'
+    )(f)
 
 
 def staff_required(f):
-    """Permits PLATFORM_OWNER, HOSPITAL_SUPER_ADMIN, or RECEPTIONIST."""
-    return roles_required('PLATFORM_OWNER', 'HOSPITAL_SUPER_ADMIN', 'RECEPTIONIST')(f)
+    """Permits PLATFORM_OWNER, HOSPITAL_SUPER_ADMIN, HOSPITAL_ADMIN, ADMIN, or RECEPTIONIST."""
+    return roles_required(
+        'PLATFORM_OWNER',
+        'HOSPITAL_SUPER_ADMIN',
+        'SUPERADMIN',
+        'HOSPITAL_ADMIN',
+        'ADMIN',
+        'RECEPTIONIST'
+    )(f)
 
 
 def doctor_required(f):
@@ -205,14 +233,72 @@ def doctor_required(f):
 def admin_required(f):
     """
     Administrative guard for hospital operations.
-    Permits PLATFORM_OWNER and HOSPITAL_SUPER_ADMIN.
+    Permits PLATFORM_OWNER, HOSPITAL_SUPER_ADMIN, and HOSPITAL_ADMIN.
     Unassigned legacy ADMIN accounts receive 403 Forbidden until assigned.
     """
     return roles_required(
         'PLATFORM_OWNER',
         'HOSPITAL_SUPER_ADMIN',
+        'SUPERADMIN',
+        'HOSPITAL_ADMIN',
+        'ADMIN',
         custom_message='Access denied. Administrator privileges required.'
     )(f)
+
+
+def get_accessible_hospital_ids(user):
+    """
+    Resolves list of permitted hospital IDs for the given user:
+    - PLATFORM_OWNER: None (unrestricted global access)
+    - HOSPITAL_SUPER_ADMIN / SUPERADMIN: IDs from superadmin_hospital_assignments table (falls back to user.hospital_id)
+    - HOSPITAL_ADMIN / ADMIN / RECEPTIONIST / DOCTOR: [user.hospital_id]
+    - Others: []
+    """
+    if not user:
+        return []
+
+    role = (getattr(user, 'role', '') or '').strip().upper()
+    if role == 'PLATFORM_OWNER':
+        return None  # None indicates all hospitals are accessible
+
+    if role in ('HOSPITAL_SUPER_ADMIN', 'SUPERADMIN'):
+        try:
+            from models import SuperadminHospitalAssignment
+            assignments = SuperadminHospitalAssignment.query.filter_by(
+                superadmin_id=user.id,
+                status='Active'
+            ).all()
+            assigned_ids = [a.hospital_id for a in assignments if a.hospital_id]
+            if assigned_ids:
+                return list(set(assigned_ids))
+        except Exception:
+            pass
+        return [user.hospital_id] if getattr(user, 'hospital_id', None) else []
+
+    if getattr(user, 'hospital_id', None):
+        return [user.hospital_id]
+
+    return []
+
+
+def can_access_hospital(user, hospital_id):
+    """
+    Defensive authorization check: returns True if user is authorized to manage or view hospital_id.
+    Prevents IDOR and cross-hospital data leakage.
+    """
+    if not user or not hospital_id:
+        return False
+
+    accessible = get_accessible_hospital_ids(user)
+    if accessible is None:
+        return True  # Platform Owner
+
+    try:
+        target_id = int(hospital_id)
+    except (ValueError, TypeError):
+        return False
+
+    return target_id in accessible
 
 
 def optional_jwt(f):

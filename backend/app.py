@@ -22,6 +22,9 @@ from routes.doctor_portal import doctor_portal_bp
 from routes.patient_portal import patient_portal_bp
 from routes.approvals import approvals_bp
 from routes.prescriptions import prescriptions_bp
+from routes.superadmin import superadmin_bp
+from routes.owner import owner_bp
+from routes.hospital_admin import hospital_admin_bp
 
 def create_app():
     # Enforce production security policies at startup
@@ -141,6 +144,9 @@ def create_app():
     app.register_blueprint(patient_portal_bp)
     app.register_blueprint(approvals_bp)
     app.register_blueprint(prescriptions_bp)
+    app.register_blueprint(superadmin_bp)
+    app.register_blueprint(owner_bp)
+    app.register_blueprint(hospital_admin_bp)
 
     # Register root aliases for blueprints so requests without /api prefix also resolve cleanly
     app.register_blueprint(auth_bp, name='auth_alt', url_prefix='/auth')

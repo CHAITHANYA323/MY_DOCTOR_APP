@@ -1,35 +1,37 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   FaUserMd,
   FaUserFriends,
-  FaUsers,
+  FaUserTie,
   FaCalendarCheck,
   FaClock,
   FaCalendarDay,
-  FaUserPlus,
+  FaHospital,
   FaExclamationTriangle,
   FaStethoscope,
   FaChartBar,
   FaAmbulance,
-  FaCog,
   FaCheckCircle,
-  FaArrowRight
+  FaArrowRight,
+  FaExchangeAlt,
+  FaShieldAlt
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { dashboardService } from '../../services/dashboardService';
-import { authService } from '../../services/authService';
+import { ecosystemService } from '../../services/ecosystemService';
 import { getApiErrorMessage } from '../../services/api';
 import { Button } from '../../components/common/Button';
 
 export const SuperAdminDashboard = () => {
-  const { user, hospitalName, hospitalId } = useAuth();
-  const { t } = useLanguage();
+  const { user } = useAuth();
+  const { t, isTelugu } = useLanguage();
   const navigate = useNavigate();
 
+  const outletCtx = useOutletContext() || {};
+  const { selectedHospitalId, assignedHospitals = [] } = outletCtx;
+
   const [stats, setStats] = useState(null);
-  const [staffUsers, setStaffUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,29 +40,20 @@ export const SuperAdminDashboard = () => {
     setError('');
 
     try {
-      const [statsRes, usersRes] = await Promise.all([
-        dashboardService.getAdminStats(),
-        authService.getUsers().catch((err) => {
-          console.warn('Hospital staff fetch error:', err);
-          return { success: false, users: [] };
-        })
-      ]);
+      const hospId = selectedHospitalId ? parseInt(selectedHospitalId, 10) : null;
+      const res = await ecosystemService.getSuperadminDashboardStats(hospId);
 
-      if (statsRes.success) {
-        setStats(statsRes);
+      if (res.success) {
+        setStats(res);
       } else {
-        setError(statsRes.message || t('superAdminPortal.dashboard.metricsUnavailable'));
-      }
-
-      if (usersRes.success && Array.isArray(usersRes.users)) {
-        setStaffUsers(usersRes.users);
+        setError(res.message || (isTelugu ? 'డ్యాష్‌బోర్డ్ గణాంకాలు అందుబాటులో లేవు.' : 'Dashboard statistics unavailable.'));
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, t('superAdminPortal.dashboard.metricsUnavailable')));
+      setError(getApiErrorMessage(err, isTelugu ? 'గణాంకాలు లోడ్ చేయడంలో లోపం ఏర్పడింది.' : 'Failed to load dashboard metrics.'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [selectedHospitalId, isTelugu]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -75,11 +68,6 @@ export const SuperAdminDashboard = () => {
             <div key={i} className="skeleton" style={{ height: '90px', borderRadius: '12px' }} />
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="skeleton" style={{ height: '115px', borderRadius: '12px' }} />
-          ))}
-        </div>
       </div>
     );
   }
@@ -88,488 +76,372 @@ export const SuperAdminDashboard = () => {
     return (
       <div className="card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', borderColor: '#fca5a5' }}>
         <FaExclamationTriangle size={42} color="var(--emergency, #dc2626)" style={{ margin: '0 auto 1rem' }} />
-        <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '0.5rem' }}>
-          {t('superAdminPortal.dashboard.metricsUnavailable')}
+        <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+          {isTelugu ? 'డ్యాష్‌బోర్డ్ వివరాలు లోడ్ కాలేదు' : 'Dashboard Metrics Unavailable'}
         </h2>
-        <p style={{ color: 'var(--slate-600)', marginBottom: '1.5rem', maxWidth: '520px', margin: '0 auto 1.5rem', fontSize: '0.9rem' }}>
+        <p style={{ color: '#64748b', marginBottom: '1.5rem', maxWidth: '520px', margin: '0 auto 1.5rem', fontSize: '0.9rem' }}>
           {error}
         </p>
         <Button variant="primary" onClick={fetchDashboardData}>
-          {t('superAdminPortal.dashboard.retry')}
+          {isTelugu ? 'మళ్ళీ ప్రయత్నించండి' : 'Retry'}
         </Button>
       </div>
     );
   }
 
-  const metrics = stats?.metrics || {};
-  const recentAppointments = stats?.recent_appointments || [];
-  const specializationStats = stats?.specialization_stats || [];
+  const hospitalScopeName = stats?.target_hospital_name ||
+    (isTelugu ? `అన్ని కేటాయించబడిన ఆసుపత్రులు (${stats?.assigned_hospitals_count || assignedHospitals.length})`
+              : `All Assigned Hospitals (${stats?.assigned_hospitals_count || assignedHospitals.length})`);
 
-  // Front desk receptionists count
-  const receptionStaffCount = staffUsers.filter((u) => u.role === 'RECEPTIONIST').length;
-
-  // Today's appointments count
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayAppointments = recentAppointments.filter((a) => a.appointment_date === todayStr);
-
-  // Completed appointments count
-  const completedCount = metrics.completed_appointments ??
-    recentAppointments.filter((a) => a.status === 'Completed').length;
-
-  // 8 Action Cards
-  const quickActions = [
+  // Key KPI Cards
+  const kpiCards = [
     {
-      title: t('superAdminPortal.dashboard.actionDoctors'),
-      desc: t('superAdminPortal.dashboard.actionDoctorsDesc'),
-      to: '/superadmin/doctors',
-      icon: <FaUserMd />,
+      title: isTelugu ? 'కేటాయించిన ఆసుపత్రులు' : 'Assigned Hospitals',
+      value: stats?.assigned_hospitals_count || assignedHospitals.length,
+      subtitle: isTelugu ? 'మీ నియంత్రణలోని సంస్థలు' : 'Institutions under supervision',
+      icon: <FaHospital />,
       bg: '#e0f2fe',
       fg: '#0284c7'
     },
     {
-      title: t('superAdminPortal.dashboard.actionStaff'),
-      desc: t('superAdminPortal.dashboard.actionStaffDesc'),
-      to: '/superadmin/staff',
-      icon: <FaUserFriends />,
+      title: isTelugu ? 'ఆసుపత్రి నిర్వాహకులు' : 'Hospital Admins',
+      value: stats?.total_hospital_admins ?? 0,
+      subtitle: isTelugu ? 'స్థానిక పరిపాలనా సిబ్బంది' : 'Local administrators on duty',
+      icon: <FaUserTie />,
+      bg: '#fef3c7',
+      fg: '#b45309'
+    },
+    {
+      title: isTelugu ? 'వైద్య నిపుణులు' : 'Specialist Doctors',
+      value: stats?.total_doctors ?? 0,
+      subtitle: isTelugu ? 'నమోదైన డాక్టర్లు' : 'Registered clinical practitioners',
+      icon: <FaUserMd />,
       bg: '#f3e8ff',
       fg: '#7e22ce'
     },
     {
-      title: t('superAdminPortal.dashboard.actionDepts'),
-      desc: t('superAdminPortal.dashboard.actionDeptsDesc'),
+      title: isTelugu ? 'రిసెప్షన్ సిబ్బంది' : 'Reception Staff',
+      value: stats?.total_receptionists ?? 0,
+      subtitle: isTelugu ? 'ఫ్రంట్ డెస్క్ ఉద్యోగులు' : 'Front desk intake staff',
+      icon: <FaUserFriends />,
+      bg: '#dcfce7',
+      fg: '#15803d'
+    },
+    {
+      title: isTelugu ? 'నేటి అపాయింట్‌మెంట్లు' : "Today's Consultations",
+      value: stats?.today_appointments ?? 0,
+      subtitle: isTelugu ? 'ఈ రోజు షెడ్యూల్ అయినవి' : 'Appointments scheduled today',
+      icon: <FaCalendarDay />,
+      bg: '#ccfbf1',
+      fg: '#0f766e'
+    },
+    {
+      title: isTelugu ? 'రాబోయే అపాయింట్‌మెంట్లు' : 'Upcoming Consultations',
+      value: stats?.upcoming_appointments ?? 0,
+      subtitle: isTelugu ? 'రాబోయే రోజులలో' : 'Scheduled in upcoming days',
+      icon: <FaClock />,
+      bg: '#e0e7ff',
+      fg: '#4338ca'
+    },
+    {
+      title: isTelugu ? 'పూర్తయిన సంప్రదింపులు' : 'Completed Consultations',
+      value: stats?.completed_appointments ?? 0,
+      subtitle: isTelugu ? 'విజయవంతంగా అందించబడినవి' : 'Successfully fulfilled',
+      icon: <FaCheckCircle />,
+      bg: '#dcfce7',
+      fg: '#16a34a'
+    },
+    {
+      title: isTelugu ? 'అత్యవసర కేసులు' : 'Emergency Triage',
+      value: stats?.emergency_appointments ?? 0,
+      subtitle: isTelugu ? 'అత్యవసర ప్రాధాన్యత' : 'Critical urgent volume',
+      icon: <FaAmbulance />,
+      bg: '#fee2e2',
+      fg: '#dc2626'
+    }
+  ];
+
+  // Quick Action Links
+  const quickActions = [
+    {
+      title: isTelugu ? 'ఆసుపత్రి నిర్వాహకులు' : 'Hospital Administrators',
+      desc: isTelugu ? 'ప్రధాన అడ్మిన్‌లను నియమించండి, కొత్త వారిని ఆమోదించండి మరియు కార్యకలాపాలను ట్రాక్ చేయండి.' : 'Govern primary administrators, review onboarding requests, and audit assignments.',
+      to: '/superadmin/hospital-admins',
+      icon: <FaUserTie />,
+      bg: '#e0f2fe',
+      fg: '#0284c7'
+    },
+    {
+      title: isTelugu ? 'వైద్యుల డైరెక్టరీ' : 'Doctors Directory',
+      desc: isTelugu ? 'డాక్టర్లను జోడించండి, ప్రత్యేకతలు మరియు కన్సల్టేషన్ ఫీజులను సమీక్షించండి.' : 'Review doctor affiliations, specialties, and outpatient consultation schedules.',
+      to: '/superadmin/doctors',
+      icon: <FaUserMd />,
+      bg: '#f3e8ff',
+      fg: '#7e22ce'
+    },
+    {
+      title: isTelugu ? 'సిబ్బంది నిర్వహణ' : 'Hospital Staff & Staffing',
+      desc: isTelugu ? 'రిసెప్షనిస్టులు మరియు డెస్క్ మేనేజర్లను నియమించండి.' : 'Manage front-office receptionists and institutional staff members.',
+      to: '/superadmin/staff',
+      icon: <FaUserFriends />,
+      bg: '#dcfce7',
+      fg: '#15803d'
+    },
+    {
+      title: isTelugu ? 'అపాయింట్‌మెంట్ క్యూ' : 'Consultation Queue',
+      desc: isTelugu ? 'అన్ని శాఖల అపాయింట్‌మెంట్లను ప్రత్యక్షంగా ట్రాక్ చేయండి.' : 'Inspect patient consultation queues and fulfillment status in real-time.',
+      to: '/superadmin/appointments',
+      icon: <FaCalendarCheck />,
+      bg: '#ccfbf1',
+      fg: '#0f766e'
+    },
+    {
+      title: isTelugu ? 'శాఖల విభాగాలు' : 'Clinical Departments',
+      desc: isTelugu ? 'కార్డియాలజీ, న్యూరాలజీ మొదలైన విభాగాలను నిర్వహించండి.' : 'Configure hospital departments, wards, and clinical specialties.',
       to: '/superadmin/departments',
       icon: <FaStethoscope />,
       bg: '#fef3c7',
       fg: '#b45309'
     },
     {
-      title: t('superAdminPortal.dashboard.actionAppts'),
-      desc: t('superAdminPortal.dashboard.actionApptsDesc'),
-      to: '/superadmin/appointments',
-      icon: <FaCalendarCheck />,
-      bg: '#dcfce7',
-      fg: '#15803d'
-    },
-    {
-      title: t('superAdminPortal.dashboard.actionReports'),
-      desc: t('superAdminPortal.dashboard.actionReportsDesc'),
+      title: isTelugu ? 'నిర్వహణ నివేదికలు' : 'Operational Reports',
+      desc: isTelugu ? 'నెలవారీ రోగుల సంఖ్య మరియు పనితీరు నివేదికలను విశ్లేషించండి.' : 'Generate clinical reports, completion analytics, and download summaries.',
       to: '/superadmin/reports',
       icon: <FaChartBar />,
       bg: '#fee2e2',
       fg: '#b91c1c'
-    },
-    {
-      title: t('superAdminPortal.dashboard.actionAmbulance'),
-      desc: t('superAdminPortal.dashboard.actionAmbulanceDesc'),
-      to: '/superadmin/ambulances',
-      icon: <FaAmbulance />,
-      bg: '#ffedd5',
-      fg: '#c2410c'
-    },
-    {
-      title: t('superAdminPortal.dashboard.actionSettings'),
-      desc: t('superAdminPortal.dashboard.actionSettingsDesc'),
-      to: '/superadmin/settings',
-      icon: <FaCog />,
-      bg: '#f1f5f9',
-      fg: '#475569'
-    },
-    {
-      title: t('superAdminPortal.dashboard.actionInviteStaff'),
-      desc: t('superAdminPortal.dashboard.actionInviteStaffDesc'),
-      to: '/superadmin/staff',
-      icon: <FaUserPlus />,
-      bg: '#ccfbf1',
-      fg: '#0f766e'
     }
   ];
-
-  // 7 Metric Cards with clear, plain-language explanations
-  const statCards = [
-    {
-      title: t('superAdminPortal.dashboard.statActiveDoctors'),
-      value: metrics.total_doctors ?? 0,
-      subtitle: t('superAdminPortal.dashboard.statActiveDoctorsSub'),
-      icon: <FaUserMd />,
-      bg: '#e0f2fe',
-      fg: '#0284c7'
-    },
-    {
-      title: t('superAdminPortal.dashboard.statReceptionStaff'),
-      value: receptionStaffCount,
-      subtitle: t('superAdminPortal.dashboard.statReceptionStaffSub'),
-      icon: <FaUserFriends />,
-      bg: '#f3e8ff',
-      fg: '#7e22ce'
-    },
-    {
-      title: t('superAdminPortal.dashboard.statHospitalPatients'),
-      value: metrics.total_users ?? 0,
-      subtitle: t('superAdminPortal.dashboard.statHospitalPatientsSub'),
-      icon: <FaUsers />,
-      bg: '#dcfce7',
-      fg: '#15803d'
-    },
-    {
-      title: t('superAdminPortal.dashboard.statTotalAppts'),
-      value: metrics.total_appointments ?? 0,
-      subtitle: t('superAdminPortal.dashboard.statTotalApptsSub'),
-      icon: <FaCalendarCheck />,
-      bg: '#fef3c7',
-      fg: '#b45309'
-    },
-    {
-      title: t('superAdminPortal.dashboard.statPendingAppts'),
-      value: metrics.pending_appointments ?? 0,
-      subtitle: t('superAdminPortal.dashboard.statPendingApptsSub'),
-      icon: <FaClock />,
-      bg: '#fee2e2',
-      fg: '#b91c1c'
-    },
-    {
-      title: t('superAdminPortal.dashboard.statTodayAppts'),
-      value: todayAppointments.length,
-      subtitle: t('superAdminPortal.dashboard.statTodayApptsSub'),
-      icon: <FaCalendarDay />,
-      bg: '#ccfbf1',
-      fg: '#0f766e'
-    },
-    {
-      title: t('superAdminPortal.dashboard.statCompletedAppts'),
-      value: completedCount,
-      subtitle: t('superAdminPortal.dashboard.statCompletedApptsSub'),
-      icon: <FaCheckCircle />,
-      bg: '#e0e7ff',
-      fg: '#4338ca'
-    }
-  ];
-
-  const activeHospital = hospitalName || user?.hospital_name || (hospitalId ? `Hospital Branch #${hospitalId}` : 'Assigned Hospital');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Header Banner */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* Welcome Banner */}
       <div style={{
         backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '1.75rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        border: '1px solid var(--slate-200)',
+        padding: '1.5rem',
+        borderRadius: '14px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
         display: 'flex',
         flexWrap: 'wrap',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '1.25rem'
+        alignItems: 'center',
+        gap: '1rem'
       }}>
-        <div style={{ maxWidth: '750px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
             <span style={{
-              backgroundColor: '#e0f2fe',
-              color: '#0369a1',
+              backgroundColor: '#0284c7',
+              color: '#ffffff',
+              padding: '0.2rem 0.55rem',
+              borderRadius: '8px',
               fontSize: '0.72rem',
               fontWeight: 800,
-              padding: '0.2rem 0.6rem',
-              borderRadius: '12px',
-              textTransform: 'uppercase'
+              letterSpacing: '0.04em'
             }}>
-              {activeHospital}
+              SUPER ADMIN
             </span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--slate-500)', fontWeight: 600 }}>
-              {t('superAdminPortal.dashboard.scopeLabel')} #{user?.hospital_id || hospitalId || '1'}
-            </span>
+            <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              {isTelugu ? 'సూపర్ అడ్మిన్ నిర్వహణ డ్యాష్‌బోర్డ్' : 'Super Admin Operational Governance'}
+            </h1>
           </div>
-          <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0, letterSpacing: '-0.02em' }}>
-            {t('superAdminPortal.dashboard.welcomeTitle')}
-          </h1>
-          <p style={{ fontSize: '0.88rem', color: 'var(--slate-600)', marginTop: '0.4rem', marginBottom: 0, lineHeight: 1.5 }}>
-            {t('superAdminPortal.dashboard.welcomeSubtitle')}
+          <p style={{ margin: 0, fontSize: '0.86rem', color: '#64748b' }}>
+            {isTelugu
+              ? `${hospitalScopeName} పరిధిలోని వైద్యులు, నిర్వాహకులు, రోగుల కన్సల్టేషన్ల ప్రత్యక్ష సమాచారం.`
+              : `Real-time operational governance and clinical activity across ${hospitalScopeName}.`}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/superadmin/doctors')}
-            icon={<FaUserMd aria-hidden="true" />}
-          >
-            {t('superAdminPortal.nav.doctors')}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/superadmin/staff')}
-            icon={<FaUserPlus aria-hidden="true" />}
-          >
-            {t('superAdminPortal.nav.staff')}
-          </Button>
-        </div>
+        <Link
+          to="/superadmin/hospital-admins"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            padding: '0.6rem 1.15rem',
+            backgroundColor: '#0284c7',
+            color: '#ffffff',
+            borderRadius: '9px',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            textDecoration: 'none',
+            boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)'
+          }}
+        >
+          <FaUserTie />
+          <span>{isTelugu ? 'ఆసుపత్రి అడ్మిన్లను నిర్వహించండి' : 'Manage Hospital Admins'}</span>
+          <FaArrowRight size={11} />
+        </Link>
       </div>
 
-      {/* "What can you do here?" Section with 8 Action Cards */}
-      <div>
-        <div style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--slate-900)', margin: '0 0 0.25rem' }}>
-            {t('superAdminPortal.dashboard.quickActionsTitle')}
-          </h2>
-          <p style={{ fontSize: '0.82rem', color: 'var(--slate-500)', margin: 0 }}>
-            {t('superAdminPortal.dashboard.quickActionsSubtitle')}
-          </p>
-        </div>
+      {/* KPI Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        {kpiCards.map((card, idx) => (
+          <div
+            key={idx}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              padding: '1.25rem',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '1rem'
+            }}
+          >
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: '10px',
+              backgroundColor: card.bg,
+              color: card.fg,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+              flexShrink: 0
+            }}>
+              {card.icon}
+            </div>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>
+                {card.title}
+              </span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1, display: 'block' }}>
+                {card.value}
+              </span>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginTop: '0.25rem' }}>
+                {card.subtitle}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
 
+      {/* Assigned Hospitals Breakdown */}
+      {stats?.hospitals && stats.hospitals.length > 0 && (
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '1rem'
+          backgroundColor: '#ffffff',
+          borderRadius: '14px',
+          border: '1px solid #e2e8f0',
+          padding: '1.5rem',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
         }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                {isTelugu ? 'కేటాయించబడిన ఆసుపత్రుల స్థితి' : 'Assigned Institutions Breakdown'}
+              </h2>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                {isTelugu ? 'ప్రతి ఆసుపత్రిలోని ప్రధాన నిర్వాహకుడు మరియు సేవల సారాంశం.' : 'Primary administrator assignment and operational volume per hospital.'}
+              </span>
+            </div>
+            <Link
+              to="/superadmin/hospital-admins"
+              style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0284c7', textDecoration: 'none' }}
+            >
+              {isTelugu ? 'అన్ని వివరాలు చూడండి →' : 'View all administrators →'}
+            </Link>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+            {stats.hospitals.map((h) => (
+              <div
+                key={h.id}
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  backgroundColor: '#f8fafc'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+                  <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>{h.name}</strong>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', backgroundColor: '#e2e8f0', padding: '0.1rem 0.4rem', borderRadius: '8px' }}>
+                    {h.city}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.65rem' }}>
+                  {h.primary_admin ? (
+                    <span style={{ color: '#0369a1', fontWeight: 600 }}>
+                      👤 {isTelugu ? 'ప్రధాన అడ్మిన్:' : 'Primary Admin:'} {h.primary_admin.name}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#be123c', fontWeight: 600 }}>
+                      ⚠️ {isTelugu ? 'ప్రధాన అడ్మిన్ లేరు' : 'No Primary Admin Assigned'}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.76rem', color: '#475569', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem' }}>
+                  <span>👨‍⚕️ {h.doctors_count || 0} {isTelugu ? 'డాక్టర్లు' : 'Doctors'}</span>
+                  <span>📋 {h.receptionists_count || 0} {isTelugu ? 'రిసెప్షన్' : 'Staff'}</span>
+                  <span>📅 {h.appointments_count || 0} {isTelugu ? 'కేసులు' : 'Appts'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Operational Shortcuts */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '14px',
+        border: '1px solid #e2e8f0',
+        padding: '1.5rem',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+      }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+          {isTelugu ? 'ముఖ్యమైన నిర్వహణ విభాగాలు' : 'Administrative Governance Shortcuts'}
+        </h2>
+        <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '1.25rem' }}>
+          {isTelugu ? 'ఆసుపత్రి సిబ్బంది, వైద్యులు మరియు సంప్రదింపులను నిర్వహించడానికి త్వరిత లింకులు.' : 'Quick navigation to hospital administrators, clinicians, front-desk staff, and operational reports.'}
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
           {quickActions.map((action, idx) => (
             <Link
               key={idx}
               to={action.to}
               style={{
-                textDecoration: 'none',
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '0.85rem',
-                padding: '1.15rem',
+                padding: '1.1rem',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                textDecoration: 'none',
                 backgroundColor: '#ffffff',
-                border: '1px solid var(--slate-200)',
-                borderRadius: '12px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.08)';
-                e.currentTarget.style.borderColor = action.fg;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                e.currentTarget.style.borderColor = 'var(--slate-200)';
               }}
             >
               <div style={{
-                width: 42,
-                height: 42,
-                borderRadius: '10px',
+                width: 38,
+                height: 38,
+                borderRadius: '8px',
                 backgroundColor: action.bg,
                 color: action.fg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.15rem',
+                fontSize: '1.1rem',
                 flexShrink: 0
               }}>
                 {action.icon}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--slate-800)' }}>
-                    {action.title}
-                  </span>
-                  <FaArrowRight size={10} color="var(--slate-400)" />
-                </div>
-                <p style={{ fontSize: '0.76rem', color: 'var(--slate-500)', margin: '0.2rem 0 0', lineHeight: 1.4 }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', display: 'block', marginBottom: '0.2rem' }}>
+                  {action.title}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.35, display: 'block' }}>
                   {action.desc}
-                </p>
+                </span>
               </div>
             </Link>
           ))}
-        </div>
-      </div>
-
-      {/* KPI Stat Cards Grid (7 Cards with plain-language explanations) */}
-      <div>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '1rem' }}>
-          Hospital Operational Metrics
-        </h2>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1rem'
-        }}>
-          {statCards.map((card, idx) => (
-            <div
-              key={idx}
-              className="card"
-              style={{
-                padding: '1.25rem',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                backgroundColor: '#ffffff',
-                border: '1px solid var(--slate-200)',
-                borderRadius: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--slate-600)', fontWeight: 700 }}>
-                  {card.title}
-                </span>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '8px',
-                  backgroundColor: card.bg,
-                  color: card.fg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.05rem'
-                }}>
-                  {card.icon}
-                </div>
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--slate-900)', margin: '0 0 0.25rem' }}>
-                  {card.value}
-                </h3>
-                <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)', fontWeight: 500, lineHeight: 1.35, display: 'block' }}>
-                  {card.subtitle}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Two Column Section: Clinical Departments & Recent Appointments */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
-        gap: '1.5rem'
-      }}>
-        {/* Hospital Departments */}
-        <div className="card" style={{ padding: '1.5rem', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid var(--slate-200)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-                {t('superAdminPortal.dashboard.deptsTitle')}
-              </h2>
-              <span style={{ fontSize: '0.76rem', color: 'var(--slate-500)' }}>
-                Doctors by Department
-              </span>
-            </div>
-            <Link to="/superadmin/departments" style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary, #0284c7)', textDecoration: 'none' }}>
-              {t('superAdminPortal.dashboard.deptsViewAll')} &rarr;
-            </Link>
-          </div>
-
-          {specializationStats.length === 0 ? (
-            <p style={{ color: 'var(--slate-500)', fontSize: '0.85rem' }}>
-              {t('superAdminPortal.dashboard.noDeptsMsg')}
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              {specializationStats.slice(0, 6).map((spec, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.65rem 0.85rem',
-                    backgroundColor: 'var(--slate-50)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--slate-200)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <FaStethoscope color="var(--primary, #0284c7)" size={14} />
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--slate-800)' }}>
-                      {spec.name}
-                    </span>
-                  </div>
-                  <span style={{
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                    color: '#0369a1',
-                    padding: '0.2rem 0.55rem',
-                    borderRadius: '12px'
-                  }}>
-                    {spec.count} {spec.count === 1 ? t('superAdminPortal.dashboard.doctorSingular') : t('superAdminPortal.dashboard.doctorsPlural')}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Hospital Appointments */}
-        <div className="card" style={{ padding: '1.5rem', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid var(--slate-200)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--slate-900)', margin: 0 }}>
-                {t('superAdminPortal.dashboard.recentApptsTitle')}
-              </h2>
-              <span style={{ fontSize: '0.76rem', color: 'var(--slate-500)' }}>
-                Latest consultation bookings
-              </span>
-            </div>
-            <Link to="/superadmin/appointments" style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary, #0284c7)', textDecoration: 'none' }}>
-              {t('superAdminPortal.dashboard.recentApptsViewAll')} &rarr;
-            </Link>
-          </div>
-
-          {recentAppointments.length === 0 ? (
-            <p style={{ color: 'var(--slate-500)', fontSize: '0.85rem' }}>
-              {t('superAdminPortal.dashboard.noRecentApptsMsg')}
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              {recentAppointments.slice(0, 6).map((appt) => (
-                <div
-                  key={appt.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.65rem 0.85rem',
-                    borderBottom: '1px solid var(--slate-100)',
-                    fontSize: '0.84rem'
-                  }}
-                >
-                  <div style={{ overflow: 'hidden', paddingRight: '0.5rem' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--slate-800)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {appt.user_name || `Patient #${appt.user_id}`} &bull; {appt.doctor_name || `Dr. #${appt.doctor_id}`}
-                    </span>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)' }}>
-                      📅 {appt.appointment_date} at {appt.appointment_time}
-                    </span>
-                  </div>
-                  <span style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    padding: '0.2rem 0.55rem',
-                    borderRadius: '12px',
-                    flexShrink: 0,
-                    backgroundColor:
-                      appt.status === 'Completed'
-                        ? '#dcfce7'
-                        : appt.status === 'Confirmed'
-                        ? '#dbeafe'
-                        : appt.status === 'Checked In'
-                        ? '#f3e8ff'
-                        : '#fef3c7',
-                    color:
-                      appt.status === 'Completed'
-                        ? '#15803d'
-                        : appt.status === 'Confirmed'
-                        ? '#1e40af'
-                        : appt.status === 'Checked In'
-                        ? '#7e22ce'
-                        : '#b45309'
-                  }}>
-                    {appt.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

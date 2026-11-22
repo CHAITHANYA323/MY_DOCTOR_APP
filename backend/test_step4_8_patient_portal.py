@@ -89,6 +89,7 @@ def patient_test_env():
             phone="+91 98765 33333",
             email="alok.nath@carehospital.com",
             consultation_fee=500.0,
+            
             available_days="Monday - Saturday",
             available_time="09:00 AM - 05:00 PM",
             status="Active",

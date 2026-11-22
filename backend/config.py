@@ -45,31 +45,46 @@ class Config:
     def validate_production_config(cls):
         """
         Validates mandatory security configurations for production environments:
-        1. A dedicated, non-default SECRET_KEY is set.
-        2. A persistent production database (PostgreSQL/MySQL via DATABASE_URL) is configured.
+        1. A dedicated, high-entropy non-default SECRET_KEY is set.
+        2. A persistent production database (PostgreSQL/MySQL via DATABASE_URL or MySQL credentials) is configured.
         3. Local/ephemeral SQLite is strictly forbidden in production (BLK-01).
         """
         if not cls.is_production():
             return
 
-        if not cls.SECRET_KEY or cls.SECRET_KEY == cls.DEFAULT_SECRET_KEY:
+        current_secret = (os.getenv("SECRET_KEY") or cls.SECRET_KEY or "").strip()
+        insecure_keys = {
+            cls.DEFAULT_SECRET_KEY,
+            "secret",
+            "changeme",
+            "123456",
+            "dev",
+            "development",
+            "YOUR_SECURE_RANDOM_SECRET_KEY_HERE_MIN_32_CHARS",
+            "REPLACE_WITH_CRYPTOGRAPHICALLY_SECURE_RANDOM_SECRET_KEY_MIN_64_CHARS"
+        }
+        if not current_secret or current_secret in insecure_keys or len(current_secret) < 32:
             raise RuntimeError(
-                "CRITICAL SECURITY CONFIGURATION ERROR: A custom SECRET_KEY is strictly required in production. "
-                "Default fallback secrets are forbidden."
+                "CRITICAL SECURITY CONFIGURATION ERROR: A dedicated, high-entropy SECRET_KEY (min 32 characters) "
+                "is strictly required in production. Default fallback or placeholder secrets are forbidden."
             )
 
-        env_url = (os.getenv("DATABASE_URL") or cls.DATABASE_URL or "").strip()
-        has_mysql = bool(cls.MYSQL_USER and cls.MYSQL_DB and cls.MYSQL_PASSWORD)
+        env_url = os.getenv("DATABASE_URL", cls.DATABASE_URL or "").strip()
+        mysql_user = os.getenv("MYSQL_USER", cls.MYSQL_USER)
+        mysql_pwd = os.getenv("MYSQL_PASSWORD", cls.MYSQL_PASSWORD)
+        mysql_db = os.getenv("MYSQL_DB", cls.MYSQL_DB)
+        has_mysql = bool(mysql_user and mysql_db and mysql_pwd)
+
         if not env_url and not has_mysql:
             raise RuntimeError(
-                "CRITICAL DATABASE CONFIGURATION ERROR: A persistent database URL (DATABASE_URL) is required in production. "
-                "Running with local/ephemeral SQLite in production is forbidden."
+                "CRITICAL DATABASE CONFIGURATION ERROR: A persistent database URL (DATABASE_URL) or MySQL configuration "
+                "is required in production. Running with local/ephemeral SQLite in production is forbidden."
             )
 
-        if env_url.lower().startswith("sqlite"):
+        if env_url.lower().startswith("sqlite") or os.getenv("USE_SQLITE", "false").lower() in ("true", "1", "yes"):
             raise RuntimeError(
                 "CRITICAL DATABASE CONFIGURATION ERROR: Running with SQLite in production is strictly forbidden. "
-                "Please configure a remote PostgreSQL or MySQL database URL (e.g. postgresql+psycopg2://...)."
+                "Please configure a remote PostgreSQL or MySQL database URL (e.g. mysql+pymysql://...)."
             )
 
     @classmethod

@@ -135,8 +135,10 @@ class Hospital(db.Model):
     source_url = db.Column(db.String(255))
     is_verified = db.Column(db.Boolean, default=True)
     verification_status = db.Column(db.String(50), default='Verified Hospital')
+    primary_admin_id = db.Column(db.Integer, db.ForeignKey('users.id', use_alter=True, name='fk_hospitals_primary_admin_id', ondelete='SET NULL'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    primary_admin = db.relationship('User', foreign_keys=[primary_admin_id], backref=db.backref('primary_hospital_ref', uselist=False))
     doctors = db.relationship('Doctor', back_populates='hospital')
     appointments = db.relationship('Appointment', back_populates='hospital')
 
@@ -161,6 +163,9 @@ class Hospital(db.Model):
             'source_url': getattr(self, 'source_url', None) or '',
             'is_verified': bool(self.is_verified if getattr(self, 'is_verified', None) is not None else True),
             'verification_status': getattr(self, 'verification_status', None) or 'Verified Hospital',
+            'primary_admin_id': self.primary_admin_id,
+            'primary_admin_name': self.primary_admin.name if self.primary_admin else None,
+            'primary_admin_email': self.primary_admin.email if self.primary_admin else None,
             'doctor_count': len(self.doctors),
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
@@ -647,3 +652,78 @@ class Prescription(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class SuperadminHospitalAssignment(db.Model):
+    __tablename__ = 'superadmin_hospital_assignments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    superadmin_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='CASCADE'), nullable=False, index=True)
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    status = db.Column(db.String(30), default='Active', nullable=False, index=True)  # 'Active', 'Revoked', 'Transferred'
+    assigned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    notes = db.Column(db.Text, nullable=True)
+
+    # Relationships
+    superadmin = db.relationship('User', foreign_keys=[superadmin_id], backref=db.backref('hospital_assignments', lazy=True, cascade='all, delete-orphan'))
+    hospital = db.relationship('Hospital', foreign_keys=[hospital_id], backref=db.backref('superadmin_assignments', lazy=True, cascade='all, delete-orphan'))
+    assigned_by = db.relationship('User', foreign_keys=[assigned_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'superadmin_id': self.superadmin_id,
+            'superadmin_name': self.superadmin.name if self.superadmin else None,
+            'superadmin_email': self.superadmin.email if self.superadmin else None,
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
+            'hospital_city': self.hospital.city if self.hospital else None,
+            'hospital_state': self.hospital.state if self.hospital else None,
+            'hospital_image': self.hospital.image if self.hospital else None,
+            'status': self.status,
+            'assigned_by_id': self.assigned_by_id,
+            'assigned_by_name': self.assigned_by.name if self.assigned_by else None,
+            'assigned_at': self.assigned_at.isoformat() if self.assigned_at else None,
+            'notes': self.notes
+        }
+
+
+class HospitalAdminAssignment(db.Model):
+    __tablename__ = 'hospital_admin_assignments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id', ondelete='CASCADE'), nullable=False, index=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    designation = db.Column(db.String(100), default='Primary Hospital Administrator', nullable=False)
+    is_primary = db.Column(db.Boolean, default=True, nullable=False)
+    status = db.Column(db.String(30), default='Active', nullable=False, index=True)  # 'Active', 'Replaced', 'Revoked', 'Suspended'
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    assigned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    revoked_at = db.Column(db.DateTime, nullable=True)
+    replacement_reason = db.Column(db.Text, nullable=True)
+
+    # Relationships
+    hospital = db.relationship('Hospital', foreign_keys=[hospital_id], backref=db.backref('admin_assignments', lazy=True, cascade='all, delete-orphan'))
+    admin = db.relationship('User', foreign_keys=[admin_id], backref=db.backref('hospital_admin_assignments', lazy=True, cascade='all, delete-orphan'))
+    assigned_by = db.relationship('User', foreign_keys=[assigned_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'hospital_id': self.hospital_id,
+            'hospital_name': self.hospital.name if self.hospital else None,
+            'admin_id': self.admin_id,
+            'admin_name': self.admin.name if self.admin else None,
+            'admin_email': self.admin.email if self.admin else None,
+            'admin_phone': self.admin.phone if self.admin else None,
+            'designation': self.designation,
+            'is_primary': bool(self.is_primary),
+            'status': self.status,
+            'assigned_by_id': self.assigned_by_id,
+            'assigned_by_name': self.assigned_by.name if self.assigned_by else None,
+            'assigned_at': self.assigned_at.isoformat() if self.assigned_at else None,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'replacement_reason': self.replacement_reason
+        }
+

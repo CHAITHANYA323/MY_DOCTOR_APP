@@ -12,31 +12,35 @@
 export const ROLES = Object.freeze({
   PLATFORM_OWNER: 'PLATFORM_OWNER',
   HOSPITAL_SUPER_ADMIN: 'HOSPITAL_SUPER_ADMIN',
+  SUPERADMIN: 'HOSPITAL_SUPER_ADMIN', // Alias for SuperAdmin
+  HOSPITAL_ADMIN: 'HOSPITAL_ADMIN',
+  ADMIN: 'ADMIN', // Standard and legacy Hospital Admin
   RECEPTIONIST: 'RECEPTIONIST',
   DOCTOR: 'DOCTOR',
   PATIENT: 'PATIENT',
   USER: 'USER', // Legacy alias for PATIENT
-  ADMIN: 'ADMIN', // Legacy admin
 });
 
 export const ROLE_LABELS = Object.freeze({
   [ROLES.PLATFORM_OWNER]: 'Platform Owner',
-  [ROLES.HOSPITAL_SUPER_ADMIN]: 'Hospital Super Admin',
-  [ROLES.RECEPTIONIST]: 'Hospital Reception / Admin',
+  [ROLES.HOSPITAL_SUPER_ADMIN]: 'SuperAdmin',
+  [ROLES.HOSPITAL_ADMIN]: 'Hospital Admin',
+  [ROLES.ADMIN]: 'Hospital Admin',
+  [ROLES.RECEPTIONIST]: 'Receptionist',
   [ROLES.DOCTOR]: 'Doctor',
   [ROLES.PATIENT]: 'Patient / User',
   [ROLES.USER]: 'Patient / User',
-  [ROLES.ADMIN]: 'Hospital Administrator',
 });
 
 export const ROLE_DASHBOARD_ROUTES = Object.freeze({
   [ROLES.PLATFORM_OWNER]: '/owner',
   [ROLES.HOSPITAL_SUPER_ADMIN]: '/superadmin',
+  [ROLES.HOSPITAL_ADMIN]: '/hospital-admin',
+  [ROLES.ADMIN]: '/hospital-admin',
   [ROLES.RECEPTIONIST]: '/admin',
   [ROLES.DOCTOR]: '/doctor',
   [ROLES.PATIENT]: '/patient',
   [ROLES.USER]: '/patient',
-  [ROLES.ADMIN]: '/admin',
 });
 
 /**
@@ -82,6 +86,11 @@ export const isHospitalSuperAdminRole = (role) => {
   return String(role || '').trim().toUpperCase() === ROLES.HOSPITAL_SUPER_ADMIN;
 };
 
+export const isHospitalAdminRole = (role) => {
+  const upper = String(role || '').trim().toUpperCase();
+  return upper === ROLES.HOSPITAL_ADMIN || upper === ROLES.ADMIN;
+};
+
 export const isReceptionistRole = (role) => {
   return String(role || '').trim().toUpperCase() === ROLES.RECEPTIONIST;
 };
@@ -104,7 +113,8 @@ export const isAnyAdminRole = (role) => {
   return [
     ROLES.PLATFORM_OWNER,
     ROLES.HOSPITAL_SUPER_ADMIN,
-    ROLES.RECEPTIONIST,
+    ROLES.HOSPITAL_ADMIN,
     ROLES.ADMIN,
+    ROLES.RECEPTIONIST,
   ].includes(upper);
 };

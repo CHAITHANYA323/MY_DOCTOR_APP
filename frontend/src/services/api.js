@@ -99,7 +99,7 @@ api.interceptors.response.use(
   }
 );
 
-export { API_BASE_URL };
+export { api, API_BASE_URL };
 
 /**
  * Utility to extract user-friendly error messages from API calls.
