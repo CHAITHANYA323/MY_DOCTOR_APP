@@ -1,27 +1,47 @@
 import axios from 'axios';
 
-/**
- * Centralized API Base URL configuration.
- * Automatically resolves the backend URL from environment variables:
- * - In local development: defaults to 'http://127.0.0.1:5000' if VITE_API_URL is unset.
- * - In production: uses import.meta.env.VITE_API_URL.
- * - Strips any trailing slashes and trailing /api to ensure canonical joining.
- */
-const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (!envUrl || !envUrl.trim()) {
-    return 'http://127.0.0.1:5000';
-  }
+const PRODUCTION_API_URL = 'https://my-doctor-app-2-s0yv.onrender.com';
+const DEVELOPMENT_API_URL = 'http://127.0.0.1:5000';
 
-  let cleaned = envUrl.trim().replace(/\/+$/, '');
-
-  // If user configured VITE_API_URL with a trailing /api, strip it
-  // so that endpoint paths starting with /api (e.g. /api/auth/login) match cleanly
+const normalizeApiUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  let cleaned = url.trim().replace(/\/+$/, '');
   if (cleaned.endsWith('/api')) {
     cleaned = cleaned.slice(0, -4);
   }
-
   return cleaned;
+};
+
+const isLocalhost = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('localhost') || url.includes('127.0.0.1');
+};
+
+/**
+ * Centralized API Base URL configuration.
+ * - Production builds: uses sanitized VITE_API_URL if present and not localhost,
+ *   otherwise safely falls back to PRODUCTION_API_URL.
+ * - Development builds: uses sanitized VITE_API_URL if present,
+ *   otherwise safely falls back to DEVELOPMENT_API_URL.
+ */
+const getBaseUrl = () => {
+  const rawEnvUrl = typeof import.meta.env.VITE_API_URL === 'string'
+    ? import.meta.env.VITE_API_URL.trim()
+    : '';
+
+  if (import.meta.env.PROD) {
+    if (rawEnvUrl && !isLocalhost(rawEnvUrl)) {
+      return normalizeApiUrl(rawEnvUrl);
+    }
+    return PRODUCTION_API_URL;
+  }
+
+  // Development mode
+  if (rawEnvUrl) {
+    return normalizeApiUrl(rawEnvUrl);
+  }
+
+  return DEVELOPMENT_API_URL;
 };
 
 const API_BASE_URL = getBaseUrl();
@@ -32,17 +52,13 @@ if (
   window.location.hostname !== 'localhost' &&
   window.location.hostname !== '127.0.0.1'
 ) {
-  if (
-    !import.meta.env.VITE_API_URL ||
-    API_BASE_URL.includes('localhost') ||
-    API_BASE_URL.includes('127.0.0.1')
-  ) {
+  if (isLocalhost(API_BASE_URL)) {
     console.warn(
       '[DoctorApp Notice] Running on production domain (' +
         window.location.origin +
-        ') but VITE_API_URL is pointing to ' +
+        ') but API base URL is pointing to ' +
         API_BASE_URL +
-        '. Please configure VITE_API_URL in your Vercel Project Settings (Environment Variables) to your deployed Flask backend URL and redeploy the frontend.'
+        '. Ensure VITE_API_URL is configured in your Netlify site settings.'
     );
   }
 }
